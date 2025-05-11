@@ -157,8 +157,8 @@ export default function RegisterScreen() {
       await store.set('token', response.data.token);
       setUser(response.data.user);
 
-      // Navigate to home
-      router.replace('/(tabs)' as any);
+      // Navigate to verification page
+      router.replace('/(auth)/verify' as any);
     } catch (error: any) {
       console.error('Registration failed:', error);
       setError(error.response?.data?.message || 'Registration failed. Please try again.');

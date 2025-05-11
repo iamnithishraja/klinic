@@ -59,6 +59,25 @@ const resendOtp = async (req: CustomRequest, res: Response): Promise<void> => {
     }
 }
 
+const verifyOtp = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { emailOtp, phoneOtp } = req.body;
+        const user = await User.findById(req.user._id).select('+emailOtp +phoneOtp');
+        if (!user) {
+            res.status(401).json({ message: 'Invalid email or phone' });
+            return;
+        }
+        if (user.emailOtp !== emailOtp || user.phoneOtp !== phoneOtp) {
+            res.status(401).json({ message: 'Invalid OTP' });
+            return;
+        }
+        user.isPhoneEmailVerified = true;
+        await user.save();
+        res.status(200).json({ message: 'OTP verified successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
 const getUser = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const user = await User.findById(req.user._id);
@@ -67,4 +86,4 @@ const getUser = async (req: CustomRequest, res: Response): Promise<void> => {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
-export { registerUser, loginUser, resendOtp, getUser }; 
+export { registerUser, loginUser, resendOtp, getUser, verifyOtp }; 

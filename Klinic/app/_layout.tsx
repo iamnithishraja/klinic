@@ -64,8 +64,10 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete }: UserDataLoade
           console.error("API call failed:", error);
           const axiosError = error as AxiosError;
           if (axiosError.response && axiosError.response.status === 401) {
-            // Redirect to login page on 401 Unauthorized
             router.replace('/(auth)/login' as any);
+          }
+          if (axiosError.response && axiosError.response.status === 408) {
+            router.replace('/(auth)/verify' as any);
           }
         }
       } catch (e) {
