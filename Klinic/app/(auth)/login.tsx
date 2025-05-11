@@ -20,14 +20,54 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Field-specific validation errors
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  
   const router = useRouter();
   const setUser = useSetRecoilState(userAtom);
 
   const togglePassword = () => setShowPassword(!showPassword);
+  
+  // Validation functions
+  const validateEmail = (value: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      setEmailError('Please enter a valid email address');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+  
+  const validatePassword = (value: string) => {
+    if (value.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return false;
+    }
+    setPasswordError('');
+    return true;
+  };
+  
+  // Handle text change with validation
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (emailError) validateEmail(text);
+  };
+  
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (passwordError) validatePassword(text);
+  };
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please fill in all fields');
+    // Validate fields
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    
+    if (!isEmailValid || !isPasswordValid) {
+      setError('Please fix the errors in the form');
       return;
     }
 
@@ -100,22 +140,24 @@ export default function LoginScreen() {
             <FormInput
               label="Email"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={handleEmailChange}
               placeholder="Enter your email"
               iconName="email-outline"
               keyboardType="email-address"
               autoCapitalize="none"
+              error={emailError}
             />
 
             <FormInput
               label="Password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={handlePasswordChange}
               placeholder="Enter your password"
               iconName="lock-outline"
               secureTextEntry
               showPassword={showPassword}
               togglePassword={togglePassword}
+              error={passwordError}
             />
 
             <FormButton

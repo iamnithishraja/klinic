@@ -13,6 +13,7 @@ interface FormInputProps {
   togglePassword?: () => void;
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  error?: string;
 }
 
 const FormInput = ({
@@ -26,14 +27,20 @@ const FormInput = ({
   togglePassword,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
+  error,
 }: FormInputProps) => {
   return (
     <View className="mb-4">
-      <Text className="text-text-secondary mb-2 font-medium">{label}</Text>
-      <View className="flex-row items-center border border-divider rounded-xl px-4 py-3 bg-white shadow-sm">
-        <MaterialCommunityIcons name={iconName} size={22} color="#4F46E5" />
+      <Text className="text-text-primary mb-2 font-medium">{label}</Text>
+      <View className={`flex-row items-center border rounded-xl px-4 py-3 bg-white shadow-sm ${error ? 'border-red-500' : 'border-divider'}`}>
+        <MaterialCommunityIcons 
+          name={iconName as any} 
+          size={22} 
+          color={error ? "#EF4444" : "#4F46E5"} 
+          style={{ marginRight: 8 }}
+        />
         <TextInput
-          className="flex-1 ml-3 text-text-primary"
+          className="flex-1 text-text-primary"
           placeholder={placeholder}
           value={value}
           onChangeText={onChangeText}
@@ -41,18 +48,33 @@ const FormInput = ({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           placeholderTextColor="#9CA3AF"
-          style={{ fontFamily: 'System' }}
+          style={{ 
+            fontFamily: 'System',
+            paddingRight: secureTextEntry ? 40 : 0 
+          }}
         />
         {secureTextEntry && togglePassword && (
-          <TouchableOpacity onPress={togglePassword}>
+          <TouchableOpacity 
+            onPress={togglePassword}
+            style={{
+              position: 'absolute',
+              right: 12,
+              padding: 4
+            }}
+          >
             <FontAwesome 
               name={showPassword ? "eye" : "eye-slash"} 
               size={20} 
-              color="#4F46E5" 
+              color={error ? "#EF4444" : "#4F46E5"} 
             />
           </TouchableOpacity>
         )}
       </View>
+      {error ? (
+        <Text className="text-red-500 text-xs mt-1 ml-1">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 };

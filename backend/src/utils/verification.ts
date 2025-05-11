@@ -8,10 +8,10 @@ const sendOtp = async (email: string, phone: string) => {
     try {
         const emailOtp = Math.floor(1000 + Math.random() * 9000);
         const phoneOtp = Math.floor(1000 + Math.random() * 9000);
-        await User.findByIdAndUpdate({
-            email: email,
-            phone: phone
-        }, { emailOtp, phoneOtp });
+        await User.findOneAndUpdate(
+            { email, phone },
+            { emailOtp, phoneOtp }
+        );
         const { error } = await resend.emails.send({
             from: 'Cut The Queue <support@cuttheq.in>',
             to: email,
