@@ -3,8 +3,6 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import apiClient from '@/api/client';
-import { useRecoilValue } from 'recoil';
-import { userAtom } from '@/store/userAtoms';
 
 // Components
 import FormInput from '@/components/FormInput';

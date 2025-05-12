@@ -59,6 +59,8 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete }: UserDataLoade
         // Fetch user data
         try {
           const response = await apiClient.get('/api/v1/user');
+          console.log(response.data);
+          
           setUser(response.data);
         } catch (error: unknown) {
           console.error("API call failed:", error);

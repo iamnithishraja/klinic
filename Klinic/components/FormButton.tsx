@@ -6,14 +6,15 @@ interface FormButtonProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
+  style?: string;
 }
 
-const FormButton = ({ title, onPress, loading = false, disabled = false }: FormButtonProps) => {
+const FormButton = ({ title, onPress, loading = false, disabled = false, style = '' }: FormButtonProps) => {
   return (
     <TouchableOpacity
       className={`rounded-xl py-4 px-4 items-center mb-6 shadow-md ${
         disabled || loading ? 'bg-primary/70' : 'bg-primary'
-      }`}
+      } ${style}`}
       onPress={onPress}
       disabled={disabled || loading}
       style={{ elevation: 3 }}

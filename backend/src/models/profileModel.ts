@@ -307,4 +307,4 @@ const UserProfile = mongoose.model('UserProfile', userProfileSchema);
 const DoctorProfile = mongoose.model('DoctorProfile', doctorProfileSchema);
 const LaboratoryProfile = mongoose.model('LaboratoryProfile', laboratoryProfileSchema);
 const DeliveryBoyProfile = mongoose.model('DeliveryBoyProfile', deliveryBoyProfileSchema);
-export { UserProfile, DoctorProfile, LaboratoryProfile };
+export { UserProfile, DoctorProfile, LaboratoryProfile, DeliveryBoyProfile };
