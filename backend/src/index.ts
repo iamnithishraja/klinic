@@ -20,7 +20,7 @@ app.post("/api/v1/sendNotification", async (req, res) => {
 });
 
 app.use('/api/v1/', userRouter);
-app.use('/api/v1/profile', profileRouter);
+app.use('/api/v1/', profileRouter);
 
 app.listen(3000, () => {
     console.log("Server is running on port 3000");

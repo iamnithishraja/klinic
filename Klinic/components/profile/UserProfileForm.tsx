@@ -1,215 +1,191 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Alert } from 'react-native';
-import { useUserStore } from '@/store/userStore';
-import apiClient from '@/api/client';
-import FormInput from '@/components/FormInput';
-import FormButton from '@/components/FormButton';
-import FormSection from './FormSection';
-import { Picker } from '@react-native-picker/picker';
-import ErrorMessage from '@/components/ErrorMessage';
+import React from 'react';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-interface Address {
-  latitude?: number | null;
-  longitude?: number | null;
-  address?: string | null;
-  pinCode?: string | null;
+interface UserProfileFormProps {
+  age: string;
+  gender: string;
+  address: string;
+  pinCode: string;
+  medicalHistory: string;
+  medicalHistoryPdf: string;
+  uploadingPdf: boolean;
+  onChangeAge: (text: string) => void;
+  onChangeGender: (gender: string) => void;
+  onChangeAddress: (text: string) => void;
+  onChangePinCode: (text: string) => void;
+  onChangeMedicalHistory: (text: string) => void;
+  onDocumentPick: () => void;
 }
 
-interface UserProfileData {
-  _id?: string;
-  profilePicture?: string | null;
-  age?: number | null;
-  gender?: string | null;
-  medicalHistory?: string | null;
-  medicalHistoryPdf?: string | null;
-  address?: Address | null;
-  [key: string]: any; // Add index signature for dynamic access
-}
+const UserProfileForm = ({
+  age,
+  gender,
+  address,
+  pinCode,
+  medicalHistory,
+  medicalHistoryPdf,
+  uploadingPdf,
+  onChangeAge,
+  onChangeGender,
+  onChangeAddress,
+  onChangePinCode,
+  onChangeMedicalHistory,
+  onDocumentPick
+}: UserProfileFormProps) => {
+  const genderOptions = ['Male', 'Female'];
 
-const UserProfileForm = () => {
-  const user = useUserStore(state => state.user);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  
-  // Form state
-  const [profileData, setProfileData] = useState<UserProfileData>({
-    profilePicture: null,
-    age: null,
-    gender: null,
-    medicalHistory: null,
-    medicalHistoryPdf: null,
-    address: {
-      address: null,
-      pinCode: null,
-    }
-  });
-  
-  // Fetch existing profile data
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get('/api/v1/profile/user-profile');
-        if (response.data) {
-          setProfileData(response.data);
-        }
-      } catch (error) {
-        console.log('No existing profile found or error fetching');
-        // It's okay if there's no profile yet
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProfileData();
-  }, []);
-  
-  // Handle form input changes
-  const handleInputChange = (field: string, value: any) => {
-    if (field.includes('.')) {
-      // Handle nested fields like address.pinCode
-      const [parent, child] = field.split('.');
-      setProfileData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
-        }
-      }));
-    } else {
-      setProfileData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
-  };
-  
-  // Handle profile image upload
-  const handleImageUpload = async () => {
-    // This would typically use image picker and then upload to storage
-    Alert.alert('Feature Coming Soon', 'Profile picture upload will be available soon');
-  };
-  
-  // Handle medical history PDF upload
-  const handlePdfUpload = async () => {
-    // This would typically use document picker and then upload to storage
-    Alert.alert('Feature Coming Soon', 'Medical history PDF upload will be available soon');
-  };
-  
-  // Handle form submission
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const response = await apiClient.post('/api/v1/profile/user-profile', profileData);
-      
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-      
-      // Update the profile data with the response
-      setProfileData(response.data);
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to update profile');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   return (
-    <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-      {error ? <ErrorMessage message={error} /> : null}
-      
-      <FormSection title="Personal Information">
-        <FormInput
-          label="Age"
-          value={profileData.age?.toString() || ''}
-          onChangeText={(text) => handleInputChange('age', text ? parseInt(text) : null)}
-          placeholder="Enter your age"
-          iconName="calendar-outline"
-          keyboardType="numeric"
-        />
-        
-        <View className="mb-4">
-          <FormInput
-            label="Gender"
-            value={profileData.gender || ''}
-            onChangeText={(text) => handleInputChange('gender', text)}
-            placeholder="Select gender"
-            iconName="human-male-female"
-            editable={false}
-            onPress={() => {}}
-          />
-          <View className="border border-gray-300 rounded-md mt-2">
-            <Picker
-              selectedValue={profileData.gender || ''}
-              onValueChange={(value) => handleInputChange('gender', value)}
-            >
-              <Picker.Item label="Select gender" value="" />
-              <Picker.Item label="Male" value="male" />
-              <Picker.Item label="Female" value="female" />
-            </Picker>
+    <View>
+      {/* Age and Gender in the same row */}
+      <View className="flex-row mb-6 gap-3">
+        {/* Age Input */}
+        <View className="flex-1">
+          <Text className="text-gray-700 font-medium text-base mb-2">Age</Text>
+          <View className="flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200">
+            <MaterialCommunityIcons 
+              name="calendar-account" 
+              size={22} 
+              color="#6366F1" 
+              style={{ marginRight: 12 }}
+            />
+            <TextInput
+              value={age}
+              onChangeText={onChangeAge}
+              placeholder="Enter age"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              className="flex-1 text-gray-800"
+            />
           </View>
         </View>
-      </FormSection>
-      
-      <FormSection title="Medical Information">
-        <FormInput
-          label="Medical History"
-          value={profileData.medicalHistory || ''}
-          onChangeText={(text) => handleInputChange('medicalHistory', text)}
-          placeholder="Enter your medical history"
-          iconName="medical-bag"
-          multiline={true}
-          numberOfLines={4}
-        />
-        
-        <View className="flex-row justify-between items-center mt-4">
-          <FormInput
-            label="Medical History PDF"
-            value={profileData.medicalHistoryPdf ? 'PDF Uploaded' : 'No PDF'}
-            onChangeText={(text) => {}}
-            editable={false}
-            iconName="file-document-outline"
-            containerStyle="flex-1 mr-2"
+
+        {/* Gender Selection */}
+        <View className="flex-1">
+          <Text className="text-gray-700 font-medium text-base mb-2">Gender</Text>
+          <View className="flex-row">
+            {genderOptions.map((option) => (
+              <TouchableOpacity
+                key={option}
+                onPress={() => onChangeGender(option)}
+                className={`mr-2 px-4 py-2.5 rounded-xl border ${
+                  gender === option ? 'bg-primary border-primary' : 'bg-white border-gray-200'
+                }`}
+              >
+                <Text
+                  className={`${
+                    gender === option ? 'text-white' : 'text-gray-800'
+                  } font-medium text-center`}
+                >
+                  {option}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+
+      {/* Address Field */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-medium text-base mb-2">Address</Text>
+        <View className="flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200">
+          <MaterialCommunityIcons 
+            name="map-marker" 
+            size={22} 
+            color="#6366F1" 
+            style={{ marginRight: 12, marginTop: 2 }}
           />
-          <FormButton 
-            title="Upload" 
-            onPress={handlePdfUpload}
-            style="mt-6 px-4 py-2"
+          <TextInput
+            value={address}
+            onChangeText={onChangeAddress}
+            placeholder="Enter your address"
+            placeholderTextColor="#9CA3AF"
+            multiline
+            numberOfLines={3}
+            className="flex-1 text-gray-800 min-h-[80px]"
+            style={{ textAlignVertical: 'top' }}
           />
         </View>
-      </FormSection>
-      
-      <FormSection title="Address Information">
-        <FormInput
-          label="Address"
-          value={profileData.address?.address || ''}
-          onChangeText={(text) => handleInputChange('address.address', text)}
-          placeholder="Enter your address"
-          iconName="map-marker-outline"
-        />
-        
-        <FormInput
-          label="Pin Code"
-          value={profileData.address?.pinCode || ''}
-          onChangeText={(text) => handleInputChange('address.pinCode', text)}
-          placeholder="Enter your pin code"
-          iconName="map-marker-radius-outline"
-          keyboardType="numeric"
-        />
-      </FormSection>
-      
-      <FormButton
-        title={success ? "Profile Updated!" : "Save Profile"}
-        onPress={handleSubmit}
-        loading={loading}
-        style={success ? "bg-green-600" : ""}
-      />
-      
-      <View className="h-10" />
-    </ScrollView>
+      </View>
+
+      {/* Pin Code Field */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-medium text-base mb-2">Pin Code</Text>
+        <View className="flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200">
+          <MaterialCommunityIcons 
+            name="map-marker-radius" 
+            size={22} 
+            color="#6366F1" 
+            style={{ marginRight: 12 }}
+          />
+          <TextInput
+            value={pinCode}
+            onChangeText={onChangePinCode}
+            placeholder="Enter your area pin code"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="numeric"
+            maxLength={6}
+            className="flex-1 text-gray-800"
+          />
+        </View>
+      </View>
+
+      {/* Medical History Field */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-medium text-base mb-2">Medical History</Text>
+        <View className="flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200">
+          <MaterialCommunityIcons 
+            name="medical-bag" 
+            size={22} 
+            color="#6366F1" 
+            style={{ marginRight: 12, marginTop: 2 }}
+          />
+          <TextInput
+            value={medicalHistory}
+            onChangeText={onChangeMedicalHistory}
+            placeholder="Enter your medical history"
+            placeholderTextColor="#9CA3AF"
+            multiline
+            numberOfLines={4}
+            className="flex-1 text-gray-800 min-h-[100px]"
+            style={{ textAlignVertical: 'top' }}
+          />
+        </View>
+      </View>
+
+      {/* Medical History PDF Upload */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-medium text-base mb-2">Medical History PDF</Text>
+        <TouchableOpacity
+          onPress={onDocumentPick}
+          disabled={uploadingPdf}
+          className="flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200"
+        >
+          <MaterialCommunityIcons
+            name="file-pdf-box"
+            size={22}
+            color="#6366F1"
+            style={{ marginRight: 12 }}
+          />
+          {uploadingPdf ? (
+            <View className="flex-row items-center">
+              <ActivityIndicator size="small" color="#6366F1" />
+              <Text className="text-gray-500 ml-2">Uploading...</Text>
+            </View>
+          ) : medicalHistoryPdf ? (
+            <View className="flex-row items-center justify-between flex-1">
+              <Text className="text-gray-800">PDF uploaded successfully</Text>
+              <MaterialCommunityIcons name="check-circle" size={20} color="#10B981" />
+            </View>
+          ) : (
+            <Text className="flex-1 text-gray-400">Upload medical history PDF</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Add extra space for the floating button */}
+      <View className="h-20" />
+    </View>
   );
 };
 

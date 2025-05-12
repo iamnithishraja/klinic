@@ -7,9 +7,9 @@ import { generateUploadUrl } from '../utils/fileUpload';
 // Create or update user profile
 const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-        const { _id, profilePicture, age, gender, medicalHistory, medicalHistoryPdf, address } = req.body;
+        const { profilePicture, age, gender, medicalHistory, medicalHistoryPdf, address } = req.body;
         
-        const userId = _id || req.user._id;
+        const userId = req.user._id;
         
         const profileData = {
             user: userId,
@@ -22,21 +22,16 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
             updatedAt: new Date()
         };
         
-        // Find and update if exists, otherwise create new
+        // Check if profile already exists for this user
+        const existingProfile = await UserProfile.findOne({ user: userId });
+        
         let userProfile;
-        if (_id) {
-            userProfile = await UserProfile.findByIdAndUpdate(_id, profileData, { new: true });
+        if (existingProfile) {
+            // Update existing profile
+            userProfile = await UserProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
         } else {
-            // Check if profile already exists for this user
-            userProfile = await UserProfile.findOne({ user: req.user._id });
-            
-            if (userProfile) {
-                // Update existing profile
-                userProfile = await UserProfile.findByIdAndUpdate(userProfile._id, profileData, { new: true });
-            } else {
-                // Create new profile
-                userProfile = await UserProfile.create(profileData);
-            }
+            // Create new profile
+            userProfile = await UserProfile.create(profileData);
         }
         
         res.status(200).json(userProfile);
@@ -89,13 +84,13 @@ const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
 const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const {
-            _id, description, experience, specializations, qualifications, 
+            description, experience, specializations, qualifications, 
             consultationFee, profilePicture, age, gender, consultationType,
             availableSlots, availableDays, isAvailable, clinicName, clinicPhone,
             clinicEmail, clinicWebsite, clinicImages, clinicAddress
         } = req.body;
         
-        const userId = _id || req.user._id;
+        const userId = req.user._id;
         
         const profileData = {
             user: userId,
@@ -120,21 +115,16 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
             updatedAt: new Date()
         };
         
-        // Find and update if exists, otherwise create new
+        // Check if profile already exists for this user
+        const existingProfile = await DoctorProfile.findOne({ user: userId });
+        
         let doctorProfile;
-        if (_id) {
-            doctorProfile = await DoctorProfile.findByIdAndUpdate(_id, profileData, { new: true });
+        if (existingProfile) {
+            // Update existing profile
+            doctorProfile = await DoctorProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
         } else {
-            // Check if profile already exists for this user
-            doctorProfile = await DoctorProfile.findOne({ user: req.user._id });
-            
-            if (doctorProfile) {
-                // Update existing profile
-                doctorProfile = await DoctorProfile.findByIdAndUpdate(doctorProfile._id, profileData, { new: true });
-            } else {
-                // Create new profile
-                doctorProfile = await DoctorProfile.create(profileData);
-            }
+            // Create new profile
+            doctorProfile = await DoctorProfile.create(profileData);
         }
         
         res.status(200).json(doctorProfile);
@@ -148,11 +138,11 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
 const createUpdateLabProfile = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const {
-            _id, laboratoryName, laboratoryAddress, laboratoryPhone, 
+            laboratoryName, laboratoryAddress, laboratoryPhone, 
             laboratoryEmail, laboratoryWebsite, laboratoryServices
         } = req.body;
         
-        const userId = _id || req.user._id;
+        const userId = req.user._id;
         
         const profileData = {
             user: userId,
@@ -165,21 +155,16 @@ const createUpdateLabProfile = async (req: CustomRequest, res: Response): Promis
             updatedAt: new Date()
         };
         
-        // Find and update if exists, otherwise create new
+        // Check if profile already exists for this user
+        const existingProfile = await LaboratoryProfile.findOne({ user: userId });
+        
         let labProfile;
-        if (_id) {
-            labProfile = await LaboratoryProfile.findByIdAndUpdate(_id, profileData, { new: true });
+        if (existingProfile) {
+            // Update existing profile
+            labProfile = await LaboratoryProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
         } else {
-            // Check if profile already exists for this user
-            labProfile = await LaboratoryProfile.findOne({ user: req.user._id });
-            
-            if (labProfile) {
-                // Update existing profile
-                labProfile = await LaboratoryProfile.findByIdAndUpdate(labProfile._id, profileData, { new: true });
-            } else {
-                // Create new profile
-                labProfile = await LaboratoryProfile.create(profileData);
-            }
+            // Create new profile
+            labProfile = await LaboratoryProfile.create(profileData);
         }
         
         res.status(200).json(labProfile);
@@ -192,9 +177,9 @@ const createUpdateLabProfile = async (req: CustomRequest, res: Response): Promis
 // Create or update delivery boy profile
 const createUpdateDeliveryProfile = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-        const { _id, profilePicture, age, gender, delivarablePinCodes } = req.body;
+        const { profilePicture, age, gender, delivarablePinCodes } = req.body;
         
-        const userId = _id || req.user._id;
+        const userId = req.user._id;
         
         const profileData = {
             user: userId,
@@ -205,21 +190,16 @@ const createUpdateDeliveryProfile = async (req: CustomRequest, res: Response): P
             updatedAt: new Date()
         };
         
-        // Find and update if exists, otherwise create new
+        // Check if profile already exists for this user
+        const existingProfile = await DeliveryBoyProfile.findOne({ user: userId });
+        
         let deliveryProfile;
-        if (_id) {
-            deliveryProfile = await DeliveryBoyProfile.findByIdAndUpdate(_id, profileData, { new: true });
+        if (existingProfile) {
+            // Update existing profile
+            deliveryProfile = await DeliveryBoyProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
         } else {
-            // Check if profile already exists for this user
-            deliveryProfile = await DeliveryBoyProfile.findOne({ user: req.user._id });
-            
-            if (deliveryProfile) {
-                // Update existing profile
-                deliveryProfile = await DeliveryBoyProfile.findByIdAndUpdate(deliveryProfile._id, profileData, { new: true });
-            } else {
-                // Create new profile
-                deliveryProfile = await DeliveryBoyProfile.create(profileData);
-            }
+            // Create new profile
+            deliveryProfile = await DeliveryBoyProfile.create(profileData);
         }
         
         res.status(200).json(deliveryProfile);
