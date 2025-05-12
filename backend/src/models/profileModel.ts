@@ -40,6 +40,10 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             default: null,
         },
+        pinCode: {
+            type: String,
+            default: null,
+        }
     },
     createdAt: {
         type: Date,
@@ -117,8 +121,18 @@ const doctorProfileSchema = new mongoose.Schema({
         ],
         default: null,
     },
-    education: {
-        type: String,
+    qualifications: {
+        type: [String],
+        enum: [
+            'MBBS',
+            'MD',
+            'MS',
+            'MCh',
+            'MDS',
+            'M.Phil',
+            'Ph.D',
+            'Other'
+        ],
         default: null,
     },
     consultationFee: {
@@ -296,6 +310,47 @@ const laboratoryProfileSchema = new mongoose.Schema({
         ],
         default: null,
     },
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
+const deliveryBoyProfileSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
+    profilePicture: {
+        type: String,
+        default: null,
+    },
+    age: {
+        type: Number,
+        default: null,
+    },
+    gender: {
+        type: String,
+        enum: ['male', 'female'],
+        default: null,
+    },
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
+    delivarablePinCodes: {
+        type: [String],
+        default: null,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
@@ -309,4 +364,5 @@ const laboratoryProfileSchema = new mongoose.Schema({
 const UserProfile = mongoose.model('UserProfile', userProfileSchema);
 const DoctorProfile = mongoose.model('DoctorProfile', doctorProfileSchema);
 const LaboratoryProfile = mongoose.model('LaboratoryProfile', laboratoryProfileSchema);
+const DeliveryBoyProfile = mongoose.model('DeliveryBoyProfile', deliveryBoyProfileSchema);
 export { UserProfile, DoctorProfile, LaboratoryProfile };
