@@ -1,14 +1,13 @@
 import React from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRecoilValue } from 'recoil';
-import { userAtom } from '@/store/userAtoms';
+import { useUserStore } from '@/store/userStore';
 import { UserRole } from '@/types/userTypes';
 import UserProfileForm from '@/components/profile/UserProfileForm';
 import FloatingIcons from '@/components/FloatingIcons';
 
 export default function ProfileScreen() {
-  const user = useRecoilValue(userAtom);
+  const user = useUserStore(state => state.user);
   
   const renderProfileForm = () => {
     if (!user) {

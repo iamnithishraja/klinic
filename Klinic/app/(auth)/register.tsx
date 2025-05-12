@@ -4,8 +4,7 @@ import { Link, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '@/api/client';
 import { store } from '@/utils';
-import { useSetRecoilState } from 'recoil';
-import { userAtom } from '@/store/userAtoms';
+import { useUserStore } from '@/store/userStore';
 
 // Components
 import FormInput from '@/components/FormInput';
@@ -34,7 +33,7 @@ export default function RegisterScreen() {
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   
   const router = useRouter();
-  const setUser = useSetRecoilState(userAtom);
+  const setUser = useUserStore(state => state.setUser);
 
   const togglePassword = () => setShowPassword(!showPassword);
   

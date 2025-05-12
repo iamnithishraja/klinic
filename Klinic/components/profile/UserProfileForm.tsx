@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Alert } from 'react-native';
-import { useRecoilValue } from 'recoil';
-import { userAtom } from '@/store/userAtoms';
+import { useUserStore } from '@/store/userStore';
 import apiClient from '@/api/client';
 import FormInput from '@/components/FormInput';
 import FormButton from '@/components/FormButton';
@@ -28,7 +27,7 @@ interface UserProfileData {
 }
 
 const UserProfileForm = () => {
-  const user = useRecoilValue(userAtom);
+  const user = useUserStore(state => state.user);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);

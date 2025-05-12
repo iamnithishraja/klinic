@@ -9,15 +9,14 @@ import { AxiosError } from 'axios';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
-import { userAtom } from '@/store/userAtoms';
-import { RecoilRoot, useSetRecoilState } from 'recoil';
+import { useUserStore } from '@/store/userStore';
 
 import '../global.css';
 
 // Prevent the splash screen from auto-hiding before we're ready
 SplashScreen.preventAutoHideAsync().catch(console.warn);
 
-// App content component (no Recoil state access in constructor)
+// App content component with user data loading
 function AppContent() {
   // Fix for React 19 compatibility - use Appearance instead of useColorScheme
   const [colorScheme, setColorScheme] = useState(Appearance.getColorScheme());
@@ -47,7 +46,7 @@ interface UserDataLoaderProps {
 }
 
 function UserDataLoader({ isLoadingComplete, setLoadingComplete }: UserDataLoaderProps) {
-  const setUser = useSetRecoilState(userAtom);
+  const setUser = useUserStore(state => state.setUser);
   const router = useRouter();
   
   // Load resources and data
@@ -91,9 +90,7 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete }: UserDataLoade
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <RecoilRoot>
-        <AppContent />
-      </RecoilRoot>
+      <AppContent />
     </SafeAreaProvider>
   );
 }
