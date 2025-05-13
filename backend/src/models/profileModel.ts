@@ -45,6 +45,14 @@ const userProfileSchema = new mongoose.Schema({
             default: null,
         }
     },
+    city: {
+        type: String,
+        default: null,
+    },
+    state: {
+        type: String,
+        default: null,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
@@ -158,6 +166,14 @@ const doctorProfileSchema = new mongoose.Schema({
             default: null,
         },
     },
+    city: {
+        type: String,
+        default: null,
+    },
+    state: {
+        type: String,
+        default: null,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
@@ -255,6 +271,14 @@ const laboratoryProfileSchema = new mongoose.Schema({
     isVerified: {
         type: Boolean,
         default: false,
+    },
+    city: {
+        type: String,
+        default: null,
+    },
+    state: {
+        type: String,
+        default: null,
     },
     createdAt: {
         type: Date,

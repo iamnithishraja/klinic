@@ -13,7 +13,6 @@ app.use(bodyParser.json({ limit: "35mb" }));
 //   res.send("Hello chutiye");
 // });
 
-
 app.post("/api/v1/sendNotification", async (req, res) => {
   console.log(req.body);
   res.status(200).json({ message: "Notification sent" });
@@ -23,5 +22,5 @@ app.use('/api/v1/', userRouter);
 app.use('/api/v1/', profileRouter);
 
 app.listen(3000, () => {
-    console.log("Server is running on port 3000");
+  console.log("Server is running on port 3000");
 });

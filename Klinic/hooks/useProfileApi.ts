@@ -111,8 +111,11 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
         },
       });
       
-      // Extract the S3 URL from the uploadUrl (remove query parameters)
-      const s3Url = uploadUrl.split('?')[0];
+      const urlWithoutQuery = uploadUrl.split('?')[0];
+      const parts = urlWithoutQuery.split('.com/');
+      const key = parts[1];
+      
+      const s3Url = `https://pub-0f703feb53794f768ba649b826a64db4.r2.dev/${key}`;
       return s3Url;
     } catch (err) {
       console.error('Error uploading file:', err);
