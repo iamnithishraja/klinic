@@ -9,9 +9,10 @@ import { StatusBar } from 'expo-status-bar';
 
 import { store } from '@/utils';
 import { UserRole } from '@/types/userTypes';
-import { UserData, UserProfile, ProfileUpdateData, Address } from '@/types/profileTypes';
-import useProfileApi from '@/hooks/useProfileApi';
+import { UserData, UserProfile, ProfileUpdateData, Address, DoctorProfile } from '@/types/profileTypes';
 import { useUserStore } from '@/store/userStore';
+import { useUserProfileStore, useDoctorProfileStore, useProfileUIStore } from '@/store/profileStore';
+import useProfileApi from '@/hooks/useProfileApi';
 import apiClient from '@/api/client';
 
 // Import modular components
@@ -23,508 +24,698 @@ import DeliveryProfileForm from '@/components/profile/DeliveryProfileForm';
 import SaveButton from '@/components/profile/SaveButton';
 import ImagePickerModal from '@/components/profile/ImagePickerModal';
 
-// List of cities for the dropdown
-const CITIES = [
-  'Bangalore', 
-  'Mumbai', 
-  'Delhi', 
-  'Chennai', 
-  'Hyderabad', 
-  'Kolkata', 
-  'Pune', 
-  'Ahmedabad', 
-  'Jaipur', 
-  'Lucknow'
-];
-
 const Profile = () => {
   const router = useRouter();
   const { user, setUser } = useUserStore();
   
-  // User data states
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-
-  // UI state
+  // Use Zustand stores directly
+  const userProfileStore = useUserProfileStore();
+  const doctorProfileStore = useDoctorProfileStore();
+  const uiStore = useProfileUIStore();
+  
+  // Local state for UI
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showImageOptions, setShowImageOptions] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [cities, setCities] = useState<string[]>(CITIES);
-  const [filteredCities, setFilteredCities] = useState<string[]>(CITIES);
-
-  // Form state
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState('');
-  const [medicalHistory, setMedicalHistory] = useState('');
-  const [address, setAddress] = useState('');
-  const [pinCode, setPinCode] = useState('');
-  const [city, setCity] = useState('');
-  const [profilePicture, setProfilePicture] = useState('');
-  const [medicalHistoryPdf, setMedicalHistoryPdf] = useState('');
-
-  // Saved values to track changes
-  const [savedValues, setSavedValues] = useState({
-    age: '',
-    gender: '',
-    medicalHistory: '',
-    address: '',
-    pinCode: '',
-    city: '',
-    medicalHistoryPdf: ''
-  });
+  const [filteredCities, setFilteredCities] = useState<string[]>([]);
+  
+  // For tracking file picks
+  const [cameraCaptureUri, setCameraCaptureUri] = useState<string | null>(null);
+  const [galleryCaptureUri, setGalleryCaptureUri] = useState<string | null>(null);
 
   // Custom hooks for API calls
   const userApi = useProfileApi({
     endpoint: '/api/v1/user',
     onSuccess: (data) => {
-      setUserData(data);
       // Save to store for persistent data
-      setUser(data);
-    },
-    onError: () => {
-      // If API fails, use data from store if available
-      if (user) {
-        setUserData(user);
-      }
+      useUserStore.getState().setUser(data);
     }
   });
 
   const profileApi = useProfileApi({
-    endpoint: '/api/v1/user-profile',
-    onSuccess: (data: UserProfile) => {
-      // Set form values from API response
-      console.log('Profile data received:', data);
-      updateFormValues(data);
-    },
-    onError: (error) => {
-      console.error('Profile API error:', error);
-      // If API fails, just leave empty fields for user to fill
-      setLoading(false);
-    }
+    endpoint: '/api/v1/profile'
+  });
+
+  // Create API hooks for updating profiles
+  const userProfileApi = useProfileApi({
+    endpoint: '/api/v1/user-profile'
+  });
+
+  const doctorProfileApi = useProfileApi({
+    endpoint: '/api/v1/doctor-profile'
   });
 
   useEffect(() => {
+    // Fetch user data when component mounts
     fetchUserData();
   }, []);
 
-  // Track changes to form fields
-  useEffect(() => {
-    // Check if any field has changed from the saved values
-    const hasChanges = 
-      age !== savedValues.age ||
-      gender !== savedValues.gender ||
-      medicalHistory !== savedValues.medicalHistory ||
-      address !== savedValues.address ||
-      pinCode !== savedValues.pinCode ||
-      city !== savedValues.city ||
-      medicalHistoryPdf !== savedValues.medicalHistoryPdf;
-    
-    setHasUnsavedChanges(hasChanges);
-  }, [age, gender, medicalHistory, address, pinCode, city, medicalHistoryPdf, savedValues]);
-
-  const updateFormValues = (data: UserProfile) => {
-    console.log('Setting form values from profile data:', data);
-    // Update form state from profile data
-    const newAge = data.age?.toString() || '';
-    setAge(newAge);
-    
-    // Handle gender with title case
-    let newGender = '';
-    if (data.gender) {
-      newGender = data.gender.charAt(0).toUpperCase() + data.gender.slice(1);
-      setGender(newGender);
-      console.log('Setting gender to:', newGender);
-    }
-    
-    const newMedicalHistory = data.medicalHistory || '';
-    setMedicalHistory(newMedicalHistory);
-    
-    let newAddress = '';
-    let newPinCode = '';
-    let newCity = '';
-    
-    // Handle address object structure
-    if (data.address) {
-      newAddress = data.address.address || '';
-      setAddress(newAddress);
-      newPinCode = data.address.pinCode || '';
-      setPinCode(newPinCode);
-    } else {
-      setAddress('');
-      setPinCode('');
-    }
-    
-    // Handle city as a top-level property
-    if (data.city) {
-      newCity = data.city;
-      setCity(newCity);
-      console.log('Setting city to:', newCity);
-    } else {
-      setCity('');
-    }
-    
-    setProfilePicture(data.profilePicture || '');
-    const newMedicalHistoryPdf = data.medicalHistoryPdf || '';
-    setMedicalHistoryPdf(newMedicalHistoryPdf);
-    
-    // Also update saved values to track changes
-    setSavedValues({
-      age: newAge,
-      gender: newGender,
-      medicalHistory: newMedicalHistory,
-      address: newAddress,
-      pinCode: newPinCode,
-      city: newCity,
-      medicalHistoryPdf: newMedicalHistoryPdf
-    });
-    
-    console.log('Form values set successfully');
-  };
-
+  // Fetch user data and profile
   const fetchUserData = async () => {
     try {
-      setLoading(true);
+      uiStore.setLoading(true);
       
       // Try to get user data from API
       await userApi.fetchData();
       
-      // Try to get profile data separately
+      // Try to get profile data
       try {
         console.log('Attempting to fetch profile data...');
-        const profileResponse = await apiClient.get('/api/v1/profile');
-        console.log('Profile data received:', profileResponse.data);
+        const profileData = await profileApi.fetchData();
+        console.log('Profile data received:', profileData);
         
-        // Handle new response format with profile and availableCities
-        if (profileResponse.data && profileResponse.data.profile) {
-          // Update form with profile data
-          updateFormValues(profileResponse.data.profile);
+        // Handle new response format with profile and available data
+        if (profileData && profileData.profile) {
+          if (user?.role === UserRole.USER) {
+            userProfileStore.updateFromApiResponse(profileData.profile);
+          } else if (user?.role === UserRole.DOCTOR) {
+            doctorProfileStore.updateFromApiResponse(profileData.profile);
+          }
           
-          // Store in profileApi's data
-          profileApi.setData(profileResponse.data.profile);
+          // Set available cities
+          if (profileData.avilableCities && 
+              Array.isArray(profileData.avilableCities)) {
+            setFilteredCities(profileData.avilableCities);
+            uiStore.setCities(profileData.avilableCities);
+          }
           
-          // Set available cities if provided
-          if (profileResponse.data.availableCities && Array.isArray(profileResponse.data.availableCities)) {
-            setCities(profileResponse.data.availableCities);
+          // Set available specializations and qualifications for doctor profiles
+          if (user?.role === UserRole.DOCTOR) {
+            if (profileData.avilableSpecializations && 
+                Array.isArray(profileData.avilableSpecializations)) {
+              doctorProfileStore.setAvailableSpecializations(profileData.avilableSpecializations);
+            }
+            
+            if (profileData.avilableQualifications && 
+                Array.isArray(profileData.avilableQualifications)) {
+              doctorProfileStore.setAvailableQualifications(profileData.avilableQualifications);
+            }
           }
         } else {
           // Fallback to legacy format
-          updateFormValues(profileResponse.data);
-          profileApi.setData(profileResponse.data);
+          if (user?.role === UserRole.USER) {
+            userProfileStore.updateFromApiResponse(profileData);
+          } else if (user?.role === UserRole.DOCTOR) {
+            doctorProfileStore.updateFromApiResponse(profileData);
+          }
         }
       } catch (error: any) {
         console.log('Profile GET error:', error.response?.status, error.response?.data);
         
-        // If 404, try to create a new profile with a POST request
+        // If 404, profile will be created when user saves
         if (error.response?.status === 404) {
           console.log('No profile found, will create one when user saves');
         }
       }
     } catch (error) {
       console.error('Error in fetchUserData:', error);
-      // If user data fetch fails, use store data
-      if (user) {
-        setUserData(user);
-      }
     } finally {
-      setLoading(false);
+      uiStore.setLoading(false);
     }
   };
 
+  // User logout
   const handleLogout = async () => {
     try {
-      await store.delete('token');
+      // Logic for logging out
       router.replace('/(auth)/login');
     } catch (error) {
       console.error('Error logging out:', error);
     }
   };
 
+  // Image picker handlers
   const openCamera = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-    
-    if (permissionResult.granted === false) {
-      alert("Camera permission is required to take photos");
-      return;
-    }
-    
-    setShowImageOptions(false);
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      await uploadImage(result.assets[0].uri);
+    try {
+      uiStore.setUploadingImage(true);
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        setCameraCaptureUri(result.assets[0].uri);
+        await uploadImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      alert('Failed to take photo');
+    } finally {
+      uiStore.setUploadingImage(false);
+      uiStore.setUploadingCoverImage(false);
+      uiStore.setShowImageOptions(false);
     }
   };
 
   const openGallery = async () => {
-    setShowImageOptions(false);
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      await uploadImage(result.assets[0].uri);
+    try {
+      uiStore.setUploadingImage(true);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        setGalleryCaptureUri(result.assets[0].uri);
+        await uploadImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      alert('Failed to pick image');
+    } finally {
+      uiStore.setUploadingImage(false);
+      uiStore.setUploadingCoverImage(false);
+      uiStore.setShowImageOptions(false);
     }
   };
 
   const uploadImage = async (imageUri: string) => {
     try {
-      setUploadingImage(true);
+      console.log('Uploading image from:', imageUri);
       
-      const s3Url = await profileApi.uploadFile(
-        'image/jpeg',
-        `profile-${Date.now()}.jpg`,
-        imageUri
-      );
+      // Determine file details
+      const fileName = `profile-image-${Date.now()}.jpg`;
+      const fileType = 'image/jpeg';
       
-      if (s3Url) {
-        setProfilePicture(s3Url);
+      // Use the appropriate API hook based on user role
+      let imageUrl = null;
+      if (user?.role === UserRole.USER) {
+        imageUrl = await userProfileApi.uploadFile(fileType, fileName, imageUri);
+      } else if (user?.role === UserRole.DOCTOR) {
+        imageUrl = await doctorProfileApi.uploadFile(fileType, fileName, imageUri);
+      }
+      
+      if (imageUrl) {
+        console.log('Image uploaded successfully, URL:', imageUrl);
+        
+        // Update state with the new image URL
+        if (user?.role === UserRole.USER) {
+          userProfileStore.setProfilePicture(imageUrl);
+        } else if (user?.role === UserRole.DOCTOR) {
+          doctorProfileStore.setCoverImage(imageUrl);
+        }
+      } else {
+        console.error('Failed to get URL for the uploaded image');
+        alert('Failed to upload image');
       }
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Failed to upload image');
-    } finally {
-      setUploadingImage(false);
     }
   };
 
-  const handleImagePick = () => {
-    setShowImageOptions(true);
-  };
-
+  // Document pick handler for user profile
   const handleDocumentPick = async () => {
     try {
-      setUploadingPdf(true);
+      uiStore.setUploadingPdf(true);
+      
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/pdf',
         copyToCacheDirectory: true,
       });
       
-      if (result.canceled === false) {
-        const s3Url = await profileApi.uploadFile(
-          'application/pdf',
-          `medical-history-${Date.now()}.pdf`,
-          result.assets[0].uri
-        );
+      if (!result.canceled) {
+        // Get the file information
+        const fileUri = result.assets[0].uri;
+        const fileName = result.assets[0].name || `medical-history-${Date.now()}.pdf`;
+        const fileType = result.assets[0].mimeType || 'application/pdf';
         
-        if (s3Url) {
-          // Update local state and savedValues simultaneously to prevent flickering
-          setMedicalHistoryPdf(s3Url);
-          setSavedValues(prev => ({
-            ...prev,
-            medicalHistoryPdf: s3Url
-          }));
+        console.log('Document selected:', fileUri);
+        
+        // Use the uploadFile method from userProfileApi to get a public URL
+        const pdfUrl = await userProfileApi.uploadFile(fileType, fileName, fileUri);
+        
+        if (pdfUrl) {
+          console.log('PDF uploaded successfully, URL:', pdfUrl);
           
-          // Now make the API call
-          setUpdating(true);
-          const profileData = prepareProfileData();
-          // Use the new PDF URL since state might not be updated yet
-          profileData.medicalHistoryPdf = s3Url;
+          // Update PDF in store
+          userProfileStore.setMedicalHistoryPdf(pdfUrl);
           
-          console.log('Immediately updating profile with new PDF');
-          try {
-            const success = await profileApi.updateData(profileData);
-            if (success) {
-              alert('Medical history PDF uploaded successfully');
-            } else {
-              alert('Failed to update profile with new PDF');
-            }
-          } catch (error) {
-            console.error('Error updating profile with PDF:', error);
-            alert('Error saving PDF to profile');
-          } finally {
-            setUpdating(false);
+          // Auto-save the PDF change
+          const profileData = {
+            profilePicture: userProfileStore.profilePicture,
+            age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
+            gender: userProfileStore.gender.toLowerCase(),
+            medicalHistory: userProfileStore.medicalHistory,
+            medicalHistoryPdf: pdfUrl,
+            address: {
+              address: userProfileStore.address,
+              pinCode: userProfileStore.pinCode,
+              latitude: null,
+              longitude: null
+            } as Address,
+            city: userProfileStore.city
+          };
+          
+          console.log('Auto-saving PDF upload...');
+          const success = await userProfileApi.updateDataSilent(profileData);
+          
+          if (success) {
+            console.log('PDF update saved successfully');
+            // Update saved values
+            userProfileStore.setSavedValues({
+              ...userProfileStore.savedValues,
+              medicalHistoryPdf: pdfUrl
+            });
+            
+            // Notify user of successful upload
+            alert('Medical history PDF uploaded successfully.');
+          } else {
+            alert('PDF uploaded but failed to save. Please try saving manually.');
           }
+        } else {
+          console.error('Failed to get URL for the uploaded PDF');
+          alert('Failed to upload PDF file');
         }
       }
     } catch (error) {
       console.error('Error picking document:', error);
       alert('Failed to upload document');
     } finally {
-      setUploadingPdf(false);
+      uiStore.setUploadingPdf(false);
     }
   };
 
-  // Helper function to prepare profile data for update
-  const prepareProfileData = () => {
-    // Convert gender to lowercase as per backend model
-    const genderValue = gender ? gender.toLowerCase() : undefined;
-    
-    // Format address as per backend model
-    const addressData: Address = {
-      address: address,
-      pinCode: pinCode,
-      latitude: null,
-      longitude: null
-    };
-    
-    const profileData: ProfileUpdateData = {
-      profilePicture,
-      age: age ? parseInt(age) : undefined,
-      gender: genderValue,
-      medicalHistory,
-      medicalHistoryPdf,
-      address: addressData,
-      city: city // Add city as a top-level property
-    };
-    
-    // Add ID if available from API data
-    if (profileApi.data?._id) {
-      profileData._id = profileApi.data._id;
-    }
-    
-    console.log('Prepared profile data:', profileData);
-    return profileData;
+  // Image picker for profile images
+  const handleImagePick = () => {
+    uiStore.setShowImageOptions(true);
   };
 
-  // Handler for updating all other fields via Save button
-  const handleUpdateProfile = async () => {
+  // Handle cover image pick for doctor profile
+  const handleCoverImagePick = async () => {
     try {
-      setUpdating(true);
+      uiStore.setUploadingCoverImage(true);
+      handleImagePick();
+    } catch (error) {
+      console.error('Error setting up cover image pick:', error);
+    } finally {
+      // Note: actual uploading will happen in openCamera or openGallery functions
+      // which will call uploadImage, so we don't set uploadingCoverImage to false here
+    }
+  };
+
+  // Save user profile
+  const handleUpdateUserProfile = async () => {
+    try {
+      uiStore.setUpdating(true);
       
-      const profileData = prepareProfileData();
+      // Prepare user profile data
+      const profileData = {
+        profilePicture: userProfileStore.profilePicture,
+        age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
+        gender: userProfileStore.gender.toLowerCase(),
+        medicalHistory: userProfileStore.medicalHistory,
+        medicalHistoryPdf: userProfileStore.medicalHistoryPdf,
+        address: {
+          address: userProfileStore.address,
+          pinCode: userProfileStore.pinCode,
+          latitude: null,
+          longitude: null
+        } as Address,
+        city: userProfileStore.city
+      };
       
-      console.log('Submitting profile data:', JSON.stringify(profileData, null, 2));
-      const success = await profileApi.updateData(profileData);
+      console.log('Submitting user profile data:', JSON.stringify(profileData, null, 2));
+      const response = await userProfileApi.updateData(profileData);
       
-      if (success) {
+      if (response) {
         alert('Profile updated successfully');
         
-        // Update saved values to match current values
-        setSavedValues({
-          age,
-          gender,
-          medicalHistory,
-          address,
-          pinCode,
-          city,
-          medicalHistoryPdf
+        // Update saved values
+        userProfileStore.setSavedValues({
+          age: userProfileStore.age,
+          gender: userProfileStore.gender,
+          medicalHistory: userProfileStore.medicalHistory,
+          address: userProfileStore.address,
+          pinCode: userProfileStore.pinCode,
+          city: userProfileStore.city,
+          medicalHistoryPdf: userProfileStore.medicalHistoryPdf
         });
-        
-        setHasUnsavedChanges(false);
       }
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Failed to update profile');
     } finally {
-      setUpdating(false);
+      uiStore.setUpdating(false);
     }
   };
 
-  // Handler for gender change - immediate update
-  const handleGenderChange = async (value: string) => {
-    // Update local state and savedValues simultaneously to prevent flickering
-    setGender(value);
-    setSavedValues(prev => ({
-      ...prev,
-      gender: value
-    }));
-    
-    setUpdating(true);
-    
+  // Save doctor profile
+  const handleUpdateDoctorProfile = async () => {
     try {
-      // Prepare profile data with the new gender value
-      const profileData = prepareProfileData();
-      // Use the new gender value since state might not be updated yet
-      profileData.gender = value.toLowerCase();
+      uiStore.setUpdating(true);
       
-      console.log('Immediately updating profile with new gender:', value);
-      const success = await profileApi.updateData(profileData);
+      // Get prepared profile data from store
+      const profileData = doctorProfileStore.prepareProfileData();
       
-      if (!success) {
-        console.error('Failed to update gender');
+      console.log('Submitting doctor profile data:', JSON.stringify(profileData, null, 2));
+      const response = await doctorProfileApi.updateData(profileData);
+      
+      if (response) {
+        alert('Doctor profile updated successfully');
+        
+        // Update saved values to match current values
+        doctorProfileStore.setSavedValues({
+          description: doctorProfileStore.description,
+          experience: doctorProfileStore.experience,
+          specializations: doctorProfileStore.specializations,
+          qualifications: doctorProfileStore.qualifications,
+          consultationFee: doctorProfileStore.consultationFee,
+          age: doctorProfileStore.age,
+          gender: doctorProfileStore.gender,
+          consultationType: doctorProfileStore.consultationType,
+          coverImage: doctorProfileStore.coverImage,
+          clinicName: doctorProfileStore.clinicName,
+          clinicPhone: doctorProfileStore.clinicPhone,
+          clinicEmail: doctorProfileStore.clinicEmail,
+          clinicWebsite: doctorProfileStore.clinicWebsite,
+          clinicAddress: doctorProfileStore.clinicAddress,
+          clinicPinCode: doctorProfileStore.clinicPinCode,
+          clinicCity: doctorProfileStore.clinicCity
+        });
       }
     } catch (error) {
-      console.error('Error updating gender:', error);
+      console.error('Error updating doctor profile:', error);
+      alert('Failed to update doctor profile');
     } finally {
-      setUpdating(false);
+      uiStore.setUpdating(false);
     }
   };
 
-  // Handler for city change - immediate update like gender
-  const handleCityChange = async (value: string) => {
-    // Update local state and savedValues simultaneously to prevent flickering
-    setCity(value);
-    setSavedValues(prev => ({
-      ...prev,
-      city: value
-    }));
-    
-    setUpdating(true);
-    
-    try {
-      // Prepare profile data with the new city value
-      const profileData = prepareProfileData();
-      // Use the new city value since state might not be updated yet
-      profileData.city = value;
-      
-      console.log('Immediately updating profile with new city:', value);
-      const success = await profileApi.updateData(profileData);
-      
-      if (!success) {
-        console.error('Failed to update city');
-      }
-    } catch (error) {
-      console.error('Error updating city:', error);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  // Function to filter cities based on search text
+  // Filter cities based on input
   const filterCities = (searchText: string) => {
-    if (!searchText) {
-      setFilteredCities(cities);
-      return;
-    }
+    const regexp = new RegExp(searchText, 'i');
+    const filtered = uiStore.cities.filter(city => regexp.test(city));
+    setFilteredCities(filtered);
+  };
+
+  // Track changes to form fields
+  useEffect(() => {
+    // Check if any field has changed from the saved values
+    const hasChanges = 
+      userProfileStore.age !== userProfileStore.savedValues.age ||
+      userProfileStore.gender !== userProfileStore.savedValues.gender ||
+      userProfileStore.medicalHistory !== userProfileStore.savedValues.medicalHistory ||
+      userProfileStore.address !== userProfileStore.savedValues.address ||
+      userProfileStore.pinCode !== userProfileStore.savedValues.pinCode ||
+      userProfileStore.city !== userProfileStore.savedValues.city ||
+      userProfileStore.medicalHistoryPdf !== userProfileStore.savedValues.medicalHistoryPdf;
     
-    try {
-      // Try regex search first
-      const regex = new RegExp(searchText, 'i');
-      const matches = cities.filter(city => regex.test(city));
-      setFilteredCities(matches);
-    } catch (e) {
-      // Fall back to simple contains search
-      const matches = cities.filter(city => 
-        city.toLowerCase().includes(searchText.toLowerCase())
-      );
-      setFilteredCities(matches);
-    }
+    // Using hasUnsavedChanges state as ProfileUIState doesn't have setHasUnsavedChanges method
+    const hasUnsavedChanges = hasChanges;
+  }, [userProfileStore.age, userProfileStore.gender, userProfileStore.medicalHistory, userProfileStore.address, userProfileStore.pinCode, userProfileStore.city, userProfileStore.medicalHistoryPdf, userProfileStore.savedValues]);
+
+  // Check if there are unsaved changes in the user profile
+  const hasUserProfileChanges = () => {
+    const { age, gender, medicalHistory, address, pinCode, city, medicalHistoryPdf } = userProfileStore;
+    const { savedValues } = userProfileStore;
+    
+    return age !== savedValues.age ||
+      gender !== savedValues.gender ||
+      medicalHistory !== savedValues.medicalHistory ||
+      address !== savedValues.address ||
+      pinCode !== savedValues.pinCode ||
+      city !== savedValues.city ||
+      medicalHistoryPdf !== savedValues.medicalHistoryPdf;
+  };
+  
+  // Check if there are unsaved changes in the doctor profile
+  const hasDoctorProfileChanges = () => {
+    const state = doctorProfileStore;
+    const { savedValues } = doctorProfileStore;
+    
+    // For arrays like specializations and qualifications
+    const isSpecializationsChanged = JSON.stringify(state.specializations) !== JSON.stringify(savedValues.specializations);
+    const isQualificationsChanged = JSON.stringify(state.qualifications) !== JSON.stringify(savedValues.qualifications);
+    
+    // For other primitive fields
+    return state.description !== savedValues.description ||
+      state.experience !== savedValues.experience ||
+      isSpecializationsChanged ||
+      isQualificationsChanged ||
+      state.consultationFee !== savedValues.consultationFee ||
+      state.age !== savedValues.age ||
+      state.gender !== savedValues.gender ||
+      state.consultationType !== savedValues.consultationType ||
+      state.coverImage !== savedValues.coverImage ||
+      state.clinicName !== savedValues.clinicName ||
+      state.clinicPhone !== savedValues.clinicPhone ||
+      state.clinicEmail !== savedValues.clinicEmail ||
+      state.clinicWebsite !== savedValues.clinicWebsite ||
+      state.clinicAddress !== savedValues.clinicAddress ||
+      state.clinicPinCode !== savedValues.clinicPinCode ||
+      state.clinicCity !== savedValues.clinicCity;
   };
 
   // Regular handlers for other fields (will show highlights and require save button)
   const handleAgeChange = (text: string) => {
-    setAge(text);
+    userProfileStore.setAge(text);
   };
 
   const handleAddressChange = (text: string) => {
-    setAddress(text);
+    userProfileStore.setAddress(text);
   };
 
   const handlePinCodeChange = (text: string) => {
     // Allow only digits and limit to 6 characters
     const formattedText = text.replace(/\D/g, '').substring(0, 6);
-    setPinCode(formattedText);
+    userProfileStore.setPinCode(formattedText);
   };
 
   const handleMedicalHistoryChange = (text: string) => {
-    setMedicalHistory(text);
+    userProfileStore.setMedicalHistory(text);
   };
 
-  // Get display role
-  const displayRole = userData?.role || UserRole.USER;
+  // Handle gender change with immediate save
+  const handleGenderChange = async (newGender: string) => {
+    try {
+      // Set gender in store
+      userProfileStore.setGender(newGender);
+      
+      // Prepare profile data with only the changed field and required data
+      const profileData = {
+        profilePicture: userProfileStore.profilePicture,
+        age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
+        gender: newGender.toLowerCase(),
+        medicalHistory: userProfileStore.medicalHistory,
+        medicalHistoryPdf: userProfileStore.medicalHistoryPdf,
+        address: {
+          address: userProfileStore.address,
+          pinCode: userProfileStore.pinCode,
+          latitude: null,
+          longitude: null
+        } as Address,
+        city: userProfileStore.city
+      };
+      
+      // Silent update
+      console.log('Auto-saving gender change...');
+      const success = await userProfileApi.updateDataSilent(profileData);
+      
+      if (success) {
+        console.log('Gender updated successfully');
+        // Update saved values
+        userProfileStore.setSavedValues({
+          ...userProfileStore.savedValues,
+          gender: newGender
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving gender:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+
+  // Handle city change with immediate save
+  const handleCityChange = async (newCity: string) => {
+    try {
+      // Set city in store
+      userProfileStore.setCity(newCity);
+      
+      // Prepare profile data with only the changed field and required data
+      const profileData = {
+        profilePicture: userProfileStore.profilePicture,
+        age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
+        gender: userProfileStore.gender.toLowerCase(),
+        medicalHistory: userProfileStore.medicalHistory,
+        medicalHistoryPdf: userProfileStore.medicalHistoryPdf,
+        address: {
+          address: userProfileStore.address,
+          pinCode: userProfileStore.pinCode,
+          latitude: null,
+          longitude: null
+        } as Address,
+        city: newCity
+      };
+      
+      // Silent update
+      console.log('Auto-saving city change...');
+      const success = await userProfileApi.updateDataSilent(profileData);
+      
+      if (success) {
+        console.log('City updated successfully');
+        // Update saved values
+        userProfileStore.setSavedValues({
+          ...userProfileStore.savedValues,
+          city: newCity
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving city:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+  
+  // Handle doctor gender change with immediate save
+  const handleDoctorGenderChange = async (newGender: string) => {
+    try {
+      // Set gender in store
+      doctorProfileStore.setGender(newGender);
+      
+      // Prepare profile data
+      const profileData = doctorProfileStore.prepareProfileData();
+      
+      // Override gender with new value
+      profileData.gender = newGender.toLowerCase();
+      
+      // Silent update
+      console.log('Auto-saving doctor gender change...');
+      const success = await doctorProfileApi.updateDataSilent(profileData);
+      
+      if (success) {
+        console.log('Doctor gender updated successfully');
+        // Update saved values
+        doctorProfileStore.setSavedValues({
+          ...doctorProfileStore.savedValues,
+          gender: newGender
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving doctor gender:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+
+  // Handle doctor city change with immediate save
+  const handleDoctorCityChange = async (newCity: string) => {
+    try {
+      // Set city in store
+      doctorProfileStore.setClinicCity(newCity);
+      
+      // Prepare profile data
+      const profileData = doctorProfileStore.prepareProfileData();
+      
+      // Override city with new value
+      profileData.city = newCity;
+      
+      // Silent update
+      console.log('Auto-saving doctor city change...');
+      const success = await doctorProfileApi.updateDataSilent(profileData);
+      
+      if (success) {
+        console.log('Doctor city updated successfully');
+        // Update saved values
+        doctorProfileStore.setSavedValues({
+          ...doctorProfileStore.savedValues,
+          clinicCity: newCity
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving doctor city:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+
+  // Render the correct profile form based on user role
+  const renderProfileForm = () => {
+    if (!user) return null;
+    
+    switch (user.role) {
+      case UserRole.USER:
+        return (
+          <UserProfileForm
+            age={userProfileStore.age}
+            gender={userProfileStore.gender}
+            address={userProfileStore.address}
+            pinCode={userProfileStore.pinCode}
+            city={userProfileStore.city}
+            medicalHistory={userProfileStore.medicalHistory}
+            medicalHistoryPdf={userProfileStore.medicalHistoryPdf}
+            uploadingPdf={uiStore.uploadingPdf}
+            cities={uiStore.cities}
+            onChangeAge={handleAgeChange}
+            onChangeGender={handleGenderChange}
+            onChangeAddress={handleAddressChange}
+            onChangePinCode={handlePinCodeChange}
+            onChangeCity={handleCityChange}
+            onChangeMedicalHistory={handleMedicalHistoryChange}
+            onDocumentPick={handleDocumentPick}
+            savedValues={userProfileStore.savedValues}
+          />
+        );
+      case UserRole.DOCTOR:
+        return (
+          <DoctorProfileForm
+            description={doctorProfileStore.description}
+            experience={doctorProfileStore.experience}
+            specializations={doctorProfileStore.specializations}
+            availableSpecializations={doctorProfileStore.availableSpecializations}
+            qualifications={doctorProfileStore.qualifications}
+            availableQualifications={doctorProfileStore.availableQualifications}
+            consultationFee={doctorProfileStore.consultationFee}
+            age={doctorProfileStore.age}
+            gender={doctorProfileStore.gender}
+            consultationType={doctorProfileStore.consultationType}
+            coverImage={doctorProfileStore.coverImage}
+            clinicName={doctorProfileStore.clinicName}
+            clinicPhone={doctorProfileStore.clinicPhone}
+            clinicEmail={doctorProfileStore.clinicEmail}
+            clinicWebsite={doctorProfileStore.clinicWebsite}
+            clinicAddress={doctorProfileStore.clinicAddress}
+            clinicPinCode={doctorProfileStore.clinicPinCode}
+            clinicCity={doctorProfileStore.clinicCity}
+            cities={uiStore.cities}
+            uploadingCoverImage={uiStore.uploadingCoverImage}
+            onChangeDescription={(text) => doctorProfileStore.setDescription(text)}
+            onChangeExperience={(text) => doctorProfileStore.setExperience(text)}
+            onAddSpecialization={(spec) => doctorProfileStore.addSpecialization(spec)}
+            onRemoveSpecialization={(index) => doctorProfileStore.removeSpecialization(index)}
+            onAddQualification={(qual) => doctorProfileStore.addQualification(qual)}
+            onRemoveQualification={(index) => doctorProfileStore.removeQualification(index)}
+            onChangeConsultationFee={(fee) => doctorProfileStore.setConsultationFee(fee)}
+            onChangeAge={(age) => doctorProfileStore.setAge(age)}
+            onChangeGender={handleDoctorGenderChange}
+            onChangeConsultationType={(type) => doctorProfileStore.setConsultationType(type)}
+            onChangeCoverImage={handleCoverImagePick}
+            onChangeClinicName={(name) => doctorProfileStore.setClinicName(name)}
+            onChangeClinicPhone={(phone) => doctorProfileStore.setClinicPhone(phone)}
+            onChangeClinicEmail={(email) => doctorProfileStore.setClinicEmail(email)}
+            onChangeClinicWebsite={(website) => doctorProfileStore.setClinicWebsite(website)}
+            onChangeClinicAddress={(address) => doctorProfileStore.setClinicAddress(address)}
+            onChangeClinicPinCode={(pinCode) => doctorProfileStore.setClinicPinCode(pinCode)}
+            onChangeClinicCity={handleDoctorCityChange}
+            savedValues={doctorProfileStore.savedValues}
+          />
+        );
+      case UserRole.LABORATORY:
+        return <LaboratoryProfileForm />;
+      case UserRole.DELIVERY_BOY:
+        return <DeliveryProfileForm />;
+      default:
+        return (
+          <View className="bg-yellow-50 p-4 rounded-xl mb-6">
+            <Text className="text-yellow-700 text-center">
+              Profile settings for your role are not yet available.
+            </Text>
+          </View>
+        );
+    }
+  };
 
   // Show loading indicator only during initial load
-  if (loading) {
+  if (uiStore.loading) {
     return (
       <SafeAreaView className="flex-1 bg-background justify-center items-center">
         <StatusBar style="auto" />
@@ -534,56 +725,6 @@ const Profile = () => {
     );
   }
 
-  // Render profile form based on role
-  const renderProfileForm = () => {
-    console.log('Rendering profile form with values:', {
-      age,
-      gender,
-      address,
-      pinCode,
-      city,
-      medicalHistory,
-      medicalHistoryPdf
-    });
-    
-    switch (displayRole) {
-      case UserRole.USER:
-        return (
-          <UserProfileForm 
-            age={age}
-            gender={gender}
-            address={address}
-            pinCode={pinCode}
-            city={city}
-            medicalHistory={medicalHistory}
-            medicalHistoryPdf={medicalHistoryPdf}
-            uploadingPdf={uploadingPdf}
-            cities={filteredCities.length > 0 ? filteredCities : cities}
-            onChangeAge={handleAgeChange}
-            onChangeGender={handleGenderChange}
-            onChangeAddress={handleAddressChange}
-            onChangePinCode={handlePinCodeChange}
-            onChangeCity={handleCityChange}
-            onChangeMedicalHistory={handleMedicalHistoryChange}
-            onDocumentPick={handleDocumentPick}
-            savedValues={savedValues}
-          />
-        );
-      case UserRole.DOCTOR:
-        return <DoctorProfileForm />;
-      case UserRole.LABORATORY:
-        return <LaboratoryProfileForm />;
-      case UserRole.DELIVERY_BOY:
-        return <DeliveryProfileForm />;
-      default:
-        return (
-          <Text className="text-center text-gray-500 p-4">
-            Profile form not available for this role
-          </Text>
-        );
-    }
-  };
-  
   return (
     <View className="flex-1 bg-background">
       <SafeAreaView className="flex-1">
@@ -596,7 +737,7 @@ const Profile = () => {
         >
           {/* Header Section */}
           <ProfileHeader 
-            userData={userData}
+            userData={user}
             onLogout={handleLogout}
           />
           
@@ -606,26 +747,31 @@ const Profile = () => {
       </SafeAreaView>
 
       {/* Floating Save Button (only show when there are changes) */}
-      {displayRole === UserRole.USER && hasUnsavedChanges && (
-        <SaveButton onPress={handleUpdateProfile} loading={updating} />
+      {(user?.role === UserRole.USER && hasUserProfileChanges()) && (
+        <SaveButton onPress={handleUpdateUserProfile} loading={uiStore.updating} />
+      )}
+      
+      {/* Floating Save Button for Doctor Profile */}
+      {(user?.role === UserRole.DOCTOR && hasDoctorProfileChanges()) && (
+        <SaveButton onPress={handleUpdateDoctorProfile} loading={uiStore.updating} />
       )}
 
       {/* Image Picker Modal */}
       <ImagePickerModal 
-        visible={showImageOptions}
-        onClose={() => setShowImageOptions(false)}
+        visible={uiStore.showImageOptions}
+        onClose={() => uiStore.setShowImageOptions(false)}
         onTakePhoto={openCamera}
         onChooseFromGallery={openGallery}
       />
 
       {/* Date Picker */}
-      {showDatePicker && (
+      {uiStore.showDatePicker && (
         <DateTimePicker
           value={new Date()}
           mode="date"
           display="default"
           onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
+            uiStore.setShowDatePicker(false);
             if (selectedDate) {
               // Calculate age
               const today = new Date();
@@ -634,7 +780,7 @@ const Profile = () => {
               if (m < 0 || (m === 0 && today.getDate() < selectedDate.getDate())) {
                 calculatedAge--;
               }
-              setAge(calculatedAge.toString());
+              userProfileStore.setAge(calculatedAge.toString());
             }
           }}
           maximumDate={new Date()}

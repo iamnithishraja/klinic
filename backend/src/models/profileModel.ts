@@ -65,6 +65,10 @@ const doctorProfileSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
+    coverImage: {
+        type: String,
+        default: null,
+    },
     description: {
         type: String,
         default: null,
@@ -119,10 +123,6 @@ const doctorProfileSchema = new mongoose.Schema({
     isAvailable: {
         type: Boolean,
         default: false,
-    },
-    clinicName: {
-        type: String,
-        default: null,
     },
     clinicPhone: {
         type: String,
@@ -231,8 +231,8 @@ const laboratoryProfileSchema = new mongoose.Schema({
                     type: String,
                     default: null,
                 },
-                images: {
-                    type: [String],
+                coverImage: {
+                    type: String,
                     default: null,
                 },
                 collectionType: {
@@ -303,6 +303,10 @@ const deliveryBoyProfileSchema = new mongoose.Schema({
     },
     delivarablePinCodes: {
         type: [String],
+        default: null,
+    },
+    city: {
+        type: String,
         default: null,
     },
     createdAt: {

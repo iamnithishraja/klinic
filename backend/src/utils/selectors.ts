@@ -13,7 +13,6 @@ const getCities = () => {
         "Lucknow",
         "Kanpur",
         "Nagpur",
-        "Indore",
         "Bhopal",
         "Lucknow",
         "Kanpur",
@@ -24,4 +23,36 @@ const getCities = () => {
     return cities;
 }
 
-export { getCities };
+const getSpecializations = () => {
+    const specializations = [
+        "Cardiologist",
+        "Dermatologist",
+        "Pediatrician",
+        "Neurologist",
+        "Orthopedic Surgeon",
+        "Gynecologist",
+        "Urologist",
+        "ENT Specialist",
+        "General Surgeon",
+        "General Physician",
+    ];
+    return specializations;
+}
+
+const getQualifications = () => {
+    const qualifications = [
+        "MBBS",
+        "MD",
+        "MS",
+        "M.Ch",
+        "M.D",
+        "M.S",
+        "M.Ch",
+        "M.D",
+        "M.S",
+    ]
+    return qualifications;
+}
+
+
+export { getCities, getSpecializations, getQualifications };

@@ -3,7 +3,7 @@ import type { CustomRequest } from '../types/userTypes';
 import { UserProfile, DoctorProfile, LaboratoryProfile, DeliveryBoyProfile } from '../models/profileModel';
 import mongoose from 'mongoose';
 import { generateUploadUrlProfile, deleteFileFromR2 } from '../utils/fileUpload';
-import { getCities } from '../utils/selectors';
+import { getCities, getQualifications, getSpecializations } from '../utils/selectors';
 
 // Create or update user profile
 const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promise<void> => {
@@ -80,7 +80,13 @@ const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
             return;
         }
         const avilableCities = getCities();
-        res.status(200).json({ profile, avilableCities });
+        const avilableSpecializations = getSpecializations();
+        const avilableQualifications = getQualifications();
+        if (role === 'doctor') {
+            res.status(200).json({ profile, avilableCities, avilableSpecializations, avilableQualifications });
+        } else {
+            res.status(200).json({ profile, avilableCities });
+        }
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -94,7 +100,7 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
             description, experience, specializations, qualifications,
             consultationFee, profilePicture, age, gender, consultationType,
             availableSlots, availableDays, isAvailable, clinicName, clinicPhone,
-            clinicEmail, clinicWebsite, clinicImages, clinicAddress, city
+            clinicEmail, clinicWebsite, coverImage, clinicAddress, city
         } = req.body;
 
         const userId = req.user._id;
@@ -113,11 +119,11 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
             availableSlots,
             availableDays,
             isAvailable,
-            clinicName,
             clinicPhone,
             clinicEmail,
             clinicWebsite,
-            clinicImages,
+            clinicName,
+            coverImage,
             clinicAddress,
             city,
             updatedAt: new Date()

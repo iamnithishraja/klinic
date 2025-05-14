@@ -55,6 +55,7 @@ export interface DoctorProfile {
   clinicWebsite?: string;
   clinicImages?: string[];
   clinicAddress?: Address;
+  city?: string;
   updatedAt?: Date;
   createdAt?: Date;
 }

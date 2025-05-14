@@ -17,6 +17,9 @@ const ProfileHeader = ({
   const displayEmail = userData?.email || 'email@example.com';
   const displayPhone = userData?.phone || 'Not provided';
   const displayRole = userData?.role || UserRole.USER;
+  
+  // Add 'Dr.' prefix for doctors
+  const formattedName = displayRole === UserRole.DOCTOR ? `Dr. ${displayName}` : displayName;
 
   return (
     <View className="mb-8">
@@ -40,7 +43,7 @@ const ProfileHeader = ({
         </View>
         
         <Text className="text-text-primary text-xl font-semibold">
-          {displayName}
+          {formattedName}
         </Text>
         <Text className="text-text-secondary text-base mt-1">
           {displayEmail}

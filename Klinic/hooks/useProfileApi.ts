@@ -13,7 +13,7 @@ interface UseProfileApi {
   error: any;
   data: any;
   setData: (data: any) => void;
-  fetchData: () => Promise<void>;
+  fetchData: () => Promise<any>;
   updateData: (data: any) => Promise<boolean>;
   updateDataSilent: (data: any) => Promise<boolean>;
   uploadFile: (fileType: string, fileName: string, fileUri: string) => Promise<string | null>;
@@ -24,7 +24,7 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
   const [error, setError] = useState<any>(null);
   const [data, setData] = useState<any>(null);
 
-  const fetchData = async (): Promise<void> => {
+  const fetchData = async (): Promise<any> => {
     try {
       setLoading(true);
       setError(null);
@@ -37,6 +37,8 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
       if (onSuccess) {
         onSuccess(response.data);
       }
+      
+      return response.data;
     } catch (err: any) {
       console.error(`Error fetching data from ${endpoint}:`, err);
       if (err.response) {
@@ -50,6 +52,8 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
       } else if (err.response?.status !== 404) { // Don't alert on 404 as it might be expected
         Alert.alert('Error', `Failed to load data: ${err.response?.data?.message || err.message}`);
       }
+      
+      return null;
     } finally {
       setLoading(false);
     }
