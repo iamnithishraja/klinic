@@ -15,6 +15,7 @@ interface UseProfileApi {
   setData: (data: any) => void;
   fetchData: () => Promise<void>;
   updateData: (data: any) => Promise<boolean>;
+  updateDataSilent: (data: any) => Promise<boolean>;
   uploadFile: (fileType: string, fileName: string, fileUri: string) => Promise<string | null>;
 }
 
@@ -89,6 +90,22 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
     }
   };
 
+  const updateDataSilent = async (newData: any): Promise<boolean> => {
+    try {
+      console.log(`Making silent POST request to ${endpoint} with data:`, JSON.stringify(newData, null, 2));
+      const response = await apiClient.post(endpoint, newData);
+      console.log('Silent update response:', response.data);
+      return true;
+    } catch (err: any) {
+      console.error(`Error in silent update for ${endpoint}:`, err);
+      if (err.response) {
+        console.error('Response status:', err.response.status);
+        console.error('Response data:', JSON.stringify(err.response.data, null, 2));
+      }
+      return false;
+    }
+  };
+
   const uploadFile = async (fileType: string, fileName: string, fileUri: string): Promise<string | null> => {
     try {
       // Get upload URL
@@ -124,7 +141,7 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
     }
   };
 
-  return { loading, error, data, setData, fetchData, updateData, uploadFile };
+  return { loading, error, data, setData, fetchData, updateData, updateDataSilent, uploadFile };
 };
 
 export default useProfileApi; 

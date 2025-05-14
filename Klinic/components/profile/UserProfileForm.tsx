@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
 
 interface UserProfileFormProps {
   age: string;
@@ -16,6 +17,14 @@ interface UserProfileFormProps {
   onChangePinCode: (text: string) => void;
   onChangeMedicalHistory: (text: string) => void;
   onDocumentPick: () => void;
+  savedValues: {
+    age: string;
+    gender: string;
+    address: string;
+    pinCode: string;
+    medicalHistory: string;
+    medicalHistoryPdf: string;
+  };
 }
 
 const UserProfileForm = ({
@@ -31,22 +40,51 @@ const UserProfileForm = ({
   onChangeAddress,
   onChangePinCode,
   onChangeMedicalHistory,
-  onDocumentPick
+  onDocumentPick,
+  savedValues
 }: UserProfileFormProps) => {
   const genderOptions = ['Male', 'Female'];
 
+  // Function to open PDF externally
+  const openPdfExternally = () => {
+    if (medicalHistoryPdf) {
+      Linking.openURL(medicalHistoryPdf)
+        .catch(err => console.error('Error opening PDF:', err));
+    }
+  };
+
+  // Check if fields have unsaved changes
+  const isAgeChanged = age !== savedValues.age;
+  const isGenderChanged = gender !== savedValues.gender;
+  const isAddressChanged = address !== savedValues.address;
+  const isPinCodeChanged = pinCode !== savedValues.pinCode;
+  const isMedicalHistoryChanged = medicalHistory !== savedValues.medicalHistory;
+  const isPdfChanged = medicalHistoryPdf !== savedValues.medicalHistoryPdf;
+
   return (
     <View>
+      {/* Message about unsaved changes - Moved to top */}
+      {(isAgeChanged || isGenderChanged || isAddressChanged || isPinCodeChanged || isMedicalHistoryChanged || isPdfChanged) && (
+        <View className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl">
+          <Text className="text-red-600 text-sm">
+            Fields with red highlights have unsaved changes. Click the "Save Changes" button to save your updates.
+          </Text>
+        </View>
+      )}
+
       {/* Age and Gender in the same row */}
       <View className="flex-row mb-6 gap-3">
         {/* Age Input */}
         <View className="flex-1">
-          <Text className="text-gray-700 font-medium text-base mb-2">Age</Text>
-          <View className="flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200">
+          <Text className="text-gray-700 font-medium text-base mb-2">
+            Age
+            {isAgeChanged && <Text className="text-red-500 ml-1">*</Text>}
+          </Text>
+          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isAgeChanged ? 'border-red-400' : 'border-gray-200'}`}>
             <MaterialCommunityIcons 
               name="calendar-account" 
               size={22} 
-              color="#6366F1" 
+              color={isAgeChanged ? "#F87171" : "#6366F1"} 
               style={{ marginRight: 12 }}
             />
             <TextInput
@@ -62,14 +100,21 @@ const UserProfileForm = ({
 
         {/* Gender Selection */}
         <View className="flex-1">
-          <Text className="text-gray-700 font-medium text-base mb-2">Gender</Text>
+          <Text className="text-gray-700 font-medium text-base mb-2">
+            Gender
+            {isGenderChanged && <Text className="text-red-500 ml-1">*</Text>}
+          </Text>
           <View className="flex-row">
             {genderOptions.map((option) => (
               <TouchableOpacity
                 key={option}
                 onPress={() => onChangeGender(option)}
                 className={`mr-2 px-4 py-2.5 rounded-xl border ${
-                  gender === option ? 'bg-primary border-primary' : 'bg-white border-gray-200'
+                  gender === option 
+                    ? isGenderChanged 
+                      ? 'bg-red-400 border-red-400' 
+                      : 'bg-primary border-primary' 
+                    : 'bg-white border-gray-200'
                 }`}
               >
                 <Text
@@ -87,12 +132,15 @@ const UserProfileForm = ({
 
       {/* Address Field */}
       <View className="mb-6">
-        <Text className="text-gray-700 font-medium text-base mb-2">Address</Text>
-        <View className="flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200">
+        <Text className="text-gray-700 font-medium text-base mb-2">
+          Address
+          {isAddressChanged && <Text className="text-red-500 ml-1">*</Text>}
+        </Text>
+        <View className={`flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isAddressChanged ? 'border-red-400' : 'border-gray-200'}`}>
           <MaterialCommunityIcons 
             name="map-marker" 
-            size={22} 
-            color="#6366F1" 
+            size={22}
+            color={isAddressChanged ? "#F87171" : "#6366F1"} 
             style={{ marginRight: 12, marginTop: 2 }}
           />
           <TextInput
@@ -110,12 +158,15 @@ const UserProfileForm = ({
 
       {/* Pin Code Field */}
       <View className="mb-6">
-        <Text className="text-gray-700 font-medium text-base mb-2">Pin Code</Text>
-        <View className="flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200">
+        <Text className="text-gray-700 font-medium text-base mb-2">
+          Pin Code
+          {isPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
+        </Text>
+        <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPinCodeChanged ? 'border-red-400' : 'border-gray-200'}`}>
           <MaterialCommunityIcons 
             name="map-marker-radius" 
             size={22} 
-            color="#6366F1" 
+            color={isPinCodeChanged ? "#F87171" : "#6366F1"} 
             style={{ marginRight: 12 }}
           />
           <TextInput
@@ -132,12 +183,15 @@ const UserProfileForm = ({
 
       {/* Medical History Field */}
       <View className="mb-6">
-        <Text className="text-gray-700 font-medium text-base mb-2">Medical History</Text>
-        <View className="flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200">
+        <Text className="text-gray-700 font-medium text-base mb-2">
+          Medical History
+          {isMedicalHistoryChanged && <Text className="text-red-500 ml-1">*</Text>}
+        </Text>
+        <View className={`flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isMedicalHistoryChanged ? 'border-red-400' : 'border-gray-200'}`}>
           <MaterialCommunityIcons 
             name="medical-bag" 
-            size={22} 
-            color="#6366F1" 
+            size={22}
+            color={isMedicalHistoryChanged ? "#F87171" : "#6366F1"} 
             style={{ marginRight: 12, marginTop: 2 }}
           />
           <TextInput
@@ -155,16 +209,19 @@ const UserProfileForm = ({
 
       {/* Medical History PDF Upload */}
       <View className="mb-6">
-        <Text className="text-gray-700 font-medium text-base mb-2">Medical History PDF</Text>
+        <Text className="text-gray-700 font-medium text-base mb-2">
+          Medical History PDF
+          {isPdfChanged && <Text className="text-red-500 ml-1">*</Text>}
+        </Text>
         <TouchableOpacity
           onPress={onDocumentPick}
           disabled={uploadingPdf}
-          className="flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm border-gray-200"
+          className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPdfChanged ? 'border-red-400' : 'border-gray-200'}`}
         >
           <MaterialCommunityIcons
             name="file-pdf-box"
             size={22}
-            color="#6366F1"
+            color={isPdfChanged ? "#F87171" : "#6366F1"}
             style={{ marginRight: 12 }}
           />
           {uploadingPdf ? (
@@ -175,7 +232,11 @@ const UserProfileForm = ({
           ) : medicalHistoryPdf ? (
             <View className="flex-row items-center justify-between flex-1">
               <Text className="text-gray-800">PDF uploaded successfully</Text>
-              <MaterialCommunityIcons name="check-circle" size={20} color="#10B981" />
+              <MaterialCommunityIcons 
+                name={isPdfChanged ? "alert-circle" : "check-circle"} 
+                size={20} 
+                color={isPdfChanged ? "#F87171" : "#10B981"} 
+              />
             </View>
           ) : (
             <Text className="flex-1 text-gray-400">Upload medical history PDF</Text>
@@ -183,8 +244,28 @@ const UserProfileForm = ({
         </TouchableOpacity>
       </View>
 
-      {/* Add extra space for the floating button */}
-      <View className="h-20" />
+      {/* PDF Preview Section */}
+      {medicalHistoryPdf ? (
+        <View className="mb-6">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-gray-700 font-medium text-base">PDF Preview</Text>
+            <TouchableOpacity onPress={openPdfExternally} className="px-3 py-1 bg-primary rounded-lg">
+              <Text className="text-white font-medium">Open Full PDF</Text>
+            </TouchableOpacity>
+          </View>
+          <View 
+            className={`border rounded-xl overflow-hidden bg-white shadow-sm ${isPdfChanged ? 'border-red-400' : 'border-gray-200'}`}
+            style={{ height: 300 }} // Fixed height for the preview
+          >
+            <WebView
+              source={{ uri: medicalHistoryPdf }}
+              style={{ flex: 1 }}
+              renderLoading={() => <ActivityIndicator size="large" color="#6366F1" />}
+              startInLoadingState={true}
+            />
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 };
