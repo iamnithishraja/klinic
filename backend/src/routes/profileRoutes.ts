@@ -3,6 +3,7 @@ import {
     createUpdateUserProfile,
     getProfile,
     createUpdateDoctorProfile,
+    createUpdateLaboratoryProfile,
     getUploadUrl
 } from '../controllers/profileController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
@@ -15,6 +16,9 @@ profileRouter.post('/user-profile', isAuthenticatedUser, createUpdateUserProfile
 profileRouter.post('/doctor-profile', isAuthenticatedUser, (req, res, next) =>
     checkRole(req, res, next, [UserRole.DOCTOR, UserRole.ADMIN])
     , createUpdateDoctorProfile);
+profileRouter.post('/laboratory-profile', isAuthenticatedUser, (req, res, next) =>
+    checkRole(req, res, next, [UserRole.LABORATORY, UserRole.ADMIN])
+    , createUpdateLaboratoryProfile);
 
 // Get profile based on user role
 profileRouter.get('/profile', isAuthenticatedUser, getProfile);

@@ -523,6 +523,320 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   })
 }));
 
+// LABORATORY PROFILE STORE
+interface LaboratoryTest {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface LaboratoryService {
+  id: string;
+  name: string;
+  description: string;
+  coverImage: string;
+  collectionType: 'home' | 'lab' | 'both';
+  tests: LaboratoryTest[];
+  price: string;
+}
+
+interface LaboratoryProfileState {
+  // Laboratory details
+  laboratoryName: string;
+  laboratoryPhone: string;
+  laboratoryEmail: string;
+  laboratoryWebsite: string;
+  
+  // Address details
+  laboratoryAddress: string;
+  laboratoryPinCode: string;
+  laboratoryCity: string;
+  laboratoryGoogleMapsLink: string;
+  
+  // Services
+  laboratoryServices: LaboratoryService[];
+  
+  // Cover image
+  coverImage: string;
+  
+  // Saved values for tracking changes
+  savedValues: {
+    laboratoryName: string;
+    laboratoryPhone: string;
+    laboratoryEmail: string;
+    laboratoryWebsite: string;
+    laboratoryAddress: string;
+    laboratoryPinCode: string;
+    laboratoryCity: string;
+    laboratoryGoogleMapsLink: string;
+    laboratoryServices: LaboratoryService[];
+    coverImage: string;
+  };
+  
+  // Actions
+  setLaboratoryName: (name: string) => void;
+  setLaboratoryPhone: (phone: string) => void;
+  setLaboratoryEmail: (email: string) => void;
+  setLaboratoryWebsite: (website: string) => void;
+  setLaboratoryAddress: (address: string) => void;
+  setLaboratoryPinCode: (pinCode: string) => void;
+  setLaboratoryCity: (city: string) => void;
+  setLaboratoryGoogleMapsLink: (link: string) => void;
+  setCoverImage: (url: string) => void;
+  
+  // Laboratory service actions
+  addLaboratoryService: (service: Omit<LaboratoryService, 'id' | 'tests'>) => void;
+  updateLaboratoryService: (serviceId: string, updates: Partial<Omit<LaboratoryService, 'id' | 'tests'>>) => void;
+  removeLaboratoryService: (serviceId: string) => void;
+  
+  // Test actions
+  addTest: (serviceId: string, test: Omit<LaboratoryTest, 'id'>) => void;
+  updateTest: (serviceId: string, testId: string, updates: Partial<Omit<LaboratoryTest, 'id'>>) => void;
+  removeTest: (serviceId: string, testId: string) => void;
+  
+  // Store management
+  setSavedValues: (values: LaboratoryProfileState['savedValues']) => void;
+  updateFromApiResponse: (data: any) => void;
+  prepareProfileData: () => any;
+  reset: () => void;
+}
+
+export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, get) => ({
+  // Initial state
+  laboratoryName: '',
+  laboratoryPhone: '',
+  laboratoryEmail: '',
+  laboratoryWebsite: '',
+  laboratoryAddress: '',
+  laboratoryPinCode: '',
+  laboratoryCity: '',
+  laboratoryGoogleMapsLink: '',
+  laboratoryServices: [],
+  coverImage: '',
+  
+  savedValues: {
+    laboratoryName: '',
+    laboratoryPhone: '',
+    laboratoryEmail: '',
+    laboratoryWebsite: '',
+    laboratoryAddress: '',
+    laboratoryPinCode: '',
+    laboratoryCity: '',
+    laboratoryGoogleMapsLink: '',
+    laboratoryServices: [],
+    coverImage: ''
+  },
+  
+  // Basic field actions
+  setLaboratoryName: (laboratoryName) => set({ laboratoryName }),
+  setLaboratoryPhone: (laboratoryPhone) => set({ laboratoryPhone }),
+  setLaboratoryEmail: (laboratoryEmail) => set({ laboratoryEmail }),
+  setLaboratoryWebsite: (laboratoryWebsite) => set({ laboratoryWebsite }),
+  setLaboratoryAddress: (laboratoryAddress) => set({ laboratoryAddress }),
+  setLaboratoryPinCode: (laboratoryPinCode) => set({ laboratoryPinCode }),
+  setLaboratoryCity: (laboratoryCity) => set({ laboratoryCity }),
+  setLaboratoryGoogleMapsLink: (laboratoryGoogleMapsLink) => set({ laboratoryGoogleMapsLink }),
+  setCoverImage: (url) => set({ coverImage: url }),
+  
+  // Laboratory service actions
+  addLaboratoryService: (service) => set((state) => {
+    const newService: LaboratoryService = {
+      ...service,
+      id: Date.now().toString(),
+      tests: []
+    };
+    return { 
+      laboratoryServices: [...state.laboratoryServices, newService]
+    };
+  }),
+  
+  updateLaboratoryService: (serviceId, updates) => set((state) => {
+    const updatedServices = state.laboratoryServices.map(service => 
+      service.id === serviceId ? { ...service, ...updates } : service
+    );
+    return { laboratoryServices: updatedServices };
+  }),
+  
+  removeLaboratoryService: (serviceId) => set((state) => ({
+    laboratoryServices: state.laboratoryServices.filter(service => service.id !== serviceId)
+  })),
+  
+  // Test actions
+  addTest: (serviceId, test) => set((state) => {
+    const updatedServices = state.laboratoryServices.map(service => {
+      if (service.id === serviceId) {
+        return {
+          ...service,
+          tests: [...service.tests, { ...test, id: Date.now().toString() }]
+        };
+      }
+      return service;
+    });
+    return { laboratoryServices: updatedServices };
+  }),
+  
+  updateTest: (serviceId, testId, updates) => set((state) => {
+    const updatedServices = state.laboratoryServices.map(service => {
+      if (service.id === serviceId) {
+        const updatedTests = service.tests.map(test =>
+          test.id === testId ? { ...test, ...updates } : test
+        );
+        return { ...service, tests: updatedTests };
+      }
+      return service;
+    });
+    return { laboratoryServices: updatedServices };
+  }),
+  
+  removeTest: (serviceId, testId) => set((state) => {
+    const updatedServices = state.laboratoryServices.map(service => {
+      if (service.id === serviceId) {
+        return {
+          ...service,
+          tests: service.tests.filter(test => test.id !== testId)
+        };
+      }
+      return service;
+    });
+    return { laboratoryServices: updatedServices };
+  }),
+  
+  // Store management
+  setSavedValues: (values) => set({ savedValues: values }),
+  
+  updateFromApiResponse: (data) => {
+    if (!data) return;
+    
+    set((state) => {
+      // Extract laboratory data
+      let services: LaboratoryService[] = [];
+      
+      // Parse laboratory services if available
+      if (data.laboratoryServices && Array.isArray(data.laboratoryServices)) {
+        services = data.laboratoryServices.map((service: any) => ({
+          id: service._id || Date.now().toString(),
+          name: service.name || '',
+          description: service.description || '',
+          coverImage: service.coverImage || '',
+          collectionType: service.collectionType || 'both',
+          price: service.price?.toString() || '',
+          tests: Array.isArray(service.tests) 
+            ? service.tests.map((test: any) => ({
+                id: test._id || Date.now().toString(),
+                name: test.name || '',
+                description: test.description || ''
+              }))
+            : []
+        }));
+      }
+      
+      // Handle laboratory address
+      let address = '';
+      let pinCode = '';
+      let googleMapsLink = '';
+      
+      if (data.laboratoryAddress) {
+        address = data.laboratoryAddress.address || '';
+        pinCode = data.laboratoryAddress.pinCode || '';
+        googleMapsLink = data.laboratoryAddress.googleMapsLink || '';
+      }
+      
+      const coverImage = data.coverImage || '';
+      
+      // Create values to save
+      const savedValues = {
+        laboratoryName: data.laboratoryName || '',
+        laboratoryPhone: data.laboratoryPhone || '',
+        laboratoryEmail: data.laboratoryEmail || '',
+        laboratoryWebsite: data.laboratoryWebsite || '',
+        laboratoryAddress: address,
+        laboratoryPinCode: pinCode,
+        laboratoryCity: data.city || '',
+        laboratoryGoogleMapsLink: googleMapsLink,
+        laboratoryServices: services,
+        coverImage
+      };
+      
+      // Return updated state
+      return {
+        laboratoryName: data.laboratoryName || '',
+        laboratoryPhone: data.laboratoryPhone || '',
+        laboratoryEmail: data.laboratoryEmail || '',
+        laboratoryWebsite: data.laboratoryWebsite || '',
+        laboratoryAddress: address,
+        laboratoryPinCode: pinCode,
+        laboratoryCity: data.city || '',
+        laboratoryGoogleMapsLink: googleMapsLink,
+        laboratoryServices: services,
+        coverImage,
+        savedValues
+      };
+    });
+  },
+  
+  prepareProfileData: () => {
+    const state = get();
+    
+    // Format laboratory address
+    const laboratoryAddressData: Address = {
+      address: state.laboratoryAddress,
+      pinCode: state.laboratoryPinCode,
+      googleMapsLink: state.laboratoryGoogleMapsLink,
+      latitude: null,
+      longitude: null
+    };
+    
+    // Format laboratory services
+    const laboratoryServices = state.laboratoryServices.map(service => ({
+      name: service.name,
+      description: service.description,
+      coverImage: service.coverImage,
+      collectionType: service.collectionType,
+      price: service.price ? parseFloat(service.price) : undefined,
+      tests: service.tests.map(test => ({
+        name: test.name,
+        description: test.description
+      }))
+    }));
+    
+    return {
+      laboratoryName: state.laboratoryName,
+      laboratoryPhone: state.laboratoryPhone,
+      laboratoryEmail: state.laboratoryEmail,
+      laboratoryWebsite: state.laboratoryWebsite,
+      laboratoryAddress: laboratoryAddressData,
+      city: state.laboratoryCity,
+      laboratoryServices,
+      coverImage: state.coverImage
+    };
+  },
+  
+  reset: () => set({
+    laboratoryName: '',
+    laboratoryPhone: '',
+    laboratoryEmail: '',
+    laboratoryWebsite: '',
+    laboratoryAddress: '',
+    laboratoryPinCode: '',
+    laboratoryCity: '',
+    laboratoryGoogleMapsLink: '',
+    laboratoryServices: [],
+    coverImage: '',
+    savedValues: {
+      laboratoryName: '',
+      laboratoryPhone: '',
+      laboratoryEmail: '',
+      laboratoryWebsite: '',
+      laboratoryAddress: '',
+      laboratoryPinCode: '',
+      laboratoryCity: '',
+      laboratoryGoogleMapsLink: '',
+      laboratoryServices: [],
+      coverImage: ''
+    }
+  })
+}));
+
 // UI STATE STORE
 interface ProfileUIState {
   loading: boolean;

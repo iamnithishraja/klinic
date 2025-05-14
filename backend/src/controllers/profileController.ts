@@ -98,7 +98,10 @@ const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
         const availableQualifications = getQualifications();
         if (role === 'doctor') {
             res.status(200).json({ profile, availableCities, availableSpecializations, availableQualifications });
-        } else {
+        } else if (role === 'laboratory') {
+            res.status(200).json({ profile, availableCities });
+        }
+        else {
             res.status(200).json({ profile, availableCities });
         }
     } catch (error) {
@@ -176,7 +179,7 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
                 profileData.clinicAddress.googleMapsLink = googleMapsLink;
             }
         }
-        
+
         if (city !== undefined && city !== '') profileData.city = city;
 
         // Check if profile already exists for this user
@@ -198,7 +201,101 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
     }
 };
 
+// Create or update laboratory profile
+const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const {
+            laboratoryName, laboratoryPhone, laboratoryEmail, laboratoryWebsite,
+            laboratoryAddress, city, laboratoryServices, coverImage
+        } = req.body;
 
+        const userId = req.user._id;
+
+        // Create initial profile data object
+        const profileData: any = {
+            user: userId,
+            updatedAt: new Date()
+        };
+
+        // Add fields to profileData only if they are defined
+        if (laboratoryName !== undefined && laboratoryName !== '') profileData.laboratoryName = laboratoryName;
+        if (laboratoryPhone !== undefined && laboratoryPhone !== '') profileData.laboratoryPhone = laboratoryPhone;
+        if (laboratoryEmail !== undefined && laboratoryEmail !== '') profileData.laboratoryEmail = laboratoryEmail;
+        if (laboratoryWebsite !== undefined && laboratoryWebsite !== '') profileData.laboratoryWebsite = laboratoryWebsite;
+        if (coverImage !== undefined && coverImage !== '') profileData.coverImage = coverImage;
+        
+        // Handle laboratory address
+        if (laboratoryAddress !== undefined) {
+            profileData.laboratoryAddress = profileData.laboratoryAddress || {};
+            
+            // Check if laboratoryAddress is an object or a string
+            if (typeof laboratoryAddress === 'object' && laboratoryAddress !== null) {
+                // It's an object, extract its properties
+                if (laboratoryAddress.address !== undefined) {
+                    profileData.laboratoryAddress.address = laboratoryAddress.address;
+                }
+                if (laboratoryAddress.pinCode !== undefined) {
+                    profileData.laboratoryAddress.pinCode = laboratoryAddress.pinCode;
+                }
+                if (laboratoryAddress.googleMapsLink !== undefined) {
+                    profileData.laboratoryAddress.googleMapsLink = laboratoryAddress.googleMapsLink;
+                }
+                if (laboratoryAddress.latitude !== undefined) {
+                    profileData.laboratoryAddress.latitude = laboratoryAddress.latitude;
+                }
+                if (laboratoryAddress.longitude !== undefined) {
+                    profileData.laboratoryAddress.longitude = laboratoryAddress.longitude;
+                }
+            }
+        }
+        
+        if (city !== undefined && city !== '') profileData.city = city;
+        
+        // Handle laboratory services
+        if (laboratoryServices !== undefined && Array.isArray(laboratoryServices) && laboratoryServices.length > 0) {
+            profileData.laboratoryServices = laboratoryServices.map(service => {
+                const serviceData: any = {
+                    name: service.name,
+                    description: service.description || '',
+                    collectionType: service.collectionType || 'both',
+                    price: service.price || 0
+                };
+                
+                if (service.coverImage) {
+                    serviceData.coverImage = service.coverImage;
+                }
+                
+                if (service.tests && Array.isArray(service.tests)) {
+                    serviceData.tests = service.tests.map((test: any) => ({
+                        name: test.name,
+                        description: test.description || ''
+                    }));
+                } else {
+                    serviceData.tests = [];
+                }
+                
+                return serviceData;
+            });
+        }
+
+        // Check if profile already exists for this user
+        const existingProfile = await LaboratoryProfile.findOne({ user: userId });
+
+        let laboratoryProfile;
+        if (existingProfile) {
+            // Update existing profile
+            laboratoryProfile = await LaboratoryProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
+        } else {
+            // Create new profile
+            laboratoryProfile = await LaboratoryProfile.create(profileData);
+        }
+
+        res.status(200).json(laboratoryProfile);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
 // Request file upload URL
 const getUploadUrl = async (req: CustomRequest, res: Response): Promise<void> => {
@@ -223,5 +320,6 @@ export {
     createUpdateUserProfile,
     getProfile,
     createUpdateDoctorProfile,
+    createUpdateLaboratoryProfile,
     getUploadUrl
 }; 

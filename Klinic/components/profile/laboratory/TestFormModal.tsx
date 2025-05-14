@@ -1,0 +1,97 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, Modal, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+
+interface TestFormModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSubmit: (test: {
+    name: string;
+    description: string;
+  }) => void;
+}
+
+const TestFormModal: React.FC<TestFormModalProps> = ({
+  visible,
+  onClose,
+  onSubmit
+}) => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+
+  const handleSubmit = () => {
+    if (!name.trim()) {
+      alert('Please enter a test name');
+      return;
+    }
+    
+    onSubmit({
+      name: name.trim(),
+      description: description.trim()
+    });
+    
+    // Reset form
+    setName('');
+    setDescription('');
+  };
+  
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+    >
+      <View className="flex-1 justify-end bg-black/50">
+        <View className="bg-white rounded-t-3xl p-5 pb-8">
+          <View className="flex-row justify-between items-center mb-5 pt-1">
+            <Text className="text-xl font-bold text-gray-800">Add New Test</Text>
+            <TouchableOpacity onPress={onClose}>
+              <MaterialIcons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Test Name */}
+          <View className="mb-4">
+            <Text className="text-gray-700 font-medium mb-2">
+              Test Name <Text className="text-red-500">*</Text>
+            </Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Enter test name"
+              className="border border-gray-300 rounded-xl p-3 text-gray-800"
+            />
+          </View>
+          
+          {/* Description */}
+          <View className="mb-6">
+            <Text className="text-gray-700 font-medium mb-2">
+              Description (Optional)
+            </Text>
+            <TextInput
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Enter test description"
+              multiline
+              numberOfLines={3}
+              className="border border-gray-300 rounded-xl p-3 text-gray-800"
+              style={{ textAlignVertical: 'top' }}
+            />
+          </View>
+          
+          {/* Submit Button */}
+          <TouchableOpacity 
+            className="bg-indigo-500 py-4 rounded-xl items-center"
+            onPress={handleSubmit}
+          >
+            <Text className="text-white font-bold text-base">
+              Add Test
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+export default TestFormModal; 

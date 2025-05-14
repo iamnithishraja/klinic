@@ -11,7 +11,7 @@ import { store } from '@/utils';
 import { UserRole } from '@/types/userTypes';
 import { UserData, UserProfile, ProfileUpdateData, Address, DoctorProfile } from '@/types/profileTypes';
 import { useUserStore } from '@/store/userStore';
-import { useUserProfileStore, useDoctorProfileStore, useProfileUIStore } from '@/store/profileStore';
+import { useUserProfileStore, useDoctorProfileStore, useLaboratoryProfileStore, useProfileUIStore } from '@/store/profileStore';
 import useProfileApi from '@/hooks/useProfileApi';
 import apiClient from '@/api/client';
 
@@ -30,6 +30,7 @@ const Profile = () => {
   // Use Zustand stores directly
   const userProfileStore = useUserProfileStore();
   const doctorProfileStore = useDoctorProfileStore();
+  const laboratoryProfileStore = useLaboratoryProfileStore();
   const uiStore = useProfileUIStore();
 
   // Local state for UI
@@ -60,6 +61,10 @@ const Profile = () => {
 
   const doctorProfileApi = useProfileApi({
     endpoint: '/api/v1/doctor-profile'
+  });
+
+  const laboratoryProfileApi = useProfileApi({
+    endpoint: '/api/v1/laboratory-profile'
   });
 
   // Setup keyboard listener
@@ -119,6 +124,8 @@ const Profile = () => {
               qualifications: doctorProfileStore.qualifications,
               isAvailable: doctorProfileStore.isAvailable
             });
+          } else if (user?.role === UserRole.LABORATORY) {
+            laboratoryProfileStore.updateFromApiResponse(profileData.profile);
           }
 
           // Set available cities - store will handle preventing overwrite
@@ -181,6 +188,8 @@ const Profile = () => {
             userProfileStore.updateFromApiResponse(profileData);
           } else if (user?.role === UserRole.DOCTOR) {
             doctorProfileStore.updateFromApiResponse(profileData);
+          } else if (user?.role === UserRole.LABORATORY) {
+            laboratoryProfileStore.updateFromApiResponse(profileData);
           }
         }
       } catch (error: any) {
@@ -271,6 +280,8 @@ const Profile = () => {
         imageUrl = await userProfileApi.uploadFile(fileType, fileName, imageUri);
       } else if (user?.role === UserRole.DOCTOR) {
         imageUrl = await doctorProfileApi.uploadFile(fileType, fileName, imageUri);
+      } else if (user?.role === UserRole.LABORATORY) {
+        imageUrl = await laboratoryProfileApi.uploadFile(fileType, fileName, imageUri);
       }
 
       if (imageUrl) {
@@ -281,6 +292,8 @@ const Profile = () => {
           userProfileStore.setProfilePicture(imageUrl);
         } else if (user?.role === UserRole.DOCTOR) {
           doctorProfileStore.setCoverImage(imageUrl);
+        } else if (user?.role === UserRole.LABORATORY) {
+          laboratoryProfileStore.setCoverImage(imageUrl);
         }
       } else {
         console.error('Failed to get URL for the uploaded image');
@@ -637,6 +650,42 @@ const Profile = () => {
     }
   };
 
+  // Save laboratory profile
+  const handleUpdateLaboratoryProfile = async () => {
+    try {
+      uiStore.setUpdating(true);
+
+      // Get prepared profile data from store
+      const profileData = laboratoryProfileStore.prepareProfileData();
+
+      console.log('Submitting laboratory profile data:', JSON.stringify(profileData, null, 2));
+      const response = await laboratoryProfileApi.updateData(profileData);
+
+      if (response) {
+        alert('Laboratory profile updated successfully');
+
+        // Update saved values to match current values
+        laboratoryProfileStore.setSavedValues({
+          laboratoryName: laboratoryProfileStore.laboratoryName,
+          laboratoryPhone: laboratoryProfileStore.laboratoryPhone,
+          laboratoryEmail: laboratoryProfileStore.laboratoryEmail,
+          laboratoryWebsite: laboratoryProfileStore.laboratoryWebsite,
+          laboratoryAddress: laboratoryProfileStore.laboratoryAddress,
+          laboratoryPinCode: laboratoryProfileStore.laboratoryPinCode,
+          laboratoryCity: laboratoryProfileStore.laboratoryCity,
+          laboratoryGoogleMapsLink: laboratoryProfileStore.laboratoryGoogleMapsLink,
+          laboratoryServices: laboratoryProfileStore.laboratoryServices,
+          coverImage: laboratoryProfileStore.coverImage
+        });
+      }
+    } catch (error) {
+      console.error('Error updating laboratory profile:', error);
+      alert('Failed to update laboratory profile');
+    } finally {
+      uiStore.setUpdating(false);
+    }
+  };
+
   // Filter cities based on input
   const filterCities = (searchText: string) => {
     const regexp = new RegExp(searchText, 'i');
@@ -865,6 +914,42 @@ const Profile = () => {
     }
   };
 
+  // Determine if any changes have been made to show save button
+  const hasChanges = () => {
+    if (user?.role === UserRole.USER) {
+      // Check user profile changes
+      return hasUserProfileChanges();
+    } else if (user?.role === UserRole.DOCTOR) {
+      // Check doctor profile changes
+      return hasDoctorProfileChanges();
+    } else if (user?.role === UserRole.LABORATORY) {
+      // Check laboratory profile changes
+      return (
+        laboratoryProfileStore.laboratoryName !== laboratoryProfileStore.savedValues.laboratoryName ||
+        laboratoryProfileStore.laboratoryPhone !== laboratoryProfileStore.savedValues.laboratoryPhone ||
+        laboratoryProfileStore.laboratoryEmail !== laboratoryProfileStore.savedValues.laboratoryEmail ||
+        laboratoryProfileStore.laboratoryWebsite !== laboratoryProfileStore.savedValues.laboratoryWebsite ||
+        laboratoryProfileStore.laboratoryAddress !== laboratoryProfileStore.savedValues.laboratoryAddress ||
+        laboratoryProfileStore.laboratoryPinCode !== laboratoryProfileStore.savedValues.laboratoryPinCode ||
+        laboratoryProfileStore.laboratoryCity !== laboratoryProfileStore.savedValues.laboratoryCity ||
+        laboratoryProfileStore.laboratoryGoogleMapsLink !== laboratoryProfileStore.savedValues.laboratoryGoogleMapsLink ||
+        JSON.stringify(laboratoryProfileStore.laboratoryServices) !== JSON.stringify(laboratoryProfileStore.savedValues.laboratoryServices)
+      );
+    }
+    return false;
+  };
+
+  // Save profile changes
+  const handleSaveChanges = async () => {
+    if (user?.role === UserRole.USER || user?.role === UserRole.DELIVERY_BOY) {
+      await handleUpdateUserProfile();
+    } else if (user?.role === UserRole.DOCTOR) {
+      await handleUpdateDoctorProfile();
+    } else if (user?.role === UserRole.LABORATORY) {
+      await handleUpdateLaboratoryProfile();
+    }
+  };
+
   // Render the correct profile form based on user role
   const renderProfileForm = () => {
     if (!user) return null;
@@ -996,13 +1081,8 @@ const Profile = () => {
         </ScrollView>
 
         {/* Floating Save Button (only show when there are changes) */}
-        {(user?.role === UserRole.USER || user?.role === UserRole.DELIVERY_BOY) && hasUserProfileChanges() && (
-          <SaveButton onPress={handleUpdateUserProfile} loading={uiStore.updating} />
-        )}
-
-        {/* Floating Save Button for Doctor Profile */}
-        {(user?.role === UserRole.DOCTOR && hasDoctorProfileChanges()) && (
-          <SaveButton onPress={handleUpdateDoctorProfile} loading={uiStore.updating} />
+        {(user?.role === UserRole.USER || user?.role === UserRole.DELIVERY_BOY) && hasChanges() && (
+          <SaveButton onPress={handleSaveChanges} loading={uiStore.updating} />
         )}
 
         {/* Image Picker Modal */}
