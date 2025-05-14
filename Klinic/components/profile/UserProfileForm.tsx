@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { Picker } from '@react-native-picker/picker';
 import CitySearch from './CitySearch';
+import { UserRole } from '@/types/userTypes';
 
 interface UserProfileFormProps {
   age: string;
@@ -15,6 +16,7 @@ interface UserProfileFormProps {
   medicalHistoryPdf: string;
   uploadingPdf: boolean;
   cities: string[];
+  userRole?: UserRole;
   onChangeAge: (text: string) => void;
   onChangeGender: (gender: string) => void;
   onChangeAddress: (text: string) => void;
@@ -43,6 +45,7 @@ const UserProfileForm = ({
   medicalHistoryPdf,
   uploadingPdf,
   cities,
+  userRole = UserRole.USER,
   onChangeAge,
   onChangeGender,
   onChangeAddress,
@@ -53,6 +56,7 @@ const UserProfileForm = ({
   savedValues
 }: UserProfileFormProps) => {
   const genderOptions = ['Male', 'Female'];
+  const isDeliveryPartner = userRole === UserRole.DELIVERY_BOY;
 
   // Function to open PDF externally
   const openPdfExternally = () => {
@@ -74,7 +78,8 @@ const UserProfileForm = ({
   return (
     <View>
       {/* Message about unsaved changes - Moved to top */}
-      {(isAgeChanged || isGenderChanged || isAddressChanged || isPinCodeChanged || isCityChanged || isMedicalHistoryChanged || isPdfChanged) && (
+      {(isAgeChanged || isGenderChanged || isAddressChanged || isPinCodeChanged || isCityChanged || 
+        (!isDeliveryPartner && (isMedicalHistoryChanged || isPdfChanged))) && (
         <View className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl">
           <Text className="text-red-600 text-sm">
             Fields with red highlights have unsaved changes. Click the "Save Changes" button to save your updates.
@@ -204,91 +209,96 @@ const UserProfileForm = ({
         </View>
       </View>
 
-      {/* Medical History Field */}
-      <View className="mb-6">
-        <Text className="text-gray-700 font-medium text-base mb-2">
-          Medical History
-          {isMedicalHistoryChanged && <Text className="text-red-500 ml-1">*</Text>}
-        </Text>
-        <View className={`flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isMedicalHistoryChanged ? 'border-red-400' : 'border-gray-200'}`}>
-          <MaterialCommunityIcons 
-            name="medical-bag" 
-            size={22}
-            color={isMedicalHistoryChanged ? "#F87171" : "#6366F1"} 
-            style={{ marginRight: 12, marginTop: 2 }}
-          />
-          <TextInput
-            value={medicalHistory}
-            onChangeText={onChangeMedicalHistory}
-            placeholder="Enter your medical history"
-            placeholderTextColor="#9CA3AF"
-            multiline
-            numberOfLines={4}
-            className="flex-1 text-gray-800 min-h-[100px]"
-            style={{ textAlignVertical: 'top' }}
-          />
-        </View>
-      </View>
-
-      {/* Medical History PDF Upload */}
-      <View className="mb-6">
-        <Text className="text-gray-700 font-medium text-base mb-2">
-          Medical History PDF
-          {isPdfChanged && <Text className="text-red-500 ml-1">*</Text>}
-        </Text>
-        <TouchableOpacity
-          onPress={onDocumentPick}
-          disabled={uploadingPdf}
-          className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPdfChanged ? 'border-red-400' : 'border-gray-200'}`}
-        >
-          <MaterialCommunityIcons
-            name="file-pdf-box"
-            size={22}
-            color={isPdfChanged ? "#F87171" : "#6366F1"}
-            style={{ marginRight: 12 }}
-          />
-          {uploadingPdf ? (
-            <View className="flex-row items-center">
-              <ActivityIndicator size="small" color="#6366F1" />
-              <Text className="text-gray-500 ml-2">Uploading...</Text>
-            </View>
-          ) : medicalHistoryPdf ? (
-            <View className="flex-row items-center justify-between flex-1">
-              <Text className="text-gray-800">PDF uploaded successfully</Text>
+      {/* Medical History Fields - Only show for non-delivery partners */}
+      {!isDeliveryPartner && (
+        <>
+          {/* Medical History Field */}
+          <View className="mb-6">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Medical History
+              {isMedicalHistoryChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
+            <View className={`flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isMedicalHistoryChanged ? 'border-red-400' : 'border-gray-200'}`}>
               <MaterialCommunityIcons 
-                name={isPdfChanged ? "alert-circle" : "check-circle"} 
-                size={20} 
-                color={isPdfChanged ? "#F87171" : "#10B981"} 
+                name="medical-bag" 
+                size={22}
+                color={isMedicalHistoryChanged ? "#F87171" : "#6366F1"} 
+                style={{ marginRight: 12, marginTop: 2 }}
+              />
+              <TextInput
+                value={medicalHistory}
+                onChangeText={onChangeMedicalHistory}
+                placeholder="Enter your medical history"
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={4}
+                className="flex-1 text-gray-800 min-h-[100px]"
+                style={{ textAlignVertical: 'top' }}
               />
             </View>
-          ) : (
-            <Text className="flex-1 text-gray-400">Upload medical history PDF</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          </View>
 
-      {/* PDF Preview Section */}
-      {medicalHistoryPdf ? (
-        <View className="mb-6">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-gray-700 font-medium text-base">PDF Preview</Text>
-            <TouchableOpacity onPress={openPdfExternally} className="px-3 py-1 bg-primary rounded-lg">
-              <Text className="text-white font-medium">Open Full PDF</Text>
+          {/* Medical History PDF Upload */}
+          <View className="mb-6">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Medical History PDF
+              {isPdfChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
+            <TouchableOpacity
+              onPress={onDocumentPick}
+              disabled={uploadingPdf}
+              className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPdfChanged ? 'border-red-400' : 'border-gray-200'}`}
+            >
+              <MaterialCommunityIcons
+                name="file-pdf-box"
+                size={22}
+                color={isPdfChanged ? "#F87171" : "#6366F1"}
+                style={{ marginRight: 12 }}
+              />
+              {uploadingPdf ? (
+                <View className="flex-row items-center">
+                  <ActivityIndicator size="small" color="#6366F1" />
+                  <Text className="text-gray-500 ml-2">Uploading...</Text>
+                </View>
+              ) : medicalHistoryPdf ? (
+                <View className="flex-row items-center justify-between flex-1">
+                  <Text className="text-gray-800">PDF uploaded successfully</Text>
+                  <MaterialCommunityIcons 
+                    name={isPdfChanged ? "alert-circle" : "check-circle"} 
+                    size={20} 
+                    color={isPdfChanged ? "#F87171" : "#10B981"} 
+                  />
+                </View>
+              ) : (
+                <Text className="flex-1 text-gray-400">Upload medical history PDF</Text>
+              )}
             </TouchableOpacity>
           </View>
-          <View 
-            className={`border rounded-xl overflow-hidden bg-white shadow-sm ${isPdfChanged ? 'border-red-400' : 'border-gray-200'}`}
-            style={{ height: 300 }} // Fixed height for the preview
-          >
-            <WebView
-              source={{ uri: medicalHistoryPdf }}
-              style={{ flex: 1 }}
-              renderLoading={() => <ActivityIndicator size="large" color="#6366F1" />}
-              startInLoadingState={true}
-            />
-          </View>
-        </View>
-      ) : null}
+
+          {/* PDF Preview Section */}
+          {medicalHistoryPdf ? (
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-gray-700 font-medium text-base">PDF Preview</Text>
+                <TouchableOpacity onPress={openPdfExternally} className="px-3 py-1 bg-primary rounded-lg">
+                  <Text className="text-white font-medium">Open Full PDF</Text>
+                </TouchableOpacity>
+              </View>
+              <View 
+                className={`border rounded-xl overflow-hidden bg-white shadow-sm ${isPdfChanged ? 'border-red-400' : 'border-gray-200'}`}
+                style={{ height: 300 }} // Fixed height for the preview
+              >
+                <WebView
+                  source={{ uri: medicalHistoryPdf }}
+                  style={{ flex: 1 }}
+                  renderLoading={() => <ActivityIndicator size="large" color="#6366F1" />}
+                  startInLoadingState={true}
+                />
+              </View>
+            </View>
+          ) : null}
+        </>
+      )}
     </View>
   );
 };

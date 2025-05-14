@@ -3,5 +3,5 @@ export enum UserRole {
   USER = 'user',
   DOCTOR = 'doctor',
   LABORATORY = 'laboratory',
-  DELIVERY_BOY = 'deliveryboy',
+  DELIVERY_BOY = 'deliverypartner',
 } 

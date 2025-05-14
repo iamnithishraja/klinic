@@ -289,14 +289,26 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   removeSpecialization: (index) => set((state) => ({
     specializations: state.specializations.filter((_, i) => i !== index)
   })),
-  setAvailableSpecializations: (specializations) => set({ availableSpecializations: specializations }),
+  setAvailableSpecializations: (specializations) => set((state) => {
+    // Only set if empty (first time) and the input array is not empty
+    if (state.availableSpecializations.length === 0 && specializations.length > 0) {
+      return { availableSpecializations: specializations };
+    }
+    return {}; // Return empty object to avoid unnecessary state updates
+  }),
   addQualification: (qualification) => set((state) => ({
     qualifications: [...state.qualifications, qualification]
   })),
   removeQualification: (index) => set((state) => ({
     qualifications: state.qualifications.filter((_, i) => i !== index)
   })),
-  setAvailableQualifications: (qualifications) => set({ availableQualifications: qualifications }),
+  setAvailableQualifications: (qualifications) => set((state) => {
+    // Only set if empty (first time) and the input array is not empty
+    if (state.availableQualifications.length === 0 && qualifications.length > 0) {
+      return { availableQualifications: qualifications };
+    }
+    return {}; // Return empty object to avoid unnecessary state updates
+  }),
   setConsultationFee: (consultationFee) => set({ consultationFee }),
   setConsultationType: (consultationType) => set({ consultationType }),
   setCoverImage: (url) => set({ coverImage: url }),
@@ -514,67 +526,80 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
 // UI STATE STORE
 interface ProfileUIState {
   loading: boolean;
+  uploading: boolean;
   updating: boolean;
   uploadingImage: boolean;
   uploadingPdf: boolean;
   uploadingCoverImage: boolean;
-  showDatePicker: boolean;
   showImageOptions: boolean;
+  showCitiesPopup: boolean;
   cities: string[];
-  filteredCities: string[];
+  hasLoadedAvailableCities: boolean;
+  hasLoadedAvailableSpecializations: boolean;
+  hasLoadedAvailableQualifications: boolean;
   
   // Actions
   setLoading: (loading: boolean) => void;
+  setUploading: (uploading: boolean) => void;
   setUpdating: (updating: boolean) => void;
   setUploadingImage: (uploading: boolean) => void;
   setUploadingPdf: (uploading: boolean) => void;
   setUploadingCoverImage: (uploading: boolean) => void;
-  setShowDatePicker: (show: boolean) => void;
   setShowImageOptions: (show: boolean) => void;
+  setShowCitiesPopup: (show: boolean) => void;
   setCities: (cities: string[]) => void;
-  setFilteredCities: (cities: string[]) => void;
-  filterCities: (query: string) => void;
+  setHasLoadedAvailableCities: (loaded: boolean) => void;
+  setHasLoadedAvailableSpecializations: (loaded: boolean) => void;
+  setHasLoadedAvailableQualifications: (loaded: boolean) => void;
   reset: () => void;
 }
 
-export const useProfileUIStore = create<ProfileUIState>((set, get) => ({
+export const useProfileUIStore = create<ProfileUIState>((set) => ({
   // Initial state
   loading: false,
+  uploading: false,
   updating: false,
   uploadingImage: false,
   uploadingPdf: false,
   uploadingCoverImage: false,
-  showDatePicker: false,
   showImageOptions: false,
+  showCitiesPopup: false,
   cities: [],
-  filteredCities: [],
+  hasLoadedAvailableCities: false,
+  hasLoadedAvailableSpecializations: false,
+  hasLoadedAvailableQualifications: false,
   
   // Actions
   setLoading: (loading) => set({ loading }),
+  setUploading: (uploading) => set({ uploading }),
   setUpdating: (updating) => set({ updating }),
-  setUploadingImage: (uploading) => set({ uploadingImage: uploading }),
-  setUploadingPdf: (uploading) => set({ uploadingPdf: uploading }),
-  setUploadingCoverImage: (uploading) => set({ uploadingCoverImage: uploading }),
-  setShowDatePicker: (show) => set({ showDatePicker: show }),
-  setShowImageOptions: (show) => set({ showImageOptions: show }),
-  setCities: (cities) => set({ cities, filteredCities: cities }),
-  setFilteredCities: (filteredCities) => set({ filteredCities }),
-  
-  filterCities: (query) => {
-    const cities = get().cities;
-    const regexp = new RegExp(query, 'i');
-    const filtered = cities.filter(city => regexp.test(city));
-    set({ filteredCities: filtered });
-  },
-  
+  setUploadingImage: (uploadingImage) => set({ uploadingImage }),
+  setUploadingPdf: (uploadingPdf) => set({ uploadingPdf }),
+  setUploadingCoverImage: (uploadingCoverImage) => set({ uploadingCoverImage }),
+  setShowImageOptions: (showImageOptions) => set({ showImageOptions }),
+  setShowCitiesPopup: (showCitiesPopup) => set({ showCitiesPopup }),
+  setCities: (cities) => set((state) => {
+    // Only set cities if they haven't been loaded yet
+    if (!state.hasLoadedAvailableCities && cities.length > 0) {
+      return { cities, hasLoadedAvailableCities: true };
+    }
+    return state;
+  }),
+  setHasLoadedAvailableCities: (loaded) => set({ hasLoadedAvailableCities: loaded }),
+  setHasLoadedAvailableSpecializations: (loaded) => set({ hasLoadedAvailableSpecializations: loaded }),
+  setHasLoadedAvailableQualifications: (loaded) => set({ hasLoadedAvailableQualifications: loaded }),
   reset: () => set({
     loading: false,
+    uploading: false,
     updating: false,
     uploadingImage: false,
     uploadingPdf: false,
     uploadingCoverImage: false,
-    showDatePicker: false,
     showImageOptions: false,
-    filteredCities: get().cities
+    showCitiesPopup: false,
+    cities: [],
+    hasLoadedAvailableCities: false,
+    hasLoadedAvailableSpecializations: false,
+    hasLoadedAvailableQualifications: false,
   })
 })); 

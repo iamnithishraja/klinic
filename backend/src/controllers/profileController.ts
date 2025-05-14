@@ -13,8 +13,10 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
         const userId = req.user._id;
 
         // Check if profile already exists for this user
-        const existingProfile = await UserProfile.findOne({ user: userId });
-
+        let existingProfile = await UserProfile.findOne({ user: userId });
+        if (req.user.role === "deliverypartner") {
+            existingProfile = await DeliveryBoyProfile.findOne({ user: userId });
+        }
         // Delete existing medical history PDF if a new one is provided
         if (existingProfile?.medicalHistoryPdf && medicalHistoryPdf && existingProfile.medicalHistoryPdf !== medicalHistoryPdf) {
             await deleteFileFromR2(existingProfile.medicalHistoryPdf);
@@ -36,14 +38,23 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
         if (city !== undefined && city !== '') profileData.city = city;
 
         let userProfile;
-        if (existingProfile) {
-            // Update existing profile
-            userProfile = await UserProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
-        } else {
-            // Create new profile
-            userProfile = await UserProfile.create(profileData);
+        if (req.user.role === "user") {
+            if (existingProfile) {
+                // Update existing profile
+                userProfile = await UserProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
+            } else {
+                // Create new profile
+                userProfile = await UserProfile.create(profileData);
+            }
+        } else if (req.user.role === "deliverypartner") {
+            if (existingProfile) {
+                // Update existing profile
+                userProfile = await DeliveryBoyProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
+            } else {
+                // Create new profile
+                userProfile = await DeliveryBoyProfile.create(profileData);
+            }
         }
-
         res.status(200).json(userProfile);
     } catch (error) {
         console.error(error);
@@ -70,7 +81,7 @@ const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
             case 'laboratory':
                 profile = await LaboratoryProfile.findOne({ user: userId });
                 break;
-            case 'deliveryboy':
+            case 'deliverypartner':
                 profile = await DeliveryBoyProfile.findOne({ user: userId });
                 break;
             default:
@@ -131,15 +142,36 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
         if (clinicEmail !== undefined && clinicEmail !== '') profileData.clinicEmail = clinicEmail;
         if (clinicWebsite !== undefined && clinicWebsite !== '') profileData.clinicWebsite = clinicWebsite;
         if (coverImage !== undefined && coverImage !== '') profileData.coverImage = coverImage;
-        
+
         // Handle clinic address and Google Maps link
         if (clinicAddress !== undefined || googleMapsLink !== undefined) {
             profileData.clinicAddress = profileData.clinicAddress || {};
-            
-            if (clinicAddress !== undefined && clinicAddress !== '') {
-                profileData.clinicAddress.address = clinicAddress;
+
+            if (clinicAddress !== undefined) {
+                // Check if clinicAddress is an object or a string
+                if (typeof clinicAddress === 'object' && clinicAddress !== null) {
+                    // It's an object, extract its properties
+                    if (clinicAddress.address !== undefined) {
+                        profileData.clinicAddress.address = clinicAddress.address;
+                    }
+                    if (clinicAddress.pinCode !== undefined) {
+                        profileData.clinicAddress.pinCode = clinicAddress.pinCode;
+                    }
+                    if (clinicAddress.googleMapsLink !== undefined) {
+                        profileData.clinicAddress.googleMapsLink = clinicAddress.googleMapsLink;
+                    }
+                    if (clinicAddress.latitude !== undefined) {
+                        profileData.clinicAddress.latitude = clinicAddress.latitude;
+                    }
+                    if (clinicAddress.longitude !== undefined) {
+                        profileData.clinicAddress.longitude = clinicAddress.longitude;
+                    }
+                } else if (clinicAddress !== '') {
+                    // It's a string, assign it directly to address
+                    profileData.clinicAddress.address = clinicAddress;
+                }
             }
-            
+
             if (googleMapsLink !== undefined && googleMapsLink !== '') {
                 profileData.clinicAddress.googleMapsLink = googleMapsLink;
             }
@@ -166,50 +198,6 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
     }
 };
 
-// Create or update laboratory profile
-const createUpdateLabProfile = async (req: CustomRequest, res: Response): Promise<void> => {
-    try {
-        const {
-            laboratoryName, laboratoryAddress, laboratoryPhone,
-            laboratoryEmail, laboratoryWebsite, laboratoryServices, city
-        } = req.body;
-
-        const userId = req.user._id;
-
-        // Create initial profile data object
-        const profileData: any = {
-            user: userId,
-            updatedAt: new Date()
-        };
-
-        // Add fields to profileData only if they are defined
-        if (laboratoryName !== undefined && laboratoryName !== '') profileData.laboratoryName = laboratoryName;
-        if (laboratoryAddress !== undefined && laboratoryAddress !== '') profileData.laboratoryAddress = laboratoryAddress;
-        if (laboratoryPhone !== undefined && laboratoryPhone !== '') profileData.laboratoryPhone = laboratoryPhone;
-        if (laboratoryEmail !== undefined && laboratoryEmail !== '') profileData.laboratoryEmail = laboratoryEmail;
-        if (laboratoryWebsite !== undefined && laboratoryWebsite !== '') profileData.laboratoryWebsite = laboratoryWebsite;
-        if (laboratoryServices !== undefined && Array.isArray(laboratoryServices) && laboratoryServices.length > 0) 
-            profileData.laboratoryServices = laboratoryServices;
-        if (city !== undefined && city !== '') profileData.city = city;
-
-        // Check if profile already exists for this user
-        const existingProfile = await LaboratoryProfile.findOne({ user: userId });
-
-        let labProfile;
-        if (existingProfile) {
-            // Update existing profile
-            labProfile = await LaboratoryProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
-        } else {
-            // Create new profile
-            labProfile = await LaboratoryProfile.create(profileData);
-        }
-
-        res.status(200).json(labProfile);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-};
 
 
 // Request file upload URL
@@ -235,6 +223,5 @@ export {
     createUpdateUserProfile,
     getProfile,
     createUpdateDoctorProfile,
-    createUpdateLabProfile,
     getUploadUrl
 }; 

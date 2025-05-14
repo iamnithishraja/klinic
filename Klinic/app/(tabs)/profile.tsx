@@ -20,7 +20,6 @@ import ProfileHeader from '@/components/profile/ProfileHeader';
 import UserProfileForm from '@/components/profile/UserProfileForm';
 import DoctorProfileForm from '@/components/profile/DoctorProfileForm';
 import LaboratoryProfileForm from '@/components/profile/LaboratoryProfileForm';
-import DeliveryProfileForm from '@/components/profile/DeliveryProfileForm';
 import SaveButton from '@/components/profile/SaveButton';
 import ImagePickerModal from '@/components/profile/ImagePickerModal';
 
@@ -109,7 +108,7 @@ const Profile = () => {
 
         // Handle new response format with profile and available data
         if (profileData && profileData.profile) {
-          if (user?.role === UserRole.USER) {
+          if (user?.role === UserRole.USER || user?.role === UserRole.DELIVERY_BOY) {
             userProfileStore.updateFromApiResponse(profileData.profile);
           } else if (user?.role === UserRole.DOCTOR) {
             doctorProfileStore.updateFromApiResponse(profileData.profile);
@@ -122,7 +121,7 @@ const Profile = () => {
             });
           }
 
-          // Set available cities
+          // Set available cities - store will handle preventing overwrite
           if (profileData.availableCities &&
             Array.isArray(profileData.availableCities)) {
             setFilteredCities(profileData.availableCities);
@@ -140,6 +139,7 @@ const Profile = () => {
 
           // Set available specializations and qualifications for doctor profiles
           if (user?.role === UserRole.DOCTOR) {
+            // Set available specializations - store will handle preventing overwrite
             if (profileData.availableSpecializations &&
               Array.isArray(profileData.availableSpecializations)) {
               doctorProfileStore.setAvailableSpecializations(profileData.availableSpecializations);
@@ -151,12 +151,13 @@ const Profile = () => {
               console.log(`Loaded ${profileData.avilableSpecializations.length} available specializations (from misspelled key):`, profileData.avilableSpecializations);
             } else {
               console.warn('No available specializations found in API response');
-              // Set some defaults if none are provided
+              // Set some defaults if none are provided and they haven't been set yet
               const defaultSpecializations = ["Cardiologist", "Dermatologist", "Pediatrician", "Neurologist", "Orthopedic Surgeon"];
               doctorProfileStore.setAvailableSpecializations(defaultSpecializations);
               console.log('Using default specializations:', defaultSpecializations);
             }
 
+            // Set available qualifications - store will handle preventing overwrite
             if (profileData.availableQualifications &&
               Array.isArray(profileData.availableQualifications)) {
               doctorProfileStore.setAvailableQualifications(profileData.availableQualifications);
@@ -168,7 +169,7 @@ const Profile = () => {
               console.log(`Loaded ${profileData.avilableQualifications.length} available qualifications (from misspelled key):`, profileData.avilableQualifications);
             } else {
               console.warn('No available qualifications found in API response');
-              // Set some defaults if none are provided
+              // Set some defaults if none are provided and they haven't been set yet
               const defaultQualifications = ["MBBS", "MD", "MS", "DM"];
               doctorProfileStore.setAvailableQualifications(defaultQualifications);
               console.log('Using default qualifications:', defaultQualifications);
@@ -176,7 +177,7 @@ const Profile = () => {
           }
         } else {
           // Fallback to legacy format
-          if (user?.role === UserRole.USER) {
+          if (user?.role === UserRole.USER || user?.role === UserRole.DELIVERY_BOY) {
             userProfileStore.updateFromApiResponse(profileData);
           } else if (user?.role === UserRole.DOCTOR) {
             doctorProfileStore.updateFromApiResponse(profileData);
@@ -870,6 +871,7 @@ const Profile = () => {
 
     switch (user.role) {
       case UserRole.USER:
+      case UserRole.DELIVERY_BOY:
         return (
           <UserProfileForm
             age={userProfileStore.age}
@@ -881,6 +883,7 @@ const Profile = () => {
             medicalHistoryPdf={userProfileStore.medicalHistoryPdf}
             uploadingPdf={uiStore.uploadingPdf}
             cities={uiStore.cities}
+            userRole={user.role}
             onChangeAge={handleAgeChange}
             onChangeGender={handleGenderChange}
             onChangeAddress={handleAddressChange}
@@ -947,8 +950,6 @@ const Profile = () => {
         );
       case UserRole.LABORATORY:
         return <LaboratoryProfileForm />;
-      case UserRole.DELIVERY_BOY:
-        return <DeliveryProfileForm />;
       default:
         return (
           <View className="bg-yellow-50 p-4 rounded-xl mb-6">
@@ -995,7 +996,7 @@ const Profile = () => {
         </ScrollView>
 
         {/* Floating Save Button (only show when there are changes) */}
-        {(user?.role === UserRole.USER && hasUserProfileChanges()) && (
+        {(user?.role === UserRole.USER || user?.role === UserRole.DELIVERY_BOY) && hasUserProfileChanges() && (
           <SaveButton onPress={handleUpdateUserProfile} loading={uiStore.updating} />
         )}
 
