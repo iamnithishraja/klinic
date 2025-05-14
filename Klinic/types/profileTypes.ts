@@ -29,6 +29,7 @@ export interface UserProfile {
   medicalHistory?: string;
   medicalHistoryPdf?: string;
   address?: Address;
+  city?: string;
   updatedAt?: Date;
   createdAt?: Date;
 }

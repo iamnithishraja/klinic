@@ -3,11 +3,12 @@ import type { CustomRequest } from '../types/userTypes';
 import { UserProfile, DoctorProfile, LaboratoryProfile, DeliveryBoyProfile } from '../models/profileModel';
 import mongoose from 'mongoose';
 import { generateUploadUrlProfile, deleteFileFromR2 } from '../utils/fileUpload';
+import { getCities } from '../utils/selectors';
 
 // Create or update user profile
 const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-        const { profilePicture, age, gender, medicalHistory, medicalHistoryPdf, address } = req.body;
+        const { profilePicture, age, gender, medicalHistory, medicalHistoryPdf, address, city } = req.body;
 
         const userId = req.user._id;
 
@@ -27,6 +28,7 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
             medicalHistory,
             medicalHistoryPdf,
             address,
+            city,
             updatedAt: new Date()
         };
 
@@ -77,8 +79,8 @@ const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
             res.status(404).json({ message: 'Profile not found' });
             return;
         }
-
-        res.status(200).json(profile);
+        const avilableCities = getCities();
+        res.status(200).json({ profile, avilableCities });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -92,7 +94,7 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
             description, experience, specializations, qualifications,
             consultationFee, profilePicture, age, gender, consultationType,
             availableSlots, availableDays, isAvailable, clinicName, clinicPhone,
-            clinicEmail, clinicWebsite, clinicImages, clinicAddress
+            clinicEmail, clinicWebsite, clinicImages, clinicAddress, city
         } = req.body;
 
         const userId = req.user._id;
@@ -117,6 +119,7 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
             clinicWebsite,
             clinicImages,
             clinicAddress,
+            city,
             updatedAt: new Date()
         };
 
@@ -144,7 +147,7 @@ const createUpdateLabProfile = async (req: CustomRequest, res: Response): Promis
     try {
         const {
             laboratoryName, laboratoryAddress, laboratoryPhone,
-            laboratoryEmail, laboratoryWebsite, laboratoryServices
+            laboratoryEmail, laboratoryWebsite, laboratoryServices, city
         } = req.body;
 
         const userId = req.user._id;
@@ -157,6 +160,7 @@ const createUpdateLabProfile = async (req: CustomRequest, res: Response): Promis
             laboratoryEmail,
             laboratoryWebsite,
             laboratoryServices,
+            city,
             updatedAt: new Date()
         };
 

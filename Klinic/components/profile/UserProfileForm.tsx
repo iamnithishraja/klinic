@@ -1,20 +1,25 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Linking, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
+import { Picker } from '@react-native-picker/picker';
+import CitySearch from './CitySearch';
 
 interface UserProfileFormProps {
   age: string;
   gender: string;
   address: string;
   pinCode: string;
+  city: string;
   medicalHistory: string;
   medicalHistoryPdf: string;
   uploadingPdf: boolean;
+  cities: string[];
   onChangeAge: (text: string) => void;
   onChangeGender: (gender: string) => void;
   onChangeAddress: (text: string) => void;
   onChangePinCode: (text: string) => void;
+  onChangeCity: (city: string) => void;
   onChangeMedicalHistory: (text: string) => void;
   onDocumentPick: () => void;
   savedValues: {
@@ -22,6 +27,7 @@ interface UserProfileFormProps {
     gender: string;
     address: string;
     pinCode: string;
+    city: string;
     medicalHistory: string;
     medicalHistoryPdf: string;
   };
@@ -32,13 +38,16 @@ const UserProfileForm = ({
   gender,
   address,
   pinCode,
+  city,
   medicalHistory,
   medicalHistoryPdf,
   uploadingPdf,
+  cities,
   onChangeAge,
   onChangeGender,
   onChangeAddress,
   onChangePinCode,
+  onChangeCity,
   onChangeMedicalHistory,
   onDocumentPick,
   savedValues
@@ -58,13 +67,14 @@ const UserProfileForm = ({
   const isGenderChanged = gender !== savedValues.gender;
   const isAddressChanged = address !== savedValues.address;
   const isPinCodeChanged = pinCode !== savedValues.pinCode;
+  const isCityChanged = city !== savedValues.city;
   const isMedicalHistoryChanged = medicalHistory !== savedValues.medicalHistory;
   const isPdfChanged = medicalHistoryPdf !== savedValues.medicalHistoryPdf;
 
   return (
     <View>
       {/* Message about unsaved changes - Moved to top */}
-      {(isAgeChanged || isGenderChanged || isAddressChanged || isPinCodeChanged || isMedicalHistoryChanged || isPdfChanged) && (
+      {(isAgeChanged || isGenderChanged || isAddressChanged || isPinCodeChanged || isCityChanged || isMedicalHistoryChanged || isPdfChanged) && (
         <View className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl">
           <Text className="text-red-600 text-sm">
             Fields with red highlights have unsaved changes. Click the "Save Changes" button to save your updates.
@@ -130,7 +140,45 @@ const UserProfileForm = ({
         </View>
       </View>
 
-      {/* Address Field */}
+      {/* Pin Code and City in the same row */}
+      <View className="flex-row mb-6 gap-3">
+        {/* Pin Code Field */}
+        <View className="flex-1">
+          <Text className="text-gray-700 font-medium text-base mb-2">
+            Pin Code
+            {isPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
+          </Text>
+          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPinCodeChanged ? 'border-red-400' : 'border-gray-200'}`}>
+            <MaterialCommunityIcons 
+              name="map-marker-radius" 
+              size={22} 
+              color={isPinCodeChanged ? "#F87171" : "#6366F1"} 
+              style={{ marginRight: 12 }}
+            />
+            <TextInput
+              value={pinCode}
+              onChangeText={onChangePinCode}
+              placeholder="Enter your area pin code"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              maxLength={6}
+              className="flex-1 text-gray-800"
+            />
+          </View>
+        </View>
+
+        {/* City Selector - replaced with CitySearch component */}
+        <View className="flex-1">
+          <CitySearch
+            allCities={cities}
+            selectedCity={city}
+            onCitySelect={onChangeCity}
+            isCityChanged={isCityChanged}
+          />
+        </View>
+      </View>
+
+      {/* Address Field - moved below pin code & city */}
       <View className="mb-6">
         <Text className="text-gray-700 font-medium text-base mb-2">
           Address
@@ -152,31 +200,6 @@ const UserProfileForm = ({
             numberOfLines={3}
             className="flex-1 text-gray-800 min-h-[80px]"
             style={{ textAlignVertical: 'top' }}
-          />
-        </View>
-      </View>
-
-      {/* Pin Code Field */}
-      <View className="mb-6">
-        <Text className="text-gray-700 font-medium text-base mb-2">
-          Pin Code
-          {isPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
-        </Text>
-        <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPinCodeChanged ? 'border-red-400' : 'border-gray-200'}`}>
-          <MaterialCommunityIcons 
-            name="map-marker-radius" 
-            size={22} 
-            color={isPinCodeChanged ? "#F87171" : "#6366F1"} 
-            style={{ marginRight: 12 }}
-          />
-          <TextInput
-            value={pinCode}
-            onChangeText={onChangePinCode}
-            placeholder="Enter your area pin code"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            maxLength={6}
-            className="flex-1 text-gray-800"
           />
         </View>
       </View>

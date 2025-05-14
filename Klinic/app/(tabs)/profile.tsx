@@ -23,6 +23,20 @@ import DeliveryProfileForm from '@/components/profile/DeliveryProfileForm';
 import SaveButton from '@/components/profile/SaveButton';
 import ImagePickerModal from '@/components/profile/ImagePickerModal';
 
+// List of cities for the dropdown
+const CITIES = [
+  'Bangalore', 
+  'Mumbai', 
+  'Delhi', 
+  'Chennai', 
+  'Hyderabad', 
+  'Kolkata', 
+  'Pune', 
+  'Ahmedabad', 
+  'Jaipur', 
+  'Lucknow'
+];
+
 const Profile = () => {
   const router = useRouter();
   const { user, setUser } = useUserStore();
@@ -38,6 +52,8 @@ const Profile = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [cities, setCities] = useState<string[]>(CITIES);
+  const [filteredCities, setFilteredCities] = useState<string[]>(CITIES);
 
   // Form state
   const [age, setAge] = useState('');
@@ -45,6 +61,7 @@ const Profile = () => {
   const [medicalHistory, setMedicalHistory] = useState('');
   const [address, setAddress] = useState('');
   const [pinCode, setPinCode] = useState('');
+  const [city, setCity] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const [medicalHistoryPdf, setMedicalHistoryPdf] = useState('');
 
@@ -55,6 +72,7 @@ const Profile = () => {
     medicalHistory: '',
     address: '',
     pinCode: '',
+    city: '',
     medicalHistoryPdf: ''
   });
 
@@ -101,10 +119,11 @@ const Profile = () => {
       medicalHistory !== savedValues.medicalHistory ||
       address !== savedValues.address ||
       pinCode !== savedValues.pinCode ||
+      city !== savedValues.city ||
       medicalHistoryPdf !== savedValues.medicalHistoryPdf;
     
     setHasUnsavedChanges(hasChanges);
-  }, [age, gender, medicalHistory, address, pinCode, medicalHistoryPdf, savedValues]);
+  }, [age, gender, medicalHistory, address, pinCode, city, medicalHistoryPdf, savedValues]);
 
   const updateFormValues = (data: UserProfile) => {
     console.log('Setting form values from profile data:', data);
@@ -125,17 +144,26 @@ const Profile = () => {
     
     let newAddress = '';
     let newPinCode = '';
+    let newCity = '';
+    
     // Handle address object structure
     if (data.address) {
       newAddress = data.address.address || '';
       setAddress(newAddress);
       newPinCode = data.address.pinCode || '';
       setPinCode(newPinCode);
-      console.log('Setting address to:', data.address.address);
-      console.log('Setting pinCode to:', data.address.pinCode);
     } else {
       setAddress('');
       setPinCode('');
+    }
+    
+    // Handle city as a top-level property
+    if (data.city) {
+      newCity = data.city;
+      setCity(newCity);
+      console.log('Setting city to:', newCity);
+    } else {
+      setCity('');
     }
     
     setProfilePicture(data.profilePicture || '');
@@ -149,6 +177,7 @@ const Profile = () => {
       medicalHistory: newMedicalHistory,
       address: newAddress,
       pinCode: newPinCode,
+      city: newCity,
       medicalHistoryPdf: newMedicalHistoryPdf
     });
     
@@ -168,11 +197,23 @@ const Profile = () => {
         const profileResponse = await apiClient.get('/api/v1/profile');
         console.log('Profile data received:', profileResponse.data);
         
-        // Update form with profile data
-        updateFormValues(profileResponse.data);
-        
-        // Store in profileApi's data
-        profileApi.setData(profileResponse.data);
+        // Handle new response format with profile and availableCities
+        if (profileResponse.data && profileResponse.data.profile) {
+          // Update form with profile data
+          updateFormValues(profileResponse.data.profile);
+          
+          // Store in profileApi's data
+          profileApi.setData(profileResponse.data.profile);
+          
+          // Set available cities if provided
+          if (profileResponse.data.availableCities && Array.isArray(profileResponse.data.availableCities)) {
+            setCities(profileResponse.data.availableCities);
+          }
+        } else {
+          // Fallback to legacy format
+          updateFormValues(profileResponse.data);
+          profileApi.setData(profileResponse.data);
+        }
       } catch (error: any) {
         console.log('Profile GET error:', error.response?.status, error.response?.data);
         
@@ -333,6 +374,7 @@ const Profile = () => {
       medicalHistory,
       medicalHistoryPdf,
       address: addressData,
+      city: city // Add city as a top-level property
     };
     
     // Add ID if available from API data
@@ -364,6 +406,7 @@ const Profile = () => {
           medicalHistory,
           address,
           pinCode,
+          city,
           medicalHistoryPdf
         });
         
@@ -407,6 +450,57 @@ const Profile = () => {
     }
   };
 
+  // Handler for city change - immediate update like gender
+  const handleCityChange = async (value: string) => {
+    // Update local state and savedValues simultaneously to prevent flickering
+    setCity(value);
+    setSavedValues(prev => ({
+      ...prev,
+      city: value
+    }));
+    
+    setUpdating(true);
+    
+    try {
+      // Prepare profile data with the new city value
+      const profileData = prepareProfileData();
+      // Use the new city value since state might not be updated yet
+      profileData.city = value;
+      
+      console.log('Immediately updating profile with new city:', value);
+      const success = await profileApi.updateData(profileData);
+      
+      if (!success) {
+        console.error('Failed to update city');
+      }
+    } catch (error) {
+      console.error('Error updating city:', error);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Function to filter cities based on search text
+  const filterCities = (searchText: string) => {
+    if (!searchText) {
+      setFilteredCities(cities);
+      return;
+    }
+    
+    try {
+      // Try regex search first
+      const regex = new RegExp(searchText, 'i');
+      const matches = cities.filter(city => regex.test(city));
+      setFilteredCities(matches);
+    } catch (e) {
+      // Fall back to simple contains search
+      const matches = cities.filter(city => 
+        city.toLowerCase().includes(searchText.toLowerCase())
+      );
+      setFilteredCities(matches);
+    }
+  };
+
   // Regular handlers for other fields (will show highlights and require save button)
   const handleAgeChange = (text: string) => {
     setAge(text);
@@ -417,7 +511,9 @@ const Profile = () => {
   };
 
   const handlePinCodeChange = (text: string) => {
-    setPinCode(text);
+    // Allow only digits and limit to 6 characters
+    const formattedText = text.replace(/\D/g, '').substring(0, 6);
+    setPinCode(formattedText);
   };
 
   const handleMedicalHistoryChange = (text: string) => {
@@ -445,6 +541,7 @@ const Profile = () => {
       gender,
       address,
       pinCode,
+      city,
       medicalHistory,
       medicalHistoryPdf
     });
@@ -457,13 +554,16 @@ const Profile = () => {
             gender={gender}
             address={address}
             pinCode={pinCode}
+            city={city}
             medicalHistory={medicalHistory}
             medicalHistoryPdf={medicalHistoryPdf}
             uploadingPdf={uploadingPdf}
+            cities={filteredCities.length > 0 ? filteredCities : cities}
             onChangeAge={handleAgeChange}
             onChangeGender={handleGenderChange}
             onChangeAddress={handleAddressChange}
             onChangePinCode={handlePinCodeChange}
+            onChangeCity={handleCityChange}
             onChangeMedicalHistory={handleMedicalHistoryChange}
             onDocumentPick={handleDocumentPick}
             savedValues={savedValues}
