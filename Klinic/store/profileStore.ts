@@ -848,9 +848,11 @@ interface ProfileUIState {
   showImageOptions: boolean;
   showCitiesPopup: boolean;
   cities: string[];
+  labServiceCategories: string[];
   hasLoadedAvailableCities: boolean;
   hasLoadedAvailableSpecializations: boolean;
   hasLoadedAvailableQualifications: boolean;
+  hasLoadedLabServiceCategories: boolean;
   
   // Actions
   setLoading: (loading: boolean) => void;
@@ -862,9 +864,11 @@ interface ProfileUIState {
   setShowImageOptions: (show: boolean) => void;
   setShowCitiesPopup: (show: boolean) => void;
   setCities: (cities: string[]) => void;
+  setLabServiceCategories: (categories: string[]) => void;
   setHasLoadedAvailableCities: (loaded: boolean) => void;
   setHasLoadedAvailableSpecializations: (loaded: boolean) => void;
   setHasLoadedAvailableQualifications: (loaded: boolean) => void;
+  setHasLoadedLabServiceCategories: (loaded: boolean) => void;
   reset: () => void;
 }
 
@@ -879,9 +883,11 @@ export const useProfileUIStore = create<ProfileUIState>((set) => ({
   showImageOptions: false,
   showCitiesPopup: false,
   cities: [],
+  labServiceCategories: [],
   hasLoadedAvailableCities: false,
   hasLoadedAvailableSpecializations: false,
   hasLoadedAvailableQualifications: false,
+  hasLoadedLabServiceCategories: false,
   
   // Actions
   setLoading: (loading) => set({ loading }),
@@ -899,9 +905,17 @@ export const useProfileUIStore = create<ProfileUIState>((set) => ({
     }
     return state;
   }),
+  setLabServiceCategories: (categories) => set((state) => {
+    // Only set categories if they haven't been loaded yet
+    if (!state.hasLoadedLabServiceCategories && categories.length > 0) {
+      return { labServiceCategories: categories, hasLoadedLabServiceCategories: true };
+    }
+    return state;
+  }),
   setHasLoadedAvailableCities: (loaded) => set({ hasLoadedAvailableCities: loaded }),
   setHasLoadedAvailableSpecializations: (loaded) => set({ hasLoadedAvailableSpecializations: loaded }),
   setHasLoadedAvailableQualifications: (loaded) => set({ hasLoadedAvailableQualifications: loaded }),
+  setHasLoadedLabServiceCategories: (loaded) => set({ hasLoadedLabServiceCategories: loaded }),
   reset: () => set({
     loading: false,
     uploading: false,
@@ -912,8 +926,10 @@ export const useProfileUIStore = create<ProfileUIState>((set) => ({
     showImageOptions: false,
     showCitiesPopup: false,
     cities: [],
+    labServiceCategories: [],
     hasLoadedAvailableCities: false,
     hasLoadedAvailableSpecializations: false,
     hasLoadedAvailableQualifications: false,
+    hasLoadedLabServiceCategories: false,
   })
 })); 

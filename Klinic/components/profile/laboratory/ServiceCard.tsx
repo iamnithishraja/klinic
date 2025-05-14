@@ -12,6 +12,7 @@ interface ServiceCardProps {
   onAddTest: (test: Omit<LaboratoryTest, 'id'>) => void;
   onUpdateTest: (testId: string, updates: Partial<Omit<LaboratoryTest, 'id'>>) => void;
   onDeleteTest: (testId: string) => void;
+  availableCategories?: string[];
 }
 
 const ServiceCard: React.FC<ServiceCardProps> = ({
@@ -20,17 +21,20 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   onDelete,
   onAddTest,
   onUpdateTest,
-  onDeleteTest
+  onDeleteTest,
+  availableCategories = []
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   
   // Local state for editing
   const [name, setName] = useState(service.name);
   const [description, setDescription] = useState(service.description);
   const [price, setPrice] = useState(service.price);
   const [collectionType, setCollectionType] = useState(service.collectionType);
+  const [category, setCategory] = useState(service.category || '');
   
   // Collection type options
   const collectionOptions = [
@@ -44,7 +48,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       name,
       description,
       price,
-      collectionType: collectionType as 'home' | 'lab' | 'both'
+      collectionType: collectionType as 'home' | 'lab' | 'both',
+      category
     });
     setIsEditing(false);
   };
@@ -101,6 +106,16 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       {/* Service Details */}
       {!isEditing ? (
         <View className={expanded ? "" : "hidden"}>
+          {/* Service Category */}
+          {service.category && (
+            <View className="mb-3 flex-row items-center">
+              <MaterialIcons name="category" size={16} color="#6366F1" />
+              <Text className="text-indigo-600 font-medium text-sm ml-1 px-2 py-1 bg-indigo-50 rounded-md">
+                {service.category}
+              </Text>
+            </View>
+          )}
+          
           {/* Service Description */}
           <View className="mb-3">
             <Text className="text-sm text-gray-500 mb-1">Description</Text>
@@ -183,6 +198,59 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
             />
           </View>
           
+          {/* Category dropdown - only show if categories are available */}
+          {availableCategories.length > 0 && (
+            <View className="mb-3">
+              <Text className="text-sm text-gray-600 mb-1">Category</Text>
+              <TouchableOpacity
+                onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                className="border border-gray-300 rounded-lg p-2"
+              >
+                <View className="flex-row justify-between items-center">
+                  <Text className={category ? "text-gray-800" : "text-gray-400"}>
+                    {category || "Select a category"}
+                  </Text>
+                  <MaterialIcons 
+                    name={showCategoryDropdown ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
+                    size={22} 
+                    color="#6B7280" 
+                  />
+                </View>
+              </TouchableOpacity>
+              
+              {/* Category Dropdown List */}
+              {showCategoryDropdown && (
+                <View className="border border-gray-300 rounded-lg mt-1 max-h-40 overflow-hidden">
+                  <ScrollView nestedScrollEnabled={true}>
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setCategory('');
+                        setShowCategoryDropdown(false);
+                      }}
+                      className="p-2 border-b border-gray-200"
+                    >
+                      <Text className="text-gray-400">None</Text>
+                    </TouchableOpacity>
+                    {availableCategories.map((item) => (
+                      <TouchableOpacity 
+                        key={item}
+                        onPress={() => {
+                          setCategory(item);
+                          setShowCategoryDropdown(false);
+                        }}
+                        className={`p-2 border-b border-gray-200 ${category === item ? 'bg-indigo-50' : ''}`}
+                      >
+                        <Text className={`${category === item ? 'text-indigo-600 font-medium' : 'text-gray-700'}`}>
+                          {item}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          )}
+          
           {/* Description */}
           <View className="mb-3">
             <Text className="text-sm text-gray-600 mb-1">Description</Text>
@@ -234,6 +302,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 setDescription(service.description);
                 setPrice(service.price);
                 setCollectionType(service.collectionType);
+                setCategory(service.category || '');
                 setIsEditing(false);
               }}
             >
@@ -244,7 +313,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
               className="py-2 px-4 rounded-lg bg-indigo-500"
               onPress={handleSaveChanges}
             >
-              <Text className="text-white">Save</Text>
+              <Text className="text-white font-medium">Save</Text>
             </TouchableOpacity>
           </View>
         </View>

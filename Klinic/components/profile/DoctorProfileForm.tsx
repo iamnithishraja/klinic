@@ -144,6 +144,11 @@ const DoctorProfileForm = ({
   const [timePickerMode, setTimePickerMode] = useState<'start' | 'end'>('start');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  // Custom time picker state
+  const [showCustomTimePicker, setShowCustomTimePicker] = useState(false);
+  const [tempHour, setTempHour] = useState(9);
+  const [tempMinute, setTempMinute] = useState(0);
+  const [tempAmPm, setTempAmPm] = useState('AM');
 
   // Check if fields have unsaved changes
   const isDescriptionChanged = description !== savedValues.description;
@@ -299,7 +304,23 @@ const DoctorProfileForm = ({
     setShowQualificationSuggestions(false);
   };
 
-  // Function to handle time selection
+  // Function to handle time selection from custom picker
+  const handleTimeSelected = () => {
+    // Format time in 12-hour format with AM/PM
+    const formattedHours = tempHour;
+    const formattedMinutes = tempMinute < 10 ? `0${tempMinute}` : `${tempMinute}`;
+    const timeString = `${formattedHours}:${formattedMinutes} ${tempAmPm}`;
+    
+    if (timePickerMode === 'start') {
+      setStartTime(timeString);
+    } else {
+      setEndTime(timeString);
+    }
+    
+    setShowCustomTimePicker(false);
+  };
+
+  // Legacy time change handler for DateTimePicker
   const onTimeChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
@@ -322,6 +343,24 @@ const DoctorProfileForm = ({
         setEndTime(timeString);
       }
     }
+  };
+
+  // Open custom time picker
+  const openCustomTimePicker = (mode: 'start' | 'end') => {
+    setTimePickerMode(mode);
+    
+    // Set initial values based on current time or existing selected time
+    const now = new Date();
+    let initialHour = now.getHours();
+    const initialMinute = now.getMinutes();
+    const initialAmPm = initialHour >= 12 ? 'PM' : 'AM';
+    initialHour = initialHour % 12 || 12; // Convert to 12-hour format
+    
+    setTempHour(initialHour);
+    setTempMinute(initialMinute);
+    setTempAmPm(initialAmPm);
+    
+    setShowCustomTimePicker(true);
   };
 
   // Function to format existing time slots (if they're in 24-hour format)
@@ -491,10 +530,7 @@ const DoctorProfileForm = ({
             <View className="mb-3">
               <View className="flex-row justify-between mb-2">
                 <TouchableOpacity
-                  onPress={() => {
-                    setTimePickerMode('start');
-                    setShowTimePicker(true);
-                  }}
+                  onPress={() => openCustomTimePicker('start')}
                   className="flex-1 mr-2 p-2 border border-gray-200 rounded-lg flex-row items-center"
                 >
                   <MaterialCommunityIcons name="clock-outline" size={20} color="#6366F1" />
@@ -504,10 +540,7 @@ const DoctorProfileForm = ({
                 </TouchableOpacity>
                 
                 <TouchableOpacity
-                  onPress={() => {
-                    setTimePickerMode('end');
-                    setShowTimePicker(true);
-                  }}
+                  onPress={() => openCustomTimePicker('end')}
                   className="flex-1 ml-2 p-2 border border-gray-200 rounded-lg flex-row items-center"
                 >
                   <MaterialCommunityIcons name="clock-outline" size={20} color="#6366F1" />
@@ -1099,7 +1132,7 @@ const DoctorProfileForm = ({
         </View>
       </View>
       
-      {/* Time Picker Modal */}
+      {/* Legacy Time Picker Modal - keep for backward compatibility */}
       {showTimePicker && (
         Platform.OS === 'ios' ? (
           <Modal
@@ -1126,6 +1159,7 @@ const DoctorProfileForm = ({
                   is24Hour={false}
                   display="spinner"
                   onChange={onTimeChange}
+                  textColor="#000000"
                 />
               </View>
             </View>
@@ -1137,9 +1171,100 @@ const DoctorProfileForm = ({
             is24Hour={false}
             display="spinner"
             onChange={onTimeChange}
+            textColor="#000000"
           />
         )
       )}
+
+      {/* Custom Time Picker Modal - better visibility and UX */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showCustomTimePicker}
+        onRequestClose={() => setShowCustomTimePicker(false)}
+      >
+        <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
+          <View className="bg-white p-5 rounded-xl w-[320px] shadow-xl">
+            <Text className="text-gray-800 font-bold text-lg text-center mb-5">
+              Select {timePickerMode === 'start' ? 'Start' : 'End'} Time
+            </Text>
+            
+            <View className="flex-row justify-center items-center mb-6" style={{ marginHorizontal: -10 }}>
+              {/* Hour Picker */}
+              <View className="items-center" style={{ marginHorizontal: 5 }}>
+                <Text className="text-gray-600 font-medium mb-1">Hour</Text>
+                <View className="bg-gray-100 rounded-lg py-1">
+                  <Picker
+                    selectedValue={tempHour}
+                    onValueChange={(value) => setTempHour(value)}
+                    style={{ height: 120, width: 90 }}
+                    itemStyle={{ color: '#000000', fontSize: 22 }}
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((hour) => (
+                      <Picker.Item key={hour} label={hour.toString()} value={hour} color="#000000" />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+              
+              {/* Minute Picker */}
+              <View className="items-center" style={{ marginHorizontal: 5 }}>
+                <Text className="text-gray-600 font-medium mb-1">Minute</Text>
+                <View className="bg-gray-100 rounded-lg py-1">
+                  <Picker
+                    selectedValue={tempMinute}
+                    onValueChange={(value) => setTempMinute(value)}
+                    style={{ height: 120, width: 90 }}
+                    itemStyle={{ color: '#000000', fontSize: 22 }}
+                  >
+                    {Array.from({ length: 60 }, (_, i) => i).map((minute) => (
+                      <Picker.Item 
+                        key={minute} 
+                        label={minute < 10 ? `0${minute}` : minute.toString()} 
+                        value={minute}
+                        color="#000000"
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+              
+              {/* AM/PM Picker */}
+              <View className="items-center" style={{ marginHorizontal: 5 }}>
+                <Text className="text-gray-600 font-medium mb-1">AM/PM</Text>
+                <View className="bg-gray-100 rounded-lg py-1">
+                  <Picker
+                    selectedValue={tempAmPm}
+                    onValueChange={(value) => setTempAmPm(value)}
+                    style={{ height: 120, width: 90 }}
+                    itemStyle={{ color: '#000000', fontSize: 22 }}
+                  >
+                    <Picker.Item label="AM" value="AM" color="#000000" />
+                    <Picker.Item label="PM" value="PM" color="#000000" />
+                  </Picker>
+                </View>
+              </View>
+            </View>
+            
+            {/* Action Buttons */}
+            <View className="flex-row justify-between mt-2">
+              <TouchableOpacity 
+                onPress={() => setShowCustomTimePicker(false)}
+                className="bg-gray-200 py-3 px-5 rounded-lg flex-1 mr-2"
+              >
+                <Text className="text-gray-800 font-medium text-center">Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={handleTimeSelected}
+                className="bg-primary py-3 px-5 rounded-lg flex-1 ml-2"
+              >
+                <Text className="text-white font-medium text-center">Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

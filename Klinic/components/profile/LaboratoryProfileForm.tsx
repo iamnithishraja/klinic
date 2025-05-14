@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { MaterialCommunityIcons, MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
-import { useLaboratoryProfileStore } from '../../store/profileStore';
+import { useLaboratoryProfileStore, useProfileUIStore } from '../../store/profileStore';
 import ServiceCard from './laboratory/ServiceCard';
 import ServiceFormModal from './laboratory/ServiceFormModal';
-import { LaboratoryService } from '../../types/laboratoryTypes';
+import { LaboratoryService, LaboratoryTest } from '../../types/laboratoryTypes';
+import useProfileApi from '../../hooks/useProfileApi';
+import CitySearch from './CitySearch';
 
-const LaboratoryProfileForm = () => {
+// Add property to pass categories to the ServiceFormModal
+interface LaboratoryProfileFormProps {
+  availableCategories?: string[];
+  onServiceCoverImagePick?: (modalRef: any) => void;
+}
+
+const LaboratoryProfileForm = ({ 
+  availableCategories = [],
+  onServiceCoverImagePick
+}: LaboratoryProfileFormProps) => {
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [serviceImageToUpload, setServiceImageToUpload] = useState<string>('');
   
-  // Get state from the store
+  // Add debounce timer ref with correct type
+  const debounceTimerRef = useRef<number | null>(null);
+  
+  // Reference to the ServiceFormModal
+  const serviceFormModalRef = useRef<any>(null);
+  
+  // Get state from stores
   const {
     laboratoryName,
     laboratoryPhone,
@@ -34,8 +52,17 @@ const LaboratoryProfileForm = () => {
     addTest,
     updateTest,
     removeTest,
+    prepareProfileData,
+    setSavedValues,
     savedValues
   } = useLaboratoryProfileStore();
+
+  const uiStore = useProfileUIStore();
+
+  // API hook for laboratory profile
+  const laboratoryProfileApi = useProfileApi({
+    endpoint: '/api/v1/laboratory-profile'
+  });
 
   // Check which fields have changed for highlighting
   const isNameChanged = laboratoryName !== savedValues.laboratoryName;
@@ -46,229 +73,280 @@ const LaboratoryProfileForm = () => {
   const isPinCodeChanged = laboratoryPinCode !== savedValues.laboratoryPinCode;
   const isCityChanged = laboratoryCity !== savedValues.laboratoryCity;
   const isGoogleMapsLinkChanged = laboratoryGoogleMapsLink !== savedValues.laboratoryGoogleMapsLink;
+  const areServicesChanged = JSON.stringify(laboratoryServices) !== JSON.stringify(savedValues.laboratoryServices);
 
-  // For new service modal
-  const handleAddService = (service: { 
+  // Handle cover image pick for service
+  const handleServiceCoverImagePick = () => {
+    if (onServiceCoverImagePick) {
+      onServiceCoverImagePick(serviceFormModalRef);
+    }
+  };
+
+  // For new service modal with auto-save
+  const handleAddService = async (service: { 
     name: string; 
     description: string; 
     coverImage: string;
     collectionType: 'home' | 'lab' | 'both';
     price: string;
+    category?: string;
+    tests?: { name: string; description: string }[];
   }) => {
-    addLaboratoryService(service);
-    setShowAddServiceModal(false);
+    try {
+      // Add to store
+      addLaboratoryService(service);
+      setShowAddServiceModal(false);
+      
+      // Auto-save the changes
+      await autoSaveChanges();
+    } catch (error) {
+      console.error('Error adding laboratory service:', error);
+    }
   };
 
+  // Update service with auto-save
+  const handleUpdateService = async (serviceId: string, updates: Partial<Omit<LaboratoryService, 'id' | 'tests'>>) => {
+    try {
+      // Update in store
+      updateLaboratoryService(serviceId, updates);
+      
+      // Auto-save the changes
+      await autoSaveChanges();
+    } catch (error) {
+      console.error('Error updating laboratory service:', error);
+    }
+  };
+
+  // Remove service with auto-save
+  const handleRemoveService = async (serviceId: string) => {
+    try {
+      // Remove from store
+      removeLaboratoryService(serviceId);
+      
+      // Auto-save the changes
+      await autoSaveChanges();
+    } catch (error) {
+      console.error('Error removing laboratory service:', error);
+    }
+  };
+
+  // Add test with auto-save
+  const handleAddTest = async (serviceId: string, test: Omit<LaboratoryTest, 'id'>) => {
+    try {
+      // Add to store
+      addTest(serviceId, test);
+      
+      // Auto-save the changes
+      await autoSaveChanges();
+    } catch (error) {
+      console.error('Error adding laboratory test:', error);
+    }
+  };
+
+  // Update test with auto-save
+  const handleUpdateTest = async (serviceId: string, testId: string, updates: Partial<Omit<LaboratoryTest, 'id'>>) => {
+    try {
+      // Update in store
+      updateTest(serviceId, testId, updates);
+      
+      // Auto-save the changes
+      await autoSaveChanges();
+    } catch (error) {
+      console.error('Error updating laboratory test:', error);
+    }
+  };
+
+  // Remove test with auto-save
+  const handleRemoveTest = async (serviceId: string, testId: string) => {
+    try {
+      // Remove from store
+      removeTest(serviceId, testId);
+      
+      // Auto-save the changes
+      await autoSaveChanges();
+    } catch (error) {
+      console.error('Error removing laboratory test:', error);
+    }
+  };
+
+  // Auto-save with debounce
+  const autoSaveChanges = async () => {
+    try {
+      // Clear any existing timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      // Set a new timer to auto-save after a brief delay
+      debounceTimerRef.current = setTimeout(async () => {
+        console.log('Auto-saving laboratory profile...');
+        const profileData = prepareProfileData();
+        await laboratoryProfileApi.updateDataSilent(profileData);
+        // Update saved values after successful auto-save
+        setSavedValues({
+          laboratoryName,
+          laboratoryPhone,
+          laboratoryEmail,
+          laboratoryWebsite,
+          laboratoryAddress,
+          laboratoryPinCode,
+          laboratoryCity,
+          laboratoryGoogleMapsLink,
+          laboratoryServices,
+          coverImage: savedValues.coverImage
+        });
+        console.log('Auto-save completed');
+      }, 1000) as unknown as number;
+      
+      return true;
+    } catch (error) {
+      console.error('Error auto-saving laboratory profile:', error);
+      return false;
+    }
+  };
+
+  // Auto-save when fields change
+  useEffect(() => {
+    if (isNameChanged || isPhoneChanged || isEmailChanged || isWebsiteChanged || 
+        isAddressChanged || isPinCodeChanged || isCityChanged || 
+        isGoogleMapsLinkChanged || areServicesChanged) {
+      autoSaveChanges();
+    }
+  }, [
+    laboratoryName, laboratoryPhone, laboratoryEmail, laboratoryWebsite,
+    laboratoryAddress, laboratoryPinCode, laboratoryCity, laboratoryGoogleMapsLink, 
+    laboratoryServices
+  ]);
+
   return (
-    <View className="mb-6">
-      {/* Laboratory Details Section */}
+    <View className="flex-1">
+      {/* Basic Details */}
       <View className="mb-6">
         <Text className="text-lg font-bold text-gray-800 mb-4">
           Laboratory Details
         </Text>
         
-        {/* Laboratory Name */}
         <View className="mb-4">
           <Text className="text-gray-700 font-medium text-base mb-2">
             Laboratory Name
             {isNameChanged && <Text className="text-red-500 ml-1">*</Text>}
           </Text>
-          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isNameChanged ? 'border-red-400' : 'border-gray-200'}`}>
-            <FontAwesome5 
-              name="hospital" 
-              size={18} 
-              color={isNameChanged ? "#F87171" : "#6366F1"} 
-              style={{ marginRight: 12 }}
-            />
-            <TextInput
-              value={laboratoryName}
-              onChangeText={setLaboratoryName}
-              placeholder="Enter laboratory name"
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 text-gray-800"
-            />
-          </View>
+          <TextInput
+            value={laboratoryName}
+            onChangeText={setLaboratoryName}
+            placeholder="Enter laboratory name"
+            className={`border ${isNameChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+          />
         </View>
-
-        {/* Laboratory Phone */}
+        
         <View className="mb-4">
           <Text className="text-gray-700 font-medium text-base mb-2">
             Phone Number
             {isPhoneChanged && <Text className="text-red-500 ml-1">*</Text>}
           </Text>
-          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPhoneChanged ? 'border-red-400' : 'border-gray-200'}`}>
-            <MaterialIcons 
-              name="phone" 
-              size={22} 
-              color={isPhoneChanged ? "#F87171" : "#6366F1"} 
-              style={{ marginRight: 12 }}
-            />
-            <TextInput
-              value={laboratoryPhone}
-              onChangeText={setLaboratoryPhone}
-              placeholder="Enter phone number"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="phone-pad"
-              className="flex-1 text-gray-800"
-            />
-          </View>
+          <TextInput
+            value={laboratoryPhone}
+            onChangeText={setLaboratoryPhone}
+            placeholder="Enter phone number"
+            keyboardType="phone-pad"
+            className={`border ${isPhoneChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+          />
         </View>
-
-        {/* Laboratory Email */}
+        
         <View className="mb-4">
           <Text className="text-gray-700 font-medium text-base mb-2">
             Email Address
             {isEmailChanged && <Text className="text-red-500 ml-1">*</Text>}
           </Text>
-          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isEmailChanged ? 'border-red-400' : 'border-gray-200'}`}>
-            <MaterialCommunityIcons 
-              name="email-outline" 
-              size={22} 
-              color={isEmailChanged ? "#F87171" : "#6366F1"} 
-              style={{ marginRight: 12 }}
-            />
-            <TextInput
-              value={laboratoryEmail}
-              onChangeText={setLaboratoryEmail}
-              placeholder="Enter email address"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              className="flex-1 text-gray-800"
-            />
-          </View>
+          <TextInput
+            value={laboratoryEmail}
+            onChangeText={setLaboratoryEmail}
+            placeholder="Enter email address"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            className={`border ${isEmailChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+          />
         </View>
-
-        {/* Laboratory Website */}
+        
         <View className="mb-4">
           <Text className="text-gray-700 font-medium text-base mb-2">
             Website (Optional)
             {isWebsiteChanged && <Text className="text-red-500 ml-1">*</Text>}
           </Text>
-          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isWebsiteChanged ? 'border-red-400' : 'border-gray-200'}`}>
-            <MaterialCommunityIcons 
-              name="web" 
-              size={22} 
-              color={isWebsiteChanged ? "#F87171" : "#6366F1"} 
-              style={{ marginRight: 12 }}
-            />
-            <TextInput
-              value={laboratoryWebsite}
-              onChangeText={setLaboratoryWebsite}
-              placeholder="Enter website URL"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="none"
-              className="flex-1 text-gray-800"
-            />
-          </View>
+          <TextInput
+            value={laboratoryWebsite}
+            onChangeText={setLaboratoryWebsite}
+            placeholder="Enter website URL"
+            keyboardType="url"
+            autoCapitalize="none"
+            className={`border ${isWebsiteChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+          />
         </View>
       </View>
-
-      {/* Address Section */}
+      
+      {/* Address */}
       <View className="mb-6">
         <Text className="text-lg font-bold text-gray-800 mb-4">
           Laboratory Address
         </Text>
         
-        {/* Laboratory Address */}
         <View className="mb-4">
           <Text className="text-gray-700 font-medium text-base mb-2">
             Address
             {isAddressChanged && <Text className="text-red-500 ml-1">*</Text>}
           </Text>
-          <View className={`flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isAddressChanged ? 'border-red-400' : 'border-gray-200'}`}>
-            <MaterialCommunityIcons 
-              name="map-marker" 
-              size={22}
-              color={isAddressChanged ? "#F87171" : "#6366F1"} 
-              style={{ marginRight: 12, marginTop: 2 }}
-            />
-            <TextInput
-              value={laboratoryAddress}
-              onChangeText={setLaboratoryAddress}
-              placeholder="Enter laboratory address"
-              placeholderTextColor="#9CA3AF"
-              multiline
-              numberOfLines={3}
-              className="flex-1 text-gray-800 min-h-[80px]"
-              style={{ textAlignVertical: 'top' }}
-            />
-          </View>
+          <TextInput
+            value={laboratoryAddress}
+            onChangeText={setLaboratoryAddress}
+            placeholder="Enter laboratory address"
+            multiline
+            numberOfLines={3}
+            className={`border ${isAddressChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+            style={{ textAlignVertical: 'top' }}
+          />
         </View>
-
-        {/* Pin Code */}
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium text-base mb-2">
-            Pin Code
-            {isPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
-          </Text>
-          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPinCodeChanged ? 'border-red-400' : 'border-gray-200'}`}>
-            <MaterialIcons 
-              name="pin-drop" 
-              size={22} 
-              color={isPinCodeChanged ? "#F87171" : "#6366F1"} 
-              style={{ marginRight: 12 }}
-            />
+        
+        <View className="flex-row mb-4">
+          <View className="flex-1 mr-2">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Pin Code
+              {isPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
             <TextInput
               value={laboratoryPinCode}
               onChangeText={setLaboratoryPinCode}
-              placeholder="Enter pin code"
-              placeholderTextColor="#9CA3AF"
+              placeholder="Enter PIN code"
               keyboardType="number-pad"
-              className="flex-1 text-gray-800"
+              className={`border ${isPinCodeChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+            />
+          </View>
+          
+          <View className="flex-1 ml-2">
+            <CitySearch 
+              selectedCity={laboratoryCity}
+              onCitySelect={setLaboratoryCity}
+              allCities={uiStore.cities}
+              isCityChanged={isCityChanged}
             />
           </View>
         </View>
-
-        {/* City */}
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium text-base mb-2">
-            City
-            {isCityChanged && <Text className="text-red-500 ml-1">*</Text>}
-          </Text>
-          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isCityChanged ? 'border-red-400' : 'border-gray-200'}`}>
-            <MaterialCommunityIcons 
-              name="city" 
-              size={22} 
-              color={isCityChanged ? "#F87171" : "#6366F1"} 
-              style={{ marginRight: 12 }}
-            />
-            <TextInput
-              value={laboratoryCity}
-              onChangeText={setLaboratoryCity}
-              placeholder="Enter city"
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 text-gray-800"
-            />
-          </View>
-        </View>
-
-        {/* Google Maps Link */}
+        
         <View className="mb-4">
           <Text className="text-gray-700 font-medium text-base mb-2">
             Google Maps Link (Optional)
             {isGoogleMapsLinkChanged && <Text className="text-red-500 ml-1">*</Text>}
           </Text>
-          <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isGoogleMapsLinkChanged ? 'border-red-400' : 'border-gray-200'}`}>
-            <MaterialIcons 
-              name="map" 
-              size={22} 
-              color={isGoogleMapsLinkChanged ? "#F87171" : "#6366F1"} 
-              style={{ marginRight: 12 }}
-            />
-            <TextInput
-              value={laboratoryGoogleMapsLink}
-              onChangeText={setLaboratoryGoogleMapsLink}
-              placeholder="Paste Google Maps link"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="none"
-              className="flex-1 text-gray-800"
-            />
-          </View>
+          <TextInput
+            value={laboratoryGoogleMapsLink}
+            onChangeText={setLaboratoryGoogleMapsLink}
+            placeholder="Enter Google Maps link"
+            autoCapitalize="none"
+            className={`border ${isGoogleMapsLinkChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+          />
         </View>
       </View>
-
-      {/* Laboratory Services Section */}
+      
+      {/* Laboratory Services */}
       <View className="mb-2">
         <View className="flex-row justify-between items-center mb-4">
           <Text className="text-lg font-bold text-gray-800">
@@ -300,11 +378,12 @@ const LaboratoryProfileForm = () => {
               <ServiceCard 
                 key={service.id}
                 service={service}
-                onUpdate={(updates) => updateLaboratoryService(service.id, updates)}
-                onDelete={() => removeLaboratoryService(service.id)}
-                onAddTest={(test) => addTest(service.id, test)}
-                onUpdateTest={(testId, updates) => updateTest(service.id, testId, updates)}
-                onDeleteTest={(testId) => removeTest(service.id, testId)}
+                onUpdate={(updates) => handleUpdateService(service.id, updates)}
+                onDelete={() => handleRemoveService(service.id)}
+                onAddTest={(test) => handleAddTest(service.id, test)}
+                onUpdateTest={(testId, updates) => handleUpdateTest(service.id, testId, updates)}
+                onDeleteTest={(testId) => handleRemoveTest(service.id, testId)}
+                availableCategories={availableCategories}
               />
             ))}
           </View>
@@ -313,9 +392,13 @@ const LaboratoryProfileForm = () => {
 
       {/* Add Service Modal */}
       <ServiceFormModal
+        ref={serviceFormModalRef}
         visible={showAddServiceModal}
         onClose={() => setShowAddServiceModal(false)}
         onSubmit={handleAddService}
+        availableCategories={availableCategories}
+        uploadingCoverImage={uiStore.uploadingCoverImage}
+        onChangeCoverImage={handleServiceCoverImagePick}
       />
     </View>
   );

@@ -54,5 +54,18 @@ const getQualifications = () => {
     return qualifications;
 }
 
+const getCategoriesTestType = () => {
+    const categories = [
+        "Blood",
+        "Urine",
+        "Stool",
+        "X-Ray",
+        "CT Scan",
+        "MRI",
+        "Ultrasound",
+        "Other",
+    ]
+    return categories;
+}
 
-export { getCities, getSpecializations, getQualifications };
+export { getCities, getSpecializations, getQualifications, getCategoriesTestType };

@@ -231,6 +231,10 @@ const laboratoryProfileSchema = new mongoose.Schema({
                     type: String,
                     default: null,
                 },
+                category: {
+                    type: String,
+                    default: null,
+                },
                 collectionType: {
                     type: String,
                     enum: ['home', 'lab', 'both'],

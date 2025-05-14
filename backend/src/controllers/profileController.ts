@@ -3,7 +3,7 @@ import type { CustomRequest } from '../types/userTypes';
 import { UserProfile, DoctorProfile, LaboratoryProfile, DeliveryBoyProfile } from '../models/profileModel';
 import mongoose from 'mongoose';
 import { generateUploadUrlProfile, deleteFileFromR2 } from '../utils/fileUpload';
-import { getCities, getQualifications, getSpecializations } from '../utils/selectors';
+import { getCategoriesTestType, getCities, getQualifications, getSpecializations } from '../utils/selectors';
 
 // Create or update user profile
 const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promise<void> => {
@@ -96,10 +96,11 @@ const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
         const availableCities = getCities();
         const availableSpecializations = getSpecializations();
         const availableQualifications = getQualifications();
+        const availableLabServiceCategories = getCategoriesTestType();
         if (role === 'doctor') {
             res.status(200).json({ profile, availableCities, availableSpecializations, availableQualifications });
         } else if (role === 'laboratory') {
-            res.status(200).json({ profile, availableCities });
+            res.status(200).json({ profile, availableCities, availableLabServiceCategories });
         }
         else {
             res.status(200).json({ profile, availableCities });

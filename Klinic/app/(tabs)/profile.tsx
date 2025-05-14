@@ -40,6 +40,7 @@ const Profile = () => {
   // For tracking file picks
   const [cameraCaptureUri, setCameraCaptureUri] = useState<string | null>(null);
   const [galleryCaptureUri, setGalleryCaptureUri] = useState<string | null>(null);
+  const [activeServiceForImage, setActiveServiceForImage] = useState<{ modalRef: any } | null>(null);
 
   // Custom hooks for API calls
   const userApi = useProfileApi({
@@ -142,6 +143,21 @@ const Profile = () => {
             console.log(`Loaded ${profileData.avilableCities.length} cities (from misspelled key)`);
           } else {
             console.warn('No cities found in API response');
+          }
+
+          // Set available lab service categories for laboratory profiles
+          if (user?.role === UserRole.LABORATORY) {
+            if (profileData.availableLabServiceCategories && 
+                Array.isArray(profileData.availableLabServiceCategories)) {
+              uiStore.setLabServiceCategories(profileData.availableLabServiceCategories);
+              console.log(`Loaded ${profileData.availableLabServiceCategories.length} available lab service categories`);
+            } else {
+              console.warn('No laboratory service categories found in API response');
+              // Set some defaults if none are provided
+              const defaultCategories = ["Blood Test", "Urine Test", "Imaging", "Pathology", "Microbiology"];
+              uiStore.setLabServiceCategories(defaultCategories);
+              console.log('Using default laboratory service categories:', defaultCategories);
+            }
           }
 
           // Set available specializations and qualifications for doctor profiles
@@ -293,7 +309,13 @@ const Profile = () => {
         } else if (user?.role === UserRole.DOCTOR) {
           doctorProfileStore.setCoverImage(imageUrl);
         } else if (user?.role === UserRole.LABORATORY) {
-          laboratoryProfileStore.setCoverImage(imageUrl);
+          // Check if this is a service cover image or laboratory cover image
+          if (activeServiceForImage && activeServiceForImage.modalRef?.current) {
+            activeServiceForImage.modalRef.current.setServiceCoverImage(imageUrl);
+            setActiveServiceForImage(null);
+          } else {
+            laboratoryProfileStore.setCoverImage(imageUrl);
+          }
         }
       } else {
         console.error('Failed to get URL for the uploaded image');
@@ -392,6 +414,18 @@ const Profile = () => {
     } finally {
       // Note: actual uploading will happen in openCamera or openGallery functions
       // which will call uploadImage, so we don't set uploadingCoverImage to false here
+    }
+  };
+
+  // Handle service cover image pick for laboratory profile
+  const handleServiceCoverImagePick = async (modalRef: any) => {
+    try {
+      setActiveServiceForImage({ modalRef });
+      uiStore.setUploadingCoverImage(true);
+      handleImagePick();
+    } catch (error) {
+      console.error('Error setting up service cover image pick:', error);
+      setActiveServiceForImage(null);
     }
   };
 
@@ -1034,7 +1068,12 @@ const Profile = () => {
           />
         );
       case UserRole.LABORATORY:
-        return <LaboratoryProfileForm />;
+        return (
+          <LaboratoryProfileForm 
+            availableCategories={uiStore.labServiceCategories}
+            onServiceCoverImagePick={handleServiceCoverImagePick}
+          />
+        );
       default:
         return (
           <View className="bg-yellow-50 p-4 rounded-xl mb-6">
@@ -1081,7 +1120,7 @@ const Profile = () => {
         </ScrollView>
 
         {/* Floating Save Button (only show when there are changes) */}
-        {(user?.role === UserRole.USER || user?.role === UserRole.DELIVERY_BOY) && hasChanges() && (
+        {(user?.role === UserRole.USER || user?.role === UserRole.DELIVERY_BOY || user?.role === UserRole.DOCTOR || user?.role === UserRole.LABORATORY) && hasChanges() && (
           <SaveButton onPress={handleSaveChanges} loading={uiStore.updating} />
         )}
 

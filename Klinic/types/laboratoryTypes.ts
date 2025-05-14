@@ -14,6 +14,7 @@ export interface LaboratoryService {
   collectionType: 'home' | 'lab' | 'both';
   tests: LaboratoryTest[];
   price: string;
+  category?: string;
 }
 
 export interface LaboratoryProfile {
