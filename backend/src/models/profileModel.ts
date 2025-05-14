@@ -297,6 +297,16 @@ const deliveryBoyProfileSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    address: {
+        address: {
+            type: String,
+            default: null,
+        },
+        pinCode: {
+            type: String,
+            default: null,
+        }
+    },
     city: {
         type: String,
         default: null,
