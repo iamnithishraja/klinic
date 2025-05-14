@@ -972,47 +972,42 @@ const Profile = () => {
       <SafeAreaView className="flex-1">
         <StatusBar style="auto" />
 
-        {/* Main container - keyboard avoiding removed */}
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            className="flex-1"
-          >
-            <View style={{ flex: 1 }}>
-              <ScrollView
-                className="flex-1 px-5"
-              >
-                {/* Header Section */}
-                <ProfileHeader
-                  userData={user}
-                  onLogout={handleLogout}
-                />
+        {/* Simplified container structure */}
+        <ScrollView
+          className="flex-1 px-5"
+          showsVerticalScrollIndicator={true}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 100 }} // Add padding for the floating save button
+        >
+          {/* Header Section */}
+          <ProfileHeader
+            userData={user}
+            onLogout={handleLogout}
+          />
 
-                {/* Dynamic Form Section based on role */}
-                {renderProfileForm()}
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+          {/* Dynamic Form Section based on role */}
+          {renderProfileForm()}
+        </ScrollView>
+
+        {/* Floating Save Button (only show when there are changes) */}
+        {(user?.role === UserRole.USER && hasUserProfileChanges()) && (
+          <SaveButton onPress={handleUpdateUserProfile} loading={uiStore.updating} />
+        )}
+
+        {/* Floating Save Button for Doctor Profile */}
+        {(user?.role === UserRole.DOCTOR && hasDoctorProfileChanges()) && (
+          <SaveButton onPress={handleUpdateDoctorProfile} loading={uiStore.updating} />
+        )}
+
+        {/* Image Picker Modal */}
+        <ImagePickerModal
+          visible={uiStore.showImageOptions}
+          onClose={() => uiStore.setShowImageOptions(false)}
+          onTakePhoto={openCamera}
+          onChooseFromGallery={openGallery}
+        />
       </SafeAreaView>
-
-      {/* Floating Save Button (only show when there are changes) */}
-      {(user?.role === UserRole.USER && hasUserProfileChanges()) && (
-        <SaveButton onPress={handleUpdateUserProfile} loading={uiStore.updating} />
-      )}
-
-      {/* Floating Save Button for Doctor Profile */}
-      {(user?.role === UserRole.DOCTOR && hasDoctorProfileChanges()) && (
-        <SaveButton onPress={handleUpdateDoctorProfile} loading={uiStore.updating} />
-      )}
-
-      {/* Image Picker Modal */}
-      <ImagePickerModal
-        visible={uiStore.showImageOptions}
-        onClose={() => uiStore.setShowImageOptions(false)}
-        onTakePhoto={openCamera}
-        onChooseFromGallery={openGallery}
-      />
     </View>
   );
 };
