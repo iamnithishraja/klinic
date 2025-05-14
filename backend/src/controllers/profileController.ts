@@ -20,17 +20,20 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
             await deleteFileFromR2(existingProfile.medicalHistoryPdf);
         }
 
-        const profileData = {
+        // Create initial profile data object
+        const profileData: any = {
             user: userId,
-            profilePicture,
-            age,
-            gender,
-            medicalHistory,
-            medicalHistoryPdf,
-            address,
-            city,
             updatedAt: new Date()
         };
+
+        // Add fields to profileData only if they are defined
+        if (profilePicture !== undefined && profilePicture !== '') profileData.profilePicture = profilePicture;
+        if (age !== undefined) profileData.age = age;
+        if (gender !== undefined && gender !== '') profileData.gender = gender;
+        if (medicalHistory !== undefined) profileData.medicalHistory = medicalHistory;
+        if (medicalHistoryPdf !== undefined && medicalHistoryPdf !== '') profileData.medicalHistoryPdf = medicalHistoryPdf;
+        if (address !== undefined && address !== '') profileData.address = address;
+        if (city !== undefined && city !== '') profileData.city = city;
 
         let userProfile;
         if (existingProfile) {
@@ -98,36 +101,38 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
     try {
         const {
             description, experience, specializations, qualifications,
-            consultationFee, profilePicture, age, gender, consultationType,
+            consultationFee, age, gender, consultationType,
             availableSlots, availableDays, isAvailable, clinicName, clinicPhone,
             clinicEmail, clinicWebsite, coverImage, clinicAddress, city
         } = req.body;
 
         const userId = req.user._id;
 
-        const profileData = {
+        // Create initial profile data object
+        const profileData: any = {
             user: userId,
-            description,
-            experience,
-            specializations,
-            qualifications,
-            consultationFee,
-            profilePicture,
-            age,
-            gender,
-            consultationType,
-            availableSlots,
-            availableDays,
-            isAvailable,
-            clinicPhone,
-            clinicEmail,
-            clinicWebsite,
-            clinicName,
-            coverImage,
-            clinicAddress,
-            city,
             updatedAt: new Date()
         };
+
+        // Add fields to profileData only if they are defined
+        if (description !== undefined && description !== '') profileData.description = description;
+        if (experience !== undefined) profileData.experience = experience;
+        if (specializations !== undefined && Array.isArray(specializations) && specializations.length > 0) profileData.specializations = specializations;
+        if (qualifications !== undefined && Array.isArray(qualifications) && qualifications.length > 0) profileData.qualifications = qualifications;
+        if (consultationFee !== undefined) profileData.consultationFee = consultationFee;
+        if (age !== undefined) profileData.age = age;
+        if (gender !== undefined && gender !== '') profileData.gender = gender;
+        if (consultationType !== undefined && consultationType !== '') profileData.consultationType = consultationType;
+        if (availableSlots !== undefined && Array.isArray(availableSlots) && availableSlots.length > 0) profileData.availableSlots = availableSlots;
+        if (availableDays !== undefined && Array.isArray(availableDays) && availableDays.length > 0) profileData.availableDays = availableDays;
+        if (isAvailable !== undefined) profileData.isAvailable = isAvailable;
+        if (clinicName !== undefined && clinicName !== '') profileData.clinicName = clinicName;
+        if (clinicPhone !== undefined && clinicPhone !== '') profileData.clinicPhone = clinicPhone;
+        if (clinicEmail !== undefined && clinicEmail !== '') profileData.clinicEmail = clinicEmail;
+        if (clinicWebsite !== undefined && clinicWebsite !== '') profileData.clinicWebsite = clinicWebsite;
+        if (coverImage !== undefined && coverImage !== '') profileData.coverImage = coverImage;
+        if (clinicAddress !== undefined && clinicAddress !== '') profileData.clinicAddress = clinicAddress;
+        if (city !== undefined && city !== '') profileData.city = city;
 
         // Check if profile already exists for this user
         const existingProfile = await DoctorProfile.findOne({ user: userId });
@@ -158,17 +163,21 @@ const createUpdateLabProfile = async (req: CustomRequest, res: Response): Promis
 
         const userId = req.user._id;
 
-        const profileData = {
+        // Create initial profile data object
+        const profileData: any = {
             user: userId,
-            laboratoryName,
-            laboratoryAddress,
-            laboratoryPhone,
-            laboratoryEmail,
-            laboratoryWebsite,
-            laboratoryServices,
-            city,
             updatedAt: new Date()
         };
+
+        // Add fields to profileData only if they are defined
+        if (laboratoryName !== undefined && laboratoryName !== '') profileData.laboratoryName = laboratoryName;
+        if (laboratoryAddress !== undefined && laboratoryAddress !== '') profileData.laboratoryAddress = laboratoryAddress;
+        if (laboratoryPhone !== undefined && laboratoryPhone !== '') profileData.laboratoryPhone = laboratoryPhone;
+        if (laboratoryEmail !== undefined && laboratoryEmail !== '') profileData.laboratoryEmail = laboratoryEmail;
+        if (laboratoryWebsite !== undefined && laboratoryWebsite !== '') profileData.laboratoryWebsite = laboratoryWebsite;
+        if (laboratoryServices !== undefined && Array.isArray(laboratoryServices) && laboratoryServices.length > 0) 
+            profileData.laboratoryServices = laboratoryServices;
+        if (city !== undefined && city !== '') profileData.city = city;
 
         // Check if profile already exists for this user
         const existingProfile = await LaboratoryProfile.findOne({ user: userId });
@@ -196,14 +205,18 @@ const createUpdateDeliveryProfile = async (req: CustomRequest, res: Response): P
 
         const userId = req.user._id;
 
-        const profileData = {
+        // Create initial profile data object
+        const profileData: any = {
             user: userId,
-            profilePicture,
-            age,
-            gender,
-            delivarablePinCodes,
             updatedAt: new Date()
         };
+
+        // Add fields to profileData only if they are defined
+        if (profilePicture !== undefined && profilePicture !== '') profileData.profilePicture = profilePicture;
+        if (age !== undefined) profileData.age = age;
+        if (gender !== undefined && gender !== '') profileData.gender = gender;
+        if (delivarablePinCodes !== undefined && Array.isArray(delivarablePinCodes) && delivarablePinCodes.length > 0)
+            profileData.delivarablePinCodes = delivarablePinCodes;
 
         // Check if profile already exists for this user
         const existingProfile = await DeliveryBoyProfile.findOne({ user: userId });

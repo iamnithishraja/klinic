@@ -294,13 +294,13 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     
     set((state) => {
       // Handle different API response formats
-      const newAge = data.age?.toString() || '';
       
-      // Handle gender with title case
-      let newGender = '';
-      if (data.gender) {
-        newGender = data.gender.charAt(0).toUpperCase() + data.gender.slice(1);
-      }
+      // Convert age and gender values from API
+      const newAge = data.age ? data.age.toString() : '';
+      const newGender = data.gender ? data.gender.charAt(0).toUpperCase() + data.gender.slice(1) : '';
+      
+      // Use coverImage if available, otherwise fallback to profilePicture for backward compatibility
+      const imageUrl = data.coverImage || data.profilePicture || '';
       
       // Update saved values and current state
       return {
@@ -310,7 +310,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
         qualifications: data.qualifications || [],
         consultationFee: data.consultationFee?.toString() || '',
         consultationType: data.consultationType || '',
-        coverImage: data.profilePicture || '',
+        coverImage: imageUrl,
         age: newAge,
         gender: newGender,
         clinicName: data.clinicName || '',
@@ -330,7 +330,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
           age: newAge,
           gender: newGender,
           consultationType: data.consultationType || '',
-          coverImage: data.profilePicture || '',
+          coverImage: imageUrl,
           clinicName: data.clinicName || '',
           clinicPhone: data.clinicPhone || '',
           clinicEmail: data.clinicEmail || '',
@@ -363,7 +363,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
       specializations: state.specializations,
       qualifications: state.qualifications,
       consultationFee: state.consultationFee ? parseInt(state.consultationFee) : undefined,
-      profilePicture: state.coverImage,
+      coverImage: state.coverImage,
       age: state.age ? parseInt(state.age) : undefined,
       gender: genderValue,
       consultationType: state.consultationType as 'online' | 'in-person' | 'both',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, Text, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Text, ScrollView, View, Platform, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -27,16 +27,16 @@ import ImagePickerModal from '@/components/profile/ImagePickerModal';
 const Profile = () => {
   const router = useRouter();
   const { user, setUser } = useUserStore();
-  
+
   // Use Zustand stores directly
   const userProfileStore = useUserProfileStore();
   const doctorProfileStore = useDoctorProfileStore();
   const uiStore = useProfileUIStore();
-  
+
   // Local state for UI
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [filteredCities, setFilteredCities] = useState<string[]>([]);
-  
+
   // For tracking file picks
   const [cameraCaptureUri, setCameraCaptureUri] = useState<string | null>(null);
   const [galleryCaptureUri, setGalleryCaptureUri] = useState<string | null>(null);
@@ -63,6 +63,31 @@ const Profile = () => {
     endpoint: '/api/v1/doctor-profile'
   });
 
+  // Setup keyboard listener
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        // Don't adjust anything, just track the keyboard height
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardWillShowListener.remove();
+      keyboardWillHideListener.remove();
+    };
+  }, []);
+
   useEffect(() => {
     // Fetch user data when component mounts
     fetchUserData();
@@ -72,16 +97,16 @@ const Profile = () => {
   const fetchUserData = async () => {
     try {
       uiStore.setLoading(true);
-      
+
       // Try to get user data from API
       await userApi.fetchData();
-      
+
       // Try to get profile data
       try {
         console.log('Attempting to fetch profile data...');
         const profileData = await profileApi.fetchData();
         console.log('Profile data received:', profileData);
-        
+
         // Handle new response format with profile and available data
         if (profileData && profileData.profile) {
           if (user?.role === UserRole.USER) {
@@ -89,23 +114,23 @@ const Profile = () => {
           } else if (user?.role === UserRole.DOCTOR) {
             doctorProfileStore.updateFromApiResponse(profileData.profile);
           }
-          
+
           // Set available cities
-          if (profileData.avilableCities && 
-              Array.isArray(profileData.avilableCities)) {
+          if (profileData.avilableCities &&
+            Array.isArray(profileData.avilableCities)) {
             setFilteredCities(profileData.avilableCities);
             uiStore.setCities(profileData.avilableCities);
           }
-          
+
           // Set available specializations and qualifications for doctor profiles
           if (user?.role === UserRole.DOCTOR) {
-            if (profileData.avilableSpecializations && 
-                Array.isArray(profileData.avilableSpecializations)) {
+            if (profileData.avilableSpecializations &&
+              Array.isArray(profileData.avilableSpecializations)) {
               doctorProfileStore.setAvailableSpecializations(profileData.avilableSpecializations);
             }
-            
-            if (profileData.avilableQualifications && 
-                Array.isArray(profileData.avilableQualifications)) {
+
+            if (profileData.avilableQualifications &&
+              Array.isArray(profileData.avilableQualifications)) {
               doctorProfileStore.setAvailableQualifications(profileData.avilableQualifications);
             }
           }
@@ -119,7 +144,7 @@ const Profile = () => {
         }
       } catch (error: any) {
         console.log('Profile GET error:', error.response?.status, error.response?.data);
-        
+
         // If 404, profile will be created when user saves
         if (error.response?.status === 404) {
           console.log('No profile found, will create one when user saves');
@@ -152,7 +177,7 @@ const Profile = () => {
         aspect: [4, 3],
         quality: 0.8,
       });
-      
+
       if (!result.canceled) {
         setCameraCaptureUri(result.assets[0].uri);
         await uploadImage(result.assets[0].uri);
@@ -176,7 +201,7 @@ const Profile = () => {
         aspect: [4, 3],
         quality: 0.8,
       });
-      
+
       if (!result.canceled) {
         setGalleryCaptureUri(result.assets[0].uri);
         await uploadImage(result.assets[0].uri);
@@ -194,11 +219,11 @@ const Profile = () => {
   const uploadImage = async (imageUri: string) => {
     try {
       console.log('Uploading image from:', imageUri);
-      
+
       // Determine file details
       const fileName = `profile-image-${Date.now()}.jpg`;
       const fileType = 'image/jpeg';
-      
+
       // Use the appropriate API hook based on user role
       let imageUrl = null;
       if (user?.role === UserRole.USER) {
@@ -206,10 +231,10 @@ const Profile = () => {
       } else if (user?.role === UserRole.DOCTOR) {
         imageUrl = await doctorProfileApi.uploadFile(fileType, fileName, imageUri);
       }
-      
+
       if (imageUrl) {
         console.log('Image uploaded successfully, URL:', imageUrl);
-        
+
         // Update state with the new image URL
         if (user?.role === UserRole.USER) {
           userProfileStore.setProfilePicture(imageUrl);
@@ -230,29 +255,29 @@ const Profile = () => {
   const handleDocumentPick = async () => {
     try {
       uiStore.setUploadingPdf(true);
-      
+
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/pdf',
         copyToCacheDirectory: true,
       });
-      
+
       if (!result.canceled) {
         // Get the file information
         const fileUri = result.assets[0].uri;
         const fileName = result.assets[0].name || `medical-history-${Date.now()}.pdf`;
         const fileType = result.assets[0].mimeType || 'application/pdf';
-        
+
         console.log('Document selected:', fileUri);
-        
+
         // Use the uploadFile method from userProfileApi to get a public URL
         const pdfUrl = await userProfileApi.uploadFile(fileType, fileName, fileUri);
-        
+
         if (pdfUrl) {
           console.log('PDF uploaded successfully, URL:', pdfUrl);
-          
+
           // Update PDF in store
           userProfileStore.setMedicalHistoryPdf(pdfUrl);
-          
+
           // Auto-save the PDF change
           const profileData = {
             profilePicture: userProfileStore.profilePicture,
@@ -268,10 +293,10 @@ const Profile = () => {
             } as Address,
             city: userProfileStore.city
           };
-          
+
           console.log('Auto-saving PDF upload...');
           const success = await userProfileApi.updateDataSilent(profileData);
-          
+
           if (success) {
             console.log('PDF update saved successfully');
             // Update saved values
@@ -279,7 +304,7 @@ const Profile = () => {
               ...userProfileStore.savedValues,
               medicalHistoryPdf: pdfUrl
             });
-            
+
             // Notify user of successful upload
             alert('Medical history PDF uploaded successfully.');
           } else {
@@ -320,7 +345,7 @@ const Profile = () => {
   const handleUpdateUserProfile = async () => {
     try {
       uiStore.setUpdating(true);
-      
+
       // Prepare user profile data
       const profileData = {
         profilePicture: userProfileStore.profilePicture,
@@ -336,13 +361,13 @@ const Profile = () => {
         } as Address,
         city: userProfileStore.city
       };
-      
+
       console.log('Submitting user profile data:', JSON.stringify(profileData, null, 2));
       const response = await userProfileApi.updateData(profileData);
-      
+
       if (response) {
         alert('Profile updated successfully');
-        
+
         // Update saved values
         userProfileStore.setSavedValues({
           age: userProfileStore.age,
@@ -366,16 +391,16 @@ const Profile = () => {
   const handleUpdateDoctorProfile = async () => {
     try {
       uiStore.setUpdating(true);
-      
+
       // Get prepared profile data from store
       const profileData = doctorProfileStore.prepareProfileData();
-      
+
       console.log('Submitting doctor profile data:', JSON.stringify(profileData, null, 2));
       const response = await doctorProfileApi.updateData(profileData);
-      
+
       if (response) {
         alert('Doctor profile updated successfully');
-        
+
         // Update saved values to match current values
         doctorProfileStore.setSavedValues({
           description: doctorProfileStore.description,
@@ -414,7 +439,7 @@ const Profile = () => {
   // Track changes to form fields
   useEffect(() => {
     // Check if any field has changed from the saved values
-    const hasChanges = 
+    const hasChanges =
       userProfileStore.age !== userProfileStore.savedValues.age ||
       userProfileStore.gender !== userProfileStore.savedValues.gender ||
       userProfileStore.medicalHistory !== userProfileStore.savedValues.medicalHistory ||
@@ -422,7 +447,7 @@ const Profile = () => {
       userProfileStore.pinCode !== userProfileStore.savedValues.pinCode ||
       userProfileStore.city !== userProfileStore.savedValues.city ||
       userProfileStore.medicalHistoryPdf !== userProfileStore.savedValues.medicalHistoryPdf;
-    
+
     // Using hasUnsavedChanges state as ProfileUIState doesn't have setHasUnsavedChanges method
     const hasUnsavedChanges = hasChanges;
   }, [userProfileStore.age, userProfileStore.gender, userProfileStore.medicalHistory, userProfileStore.address, userProfileStore.pinCode, userProfileStore.city, userProfileStore.medicalHistoryPdf, userProfileStore.savedValues]);
@@ -431,7 +456,7 @@ const Profile = () => {
   const hasUserProfileChanges = () => {
     const { age, gender, medicalHistory, address, pinCode, city, medicalHistoryPdf } = userProfileStore;
     const { savedValues } = userProfileStore;
-    
+
     return age !== savedValues.age ||
       gender !== savedValues.gender ||
       medicalHistory !== savedValues.medicalHistory ||
@@ -440,16 +465,16 @@ const Profile = () => {
       city !== savedValues.city ||
       medicalHistoryPdf !== savedValues.medicalHistoryPdf;
   };
-  
+
   // Check if there are unsaved changes in the doctor profile
   const hasDoctorProfileChanges = () => {
     const state = doctorProfileStore;
     const { savedValues } = doctorProfileStore;
-    
+
     // For arrays like specializations and qualifications
     const isSpecializationsChanged = JSON.stringify(state.specializations) !== JSON.stringify(savedValues.specializations);
     const isQualificationsChanged = JSON.stringify(state.qualifications) !== JSON.stringify(savedValues.qualifications);
-    
+
     // For other primitive fields
     return state.description !== savedValues.description ||
       state.experience !== savedValues.experience ||
@@ -493,7 +518,7 @@ const Profile = () => {
     try {
       // Set gender in store
       userProfileStore.setGender(newGender);
-      
+
       // Prepare profile data with only the changed field and required data
       const profileData = {
         profilePicture: userProfileStore.profilePicture,
@@ -509,11 +534,11 @@ const Profile = () => {
         } as Address,
         city: userProfileStore.city
       };
-      
+
       // Silent update
       console.log('Auto-saving gender change...');
       const success = await userProfileApi.updateDataSilent(profileData);
-      
+
       if (success) {
         console.log('Gender updated successfully');
         // Update saved values
@@ -533,7 +558,7 @@ const Profile = () => {
     try {
       // Set city in store
       userProfileStore.setCity(newCity);
-      
+
       // Prepare profile data with only the changed field and required data
       const profileData = {
         profilePicture: userProfileStore.profilePicture,
@@ -549,11 +574,11 @@ const Profile = () => {
         } as Address,
         city: newCity
       };
-      
+
       // Silent update
       console.log('Auto-saving city change...');
       const success = await userProfileApi.updateDataSilent(profileData);
-      
+
       if (success) {
         console.log('City updated successfully');
         // Update saved values
@@ -567,23 +592,23 @@ const Profile = () => {
       // Don't show alert to avoid disrupting user experience
     }
   };
-  
+
   // Handle doctor gender change with immediate save
   const handleDoctorGenderChange = async (newGender: string) => {
     try {
       // Set gender in store
       doctorProfileStore.setGender(newGender);
-      
+
       // Prepare profile data
       const profileData = doctorProfileStore.prepareProfileData();
-      
+
       // Override gender with new value
       profileData.gender = newGender.toLowerCase();
-      
+
       // Silent update
       console.log('Auto-saving doctor gender change...');
       const success = await doctorProfileApi.updateDataSilent(profileData);
-      
+
       if (success) {
         console.log('Doctor gender updated successfully');
         // Update saved values
@@ -603,17 +628,17 @@ const Profile = () => {
     try {
       // Set city in store
       doctorProfileStore.setClinicCity(newCity);
-      
+
       // Prepare profile data
       const profileData = doctorProfileStore.prepareProfileData();
-      
+
       // Override city with new value
       profileData.city = newCity;
-      
+
       // Silent update
       console.log('Auto-saving doctor city change...');
       const success = await doctorProfileApi.updateDataSilent(profileData);
-      
+
       if (success) {
         console.log('Doctor city updated successfully');
         // Update saved values
@@ -631,7 +656,7 @@ const Profile = () => {
   // Render the correct profile form based on user role
   const renderProfileForm = () => {
     if (!user) return null;
-    
+
     switch (user.role) {
       case UserRole.USER:
         return (
@@ -729,63 +754,48 @@ const Profile = () => {
     <View className="flex-1 bg-background">
       <SafeAreaView className="flex-1">
         <StatusBar style="auto" />
-        
-        {/* Main container */}
-        <ScrollView 
-          className="flex-1 px-5"
-          contentContainerStyle={{ paddingBottom: 100 }} // Add extra padding at bottom
-        >
-          {/* Header Section */}
-          <ProfileHeader 
-            userData={user}
-            onLogout={handleLogout}
-          />
-          
-          {/* Dynamic Form Section based on role */}
-          {renderProfileForm()}
-        </ScrollView>
+
+        {/* Main container - keyboard avoiding removed */}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="flex-1"
+          >
+            <View style={{ flex: 1 }}>
+              <ScrollView
+                className="flex-1 px-5"
+              >
+                {/* Header Section */}
+                <ProfileHeader
+                  userData={user}
+                  onLogout={handleLogout}
+                />
+
+                {/* Dynamic Form Section based on role */}
+                {renderProfileForm()}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
 
       {/* Floating Save Button (only show when there are changes) */}
       {(user?.role === UserRole.USER && hasUserProfileChanges()) && (
         <SaveButton onPress={handleUpdateUserProfile} loading={uiStore.updating} />
       )}
-      
+
       {/* Floating Save Button for Doctor Profile */}
       {(user?.role === UserRole.DOCTOR && hasDoctorProfileChanges()) && (
         <SaveButton onPress={handleUpdateDoctorProfile} loading={uiStore.updating} />
       )}
 
       {/* Image Picker Modal */}
-      <ImagePickerModal 
+      <ImagePickerModal
         visible={uiStore.showImageOptions}
         onClose={() => uiStore.setShowImageOptions(false)}
         onTakePhoto={openCamera}
         onChooseFromGallery={openGallery}
       />
-
-      {/* Date Picker */}
-      {uiStore.showDatePicker && (
-        <DateTimePicker
-          value={new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            uiStore.setShowDatePicker(false);
-            if (selectedDate) {
-              // Calculate age
-              const today = new Date();
-              let calculatedAge = today.getFullYear() - selectedDate.getFullYear();
-              const m = today.getMonth() - selectedDate.getMonth();
-              if (m < 0 || (m === 0 && today.getDate() < selectedDate.getDate())) {
-                calculatedAge--;
-              }
-              userProfileStore.setAge(calculatedAge.toString());
-            }
-          }}
-          maximumDate={new Date()}
-        />
-      )}
     </View>
   );
 };

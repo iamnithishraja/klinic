@@ -89,10 +89,6 @@ const doctorProfileSchema = new mongoose.Schema({
         type: Number,
         default: null,
     },
-    profilePicture: {
-        type: String,
-        default: null,
-    },
     age: {
         type: Number,
         default: null,
