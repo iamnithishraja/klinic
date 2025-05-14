@@ -40,7 +40,7 @@ const Profile = () => {
   // For tracking file picks
   const [cameraCaptureUri, setCameraCaptureUri] = useState<string | null>(null);
   const [galleryCaptureUri, setGalleryCaptureUri] = useState<string | null>(null);
-  const [activeServiceForImage, setActiveServiceForImage] = useState<{ modalRef: any } | null>(null);
+  const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
 
   // Custom hooks for API calls
   const userApi = useProfileApi({
@@ -251,9 +251,12 @@ const Profile = () => {
     } catch (error) {
       console.error('Error taking photo:', error);
       alert('Failed to take photo');
-    } finally {
+      // Reset flags in case of error
       uiStore.setUploadingImage(false);
       uiStore.setUploadingCoverImage(false);
+    } finally {
+      // Only reset showImageOptions here, uploadingImage and uploadingCoverImage 
+      // are reset in uploadImage
       uiStore.setShowImageOptions(false);
     }
   };
@@ -275,9 +278,12 @@ const Profile = () => {
     } catch (error) {
       console.error('Error picking image:', error);
       alert('Failed to pick image');
-    } finally {
+      // Reset flags in case of error
       uiStore.setUploadingImage(false);
       uiStore.setUploadingCoverImage(false);
+    } finally {
+      // Only reset showImageOptions here, uploadingImage and uploadingCoverImage 
+      // are reset in uploadImage
       uiStore.setShowImageOptions(false);
     }
   };
@@ -310,9 +316,21 @@ const Profile = () => {
           doctorProfileStore.setCoverImage(imageUrl);
         } else if (user?.role === UserRole.LABORATORY) {
           // Check if this is a service cover image or laboratory cover image
-          if (activeServiceForImage && activeServiceForImage.modalRef?.current) {
-            activeServiceForImage.modalRef.current.setServiceCoverImage(imageUrl);
-            setActiveServiceForImage(null);
+          if (activeServiceId) {
+            console.log(`Updating cover image for service ID: ${activeServiceId}`);
+            
+            // Update the service in the store with the new cover image
+            laboratoryProfileStore.updateLaboratoryService(activeServiceId, {
+              coverImage: imageUrl
+            });
+            
+            // Auto-save the changes
+            console.log('Auto-saving laboratory profile after cover image update...');
+            const profileData = laboratoryProfileStore.prepareProfileData();
+            await laboratoryProfileApi.updateDataSilent(profileData);
+            
+            // Reset the active service ID
+            setActiveServiceId(null);
           } else {
             laboratoryProfileStore.setCoverImage(imageUrl);
           }
@@ -324,6 +342,11 @@ const Profile = () => {
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Failed to upload image');
+    } finally {
+      // Always reset the uploading flags and active IDs regardless of success or failure
+      uiStore.setUploadingImage(false);
+      uiStore.setUploadingCoverImage(false);
+      setActiveServiceId(null);
     }
   };
 
@@ -418,14 +441,15 @@ const Profile = () => {
   };
 
   // Handle service cover image pick for laboratory profile
-  const handleServiceCoverImagePick = async (modalRef: any) => {
+  const handleServiceCoverImagePick = async (serviceId: string) => {
     try {
-      setActiveServiceForImage({ modalRef });
+      setActiveServiceId(serviceId);
       uiStore.setUploadingCoverImage(true);
       handleImagePick();
     } catch (error) {
       console.error('Error setting up service cover image pick:', error);
-      setActiveServiceForImage(null);
+      setActiveServiceId(null);
+      uiStore.setUploadingCoverImage(false);
     }
   };
 

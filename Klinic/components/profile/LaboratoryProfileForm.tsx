@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons, MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useLaboratoryProfileStore, useProfileUIStore } from '../../store/profileStore';
 import ServiceCard from './laboratory/ServiceCard';
@@ -8,10 +8,10 @@ import { LaboratoryService, LaboratoryTest } from '../../types/laboratoryTypes';
 import useProfileApi from '../../hooks/useProfileApi';
 import CitySearch from './CitySearch';
 
-// Add property to pass categories to the ServiceFormModal
+// Update property to include cover image picker
 interface LaboratoryProfileFormProps {
   availableCategories?: string[];
-  onServiceCoverImagePick?: (modalRef: any) => void;
+  onServiceCoverImagePick?: (serviceId: string) => void;
 }
 
 const LaboratoryProfileForm = ({ 
@@ -19,13 +19,9 @@ const LaboratoryProfileForm = ({
   onServiceCoverImagePick
 }: LaboratoryProfileFormProps) => {
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
-  const [serviceImageToUpload, setServiceImageToUpload] = useState<string>('');
   
   // Add debounce timer ref with correct type
   const debounceTimerRef = useRef<number | null>(null);
-  
-  // Reference to the ServiceFormModal
-  const serviceFormModalRef = useRef<any>(null);
   
   // Get state from stores
   const {
@@ -75,10 +71,11 @@ const LaboratoryProfileForm = ({
   const isGoogleMapsLinkChanged = laboratoryGoogleMapsLink !== savedValues.laboratoryGoogleMapsLink;
   const areServicesChanged = JSON.stringify(laboratoryServices) !== JSON.stringify(savedValues.laboratoryServices);
 
-  // Handle cover image pick for service
-  const handleServiceCoverImagePick = () => {
+  // Function to handle service cover image upload
+  const handleServiceCoverImagePick = (serviceId: string) => {
     if (onServiceCoverImagePick) {
-      onServiceCoverImagePick(serviceFormModalRef);
+      // Call the parent function with the service ID
+      onServiceCoverImagePick(serviceId);
     }
   };
 
@@ -86,15 +83,20 @@ const LaboratoryProfileForm = ({
   const handleAddService = async (service: { 
     name: string; 
     description: string; 
-    coverImage: string;
     collectionType: 'home' | 'lab' | 'both';
     price: string;
     category?: string;
     tests?: { name: string; description: string }[];
   }) => {
     try {
+      // Create service object with empty coverImage
+      const serviceWithCover = {
+        ...service,
+        coverImage: '' // Add empty cover image
+      };
+      
       // Add to store
-      addLaboratoryService(service);
+      addLaboratoryService(serviceWithCover);
       setShowAddServiceModal(false);
       
       // Auto-save the changes
@@ -120,13 +122,47 @@ const LaboratoryProfileForm = ({
   // Remove service with auto-save
   const handleRemoveService = async (serviceId: string) => {
     try {
+      console.log(`Removing service with ID: ${serviceId}`);
+      
       // Remove from store
       removeLaboratoryService(serviceId);
       
-      // Auto-save the changes
-      await autoSaveChanges();
+      // Verify service was removed from state
+      console.log(`Services after removal: ${laboratoryServices.length}`);
+      console.log(`Service IDs: ${laboratoryServices.map(s => s.id).join(', ')}`);
+      
+      // Instead of using debounced auto-save, immediately save the changes
+      console.log('Immediately saving changes after service removal');
+      
+      // Prepare profile data
+      const profileData = prepareProfileData();
+      console.log('Laboratory services to save:', profileData.laboratoryServices.length);
+      
+      // Use direct update instead of silent update for better error handling
+      const result = await laboratoryProfileApi.updateData(profileData);
+      
+      if (result) {
+        console.log('Service removal saved successfully');
+        // Update saved values after successful save
+        setSavedValues({
+          laboratoryName,
+          laboratoryPhone,
+          laboratoryEmail,
+          laboratoryWebsite,
+          laboratoryAddress,
+          laboratoryPinCode,
+          laboratoryCity,
+          laboratoryGoogleMapsLink,
+          laboratoryServices,
+          coverImage: savedValues.coverImage
+        });
+      } else {
+        console.error('Service removal save failed');
+        alert('Failed to delete service. Please try again.');
+      }
     } catch (error) {
       console.error('Error removing laboratory service:', error);
+      alert('Failed to delete service. Please try again.');
     }
   };
 
@@ -178,27 +214,38 @@ const LaboratoryProfileForm = ({
       }
       
       // Set a new timer to auto-save after a brief delay
-      debounceTimerRef.current = setTimeout(async () => {
-        console.log('Auto-saving laboratory profile...');
-        const profileData = prepareProfileData();
-        await laboratoryProfileApi.updateDataSilent(profileData);
-        // Update saved values after successful auto-save
-        setSavedValues({
-          laboratoryName,
-          laboratoryPhone,
-          laboratoryEmail,
-          laboratoryWebsite,
-          laboratoryAddress,
-          laboratoryPinCode,
-          laboratoryCity,
-          laboratoryGoogleMapsLink,
-          laboratoryServices,
-          coverImage: savedValues.coverImage
-        });
-        console.log('Auto-save completed');
-      }, 1000) as unknown as number;
-      
-      return true;
+      return new Promise<boolean>((resolve) => {
+        debounceTimerRef.current = setTimeout(async () => {
+          console.log('Auto-saving laboratory profile...');
+          
+          const profileData = prepareProfileData();
+          console.log('Laboratory services to save:', profileData.laboratoryServices.length);
+          console.log('Laboratory services data:', JSON.stringify(profileData.laboratoryServices, null, 2));
+          
+          const result = await laboratoryProfileApi.updateDataSilent(profileData);
+          
+          if (result) {
+            console.log('Auto-save completed successfully');
+            // Update saved values after successful auto-save
+            setSavedValues({
+              laboratoryName,
+              laboratoryPhone,
+              laboratoryEmail,
+              laboratoryWebsite,
+              laboratoryAddress,
+              laboratoryPinCode,
+              laboratoryCity,
+              laboratoryGoogleMapsLink,
+              laboratoryServices,
+              coverImage: savedValues.coverImage
+            });
+            resolve(true);
+          } else {
+            console.error('Auto-save failed - API returned false');
+            resolve(false);
+          }
+        }, 1000) as unknown as number;
+      });
     } catch (error) {
       console.error('Error auto-saving laboratory profile:', error);
       return false;
@@ -219,188 +266,192 @@ const LaboratoryProfileForm = ({
   ]);
 
   return (
-    <View className="flex-1">
-      {/* Basic Details */}
-      <View className="mb-6">
-        <Text className="text-lg font-bold text-gray-800 mb-4">
-          Laboratory Details
-        </Text>
-        
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium text-base mb-2">
-            Laboratory Name
-            {isNameChanged && <Text className="text-red-500 ml-1">*</Text>}
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={100}
+    >
+      <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
+        {/* Basic Details */}
+        <View className="mb-6">
+          <Text className="text-lg font-bold text-gray-800 mb-4">
+            Laboratory Details
           </Text>
-          <TextInput
-            value={laboratoryName}
-            onChangeText={setLaboratoryName}
-            placeholder="Enter laboratory name"
-            className={`border ${isNameChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
-          />
-        </View>
-        
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium text-base mb-2">
-            Phone Number
-            {isPhoneChanged && <Text className="text-red-500 ml-1">*</Text>}
-          </Text>
-          <TextInput
-            value={laboratoryPhone}
-            onChangeText={setLaboratoryPhone}
-            placeholder="Enter phone number"
-            keyboardType="phone-pad"
-            className={`border ${isPhoneChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
-          />
-        </View>
-        
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium text-base mb-2">
-            Email Address
-            {isEmailChanged && <Text className="text-red-500 ml-1">*</Text>}
-          </Text>
-          <TextInput
-            value={laboratoryEmail}
-            onChangeText={setLaboratoryEmail}
-            placeholder="Enter email address"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            className={`border ${isEmailChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
-          />
-        </View>
-        
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium text-base mb-2">
-            Website (Optional)
-            {isWebsiteChanged && <Text className="text-red-500 ml-1">*</Text>}
-          </Text>
-          <TextInput
-            value={laboratoryWebsite}
-            onChangeText={setLaboratoryWebsite}
-            placeholder="Enter website URL"
-            keyboardType="url"
-            autoCapitalize="none"
-            className={`border ${isWebsiteChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
-          />
-        </View>
-      </View>
-      
-      {/* Address */}
-      <View className="mb-6">
-        <Text className="text-lg font-bold text-gray-800 mb-4">
-          Laboratory Address
-        </Text>
-        
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium text-base mb-2">
-            Address
-            {isAddressChanged && <Text className="text-red-500 ml-1">*</Text>}
-          </Text>
-          <TextInput
-            value={laboratoryAddress}
-            onChangeText={setLaboratoryAddress}
-            placeholder="Enter laboratory address"
-            multiline
-            numberOfLines={3}
-            className={`border ${isAddressChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
-            style={{ textAlignVertical: 'top' }}
-          />
-        </View>
-        
-        <View className="flex-row mb-4">
-          <View className="flex-1 mr-2">
+          
+          <View className="mb-4">
             <Text className="text-gray-700 font-medium text-base mb-2">
-              Pin Code
-              {isPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
+              Laboratory Name
+              {isNameChanged && <Text className="text-red-500 ml-1">*</Text>}
             </Text>
             <TextInput
-              value={laboratoryPinCode}
-              onChangeText={setLaboratoryPinCode}
-              placeholder="Enter PIN code"
-              keyboardType="number-pad"
-              className={`border ${isPinCodeChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+              value={laboratoryName}
+              onChangeText={setLaboratoryName}
+              placeholder="Enter laboratory name"
+              className={`border ${isNameChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
             />
           </View>
           
-          <View className="flex-1 ml-2">
-            <CitySearch 
-              selectedCity={laboratoryCity}
-              onCitySelect={setLaboratoryCity}
-              allCities={uiStore.cities}
-              isCityChanged={isCityChanged}
+          <View className="mb-4">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Phone Number
+              {isPhoneChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
+            <TextInput
+              value={laboratoryPhone}
+              onChangeText={setLaboratoryPhone}
+              placeholder="Enter phone number"
+              keyboardType="phone-pad"
+              className={`border ${isPhoneChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+            />
+          </View>
+          
+          <View className="mb-4">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Email Address
+              {isEmailChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
+            <TextInput
+              value={laboratoryEmail}
+              onChangeText={setLaboratoryEmail}
+              placeholder="Enter email address"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              className={`border ${isEmailChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+            />
+          </View>
+          
+          <View className="mb-4">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Website (Optional)
+              {isWebsiteChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
+            <TextInput
+              value={laboratoryWebsite}
+              onChangeText={setLaboratoryWebsite}
+              placeholder="Enter website URL"
+              keyboardType="url"
+              autoCapitalize="none"
+              className={`border ${isWebsiteChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
             />
           </View>
         </View>
         
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium text-base mb-2">
-            Google Maps Link (Optional)
-            {isGoogleMapsLinkChanged && <Text className="text-red-500 ml-1">*</Text>}
+        {/* Address */}
+        <View className="mb-6">
+          <Text className="text-lg font-bold text-gray-800 mb-4">
+            Laboratory Address
           </Text>
-          <TextInput
-            value={laboratoryGoogleMapsLink}
-            onChangeText={setLaboratoryGoogleMapsLink}
-            placeholder="Enter Google Maps link"
-            autoCapitalize="none"
-            className={`border ${isGoogleMapsLinkChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
-          />
-        </View>
-      </View>
-      
-      {/* Laboratory Services */}
-      <View className="mb-2">
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-lg font-bold text-gray-800">
-            Laboratory Services
-          </Text>
-          <TouchableOpacity 
-            className="bg-indigo-500 py-2 px-3 rounded-lg flex-row items-center"
-            onPress={() => setShowAddServiceModal(true)}
-          >
-            <Ionicons name="add" size={18} color="white" />
-            <Text className="text-white font-medium ml-1">Add Service</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Service List */}
-        {laboratoryServices.length === 0 ? (
-          <View className="bg-gray-50 rounded-xl p-6 items-center justify-center border border-gray-200">
-            <MaterialIcons name="medical-services" size={40} color="#9CA3AF" />
-            <Text className="text-gray-500 mt-2 text-center">
-              No laboratory services added yet.
+          
+          <View className="mb-4">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Address
+              {isAddressChanged && <Text className="text-red-500 ml-1">*</Text>}
             </Text>
-            <Text className="text-gray-400 text-center text-sm mt-1">
-              Click the "Add Service" button to add your first service.
-            </Text>
+            <TextInput
+              value={laboratoryAddress}
+              onChangeText={setLaboratoryAddress}
+              placeholder="Enter laboratory address"
+              multiline
+              numberOfLines={3}
+              className={`border ${isAddressChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+              style={{ textAlignVertical: 'top' }}
+            />
           </View>
-        ) : (
-          <View>
-            {laboratoryServices.map((service) => (
-              <ServiceCard 
-                key={service.id}
-                service={service}
-                onUpdate={(updates) => handleUpdateService(service.id, updates)}
-                onDelete={() => handleRemoveService(service.id)}
-                onAddTest={(test) => handleAddTest(service.id, test)}
-                onUpdateTest={(testId, updates) => handleUpdateTest(service.id, testId, updates)}
-                onDeleteTest={(testId) => handleRemoveTest(service.id, testId)}
-                availableCategories={availableCategories}
+          
+          <View className="flex-row mb-4">
+            <View className="flex-1 mr-2">
+              <Text className="text-gray-700 font-medium text-base mb-2">
+                Pin Code
+                {isPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
+              </Text>
+              <TextInput
+                value={laboratoryPinCode}
+                onChangeText={setLaboratoryPinCode}
+                placeholder="Enter PIN code"
+                keyboardType="number-pad"
+                className={`border ${isPinCodeChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
               />
-            ))}
+            </View>
+            
+            <View className="flex-1 ml-2">
+              <CitySearch 
+                selectedCity={laboratoryCity}
+                onCitySelect={setLaboratoryCity}
+                allCities={uiStore.cities}
+                isCityChanged={isCityChanged}
+              />
+            </View>
           </View>
-        )}
-      </View>
+          
+          <View className="mb-4">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Google Maps Link (Optional)
+              {isGoogleMapsLinkChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
+            <TextInput
+              value={laboratoryGoogleMapsLink}
+              onChangeText={setLaboratoryGoogleMapsLink}
+              placeholder="Enter Google Maps link"
+              autoCapitalize="none"
+              className={`border ${isGoogleMapsLinkChanged ? 'border-red-400' : 'border-gray-300'} rounded-xl p-3 text-gray-800 bg-white`}
+            />
+          </View>
+        </View>
+        
+        {/* Laboratory Services */}
+        <View className="mb-2">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-gray-800">
+              Laboratory Services
+            </Text>
+            <TouchableOpacity 
+              className="bg-indigo-500 py-2 px-3 rounded-lg flex-row items-center"
+              onPress={() => setShowAddServiceModal(true)}
+            >
+              <Ionicons name="add" size={18} color="white" />
+              <Text className="text-white font-medium ml-1">Add Service</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Service List */}
+          {laboratoryServices.length === 0 ? (
+            <View className="bg-gray-50 rounded-xl p-6 items-center justify-center border border-gray-200">
+              <MaterialIcons name="medical-services" size={40} color="#9CA3AF" />
+              <Text className="text-gray-500 mt-2 text-center">
+                No laboratory services added yet.
+              </Text>
+              <Text className="text-gray-400 text-center text-sm mt-1">
+                Click the "Add Service" button to add your first service.
+              </Text>
+            </View>
+          ) : (
+            <View>
+              {laboratoryServices.map((service) => (
+                <ServiceCard 
+                  key={service.id}
+                  service={service}
+                  onUpdate={(updates) => handleUpdateService(service.id, updates)}
+                  onDelete={() => handleRemoveService(service.id)}
+                  onAddTest={(test) => handleAddTest(service.id, test)}
+                  onUpdateTest={(testId, updates) => handleUpdateTest(service.id, testId, updates)}
+                  onDeleteTest={(testId) => handleRemoveTest(service.id, testId)}
+                  onUploadCoverImage={handleServiceCoverImagePick}
+                  availableCategories={availableCategories}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
 
       {/* Add Service Modal */}
       <ServiceFormModal
-        ref={serviceFormModalRef}
         visible={showAddServiceModal}
         onClose={() => setShowAddServiceModal(false)}
         onSubmit={handleAddService}
         availableCategories={availableCategories}
-        uploadingCoverImage={uiStore.uploadingCoverImage}
-        onChangeCoverImage={handleServiceCoverImagePick}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

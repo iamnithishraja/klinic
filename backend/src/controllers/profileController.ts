@@ -209,6 +209,7 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
             laboratoryName, laboratoryPhone, laboratoryEmail, laboratoryWebsite,
             laboratoryAddress, city, laboratoryServices, coverImage
         } = req.body;
+        
 
         const userId = req.user._id;
 
@@ -224,7 +225,6 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
         if (laboratoryEmail !== undefined && laboratoryEmail !== '') profileData.laboratoryEmail = laboratoryEmail;
         if (laboratoryWebsite !== undefined && laboratoryWebsite !== '') profileData.laboratoryWebsite = laboratoryWebsite;
         if (coverImage !== undefined && coverImage !== '') profileData.coverImage = coverImage;
-        
         // Handle laboratory address
         if (laboratoryAddress !== undefined) {
             profileData.laboratoryAddress = profileData.laboratoryAddress || {};
@@ -264,6 +264,11 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
                 
                 if (service.coverImage) {
                     serviceData.coverImage = service.coverImage;
+                }
+                
+                // Add category if it exists
+                if (service.category) {
+                    serviceData.category = service.category;
                 }
                 
                 if (service.tests && Array.isArray(service.tests)) {

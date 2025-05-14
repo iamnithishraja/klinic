@@ -538,6 +538,7 @@ interface LaboratoryService {
   collectionType: 'home' | 'lab' | 'both';
   tests: LaboratoryTest[];
   price: string;
+  category?: string;
 }
 
 interface LaboratoryProfileState {
@@ -720,6 +721,7 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
           coverImage: service.coverImage || '',
           collectionType: service.collectionType || 'both',
           price: service.price?.toString() || '',
+          category: service.category || '',
           tests: Array.isArray(service.tests) 
             ? service.tests.map((test: any) => ({
                 id: test._id || Date.now().toString(),
@@ -793,6 +795,7 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
       coverImage: service.coverImage,
       collectionType: service.collectionType,
       price: service.price ? parseFloat(service.price) : undefined,
+      category: service.category,
       tests: service.tests.map(test => ({
         name: test.name,
         description: test.description
