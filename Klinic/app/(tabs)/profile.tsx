@@ -585,6 +585,7 @@ const Profile = () => {
       state.clinicAddress !== savedValues.clinicAddress ||
       state.clinicPinCode !== savedValues.clinicPinCode ||
       state.clinicCity !== savedValues.clinicCity ||
+      state.clinicGoogleMapsLink !== savedValues.clinicGoogleMapsLink ||
       isAvailableDaysChanged ||
       isAvailableSlotsChanged;
   };
@@ -623,7 +624,8 @@ const Profile = () => {
           clinicWebsite: doctorProfileStore.clinicWebsite,
           clinicAddress: doctorProfileStore.clinicAddress,
           clinicPinCode: doctorProfileStore.clinicPinCode,
-          clinicCity: doctorProfileStore.clinicCity
+          clinicCity: doctorProfileStore.clinicCity,
+          clinicGoogleMapsLink: doctorProfileStore.clinicGoogleMapsLink
         });
       }
     } catch (error) {
@@ -911,10 +913,11 @@ const Profile = () => {
             clinicAddress={doctorProfileStore.clinicAddress}
             clinicPinCode={doctorProfileStore.clinicPinCode}
             clinicCity={doctorProfileStore.clinicCity}
+            clinicGoogleMapsLink={doctorProfileStore.clinicGoogleMapsLink}
+            cities={uiStore.cities}
             isAvailable={doctorProfileStore.isAvailable}
             availableDays={doctorProfileStore.availableDays}
             availableSlots={doctorProfileStore.availableSlots}
-            cities={uiStore.cities}
             uploadingCoverImage={uiStore.uploadingCoverImage}
             onChangeDescription={(text) => doctorProfileStore.setDescription(text)}
             onChangeExperience={(text) => doctorProfileStore.setExperience(text)}
@@ -934,6 +937,7 @@ const Profile = () => {
             onChangeClinicAddress={(address) => doctorProfileStore.setClinicAddress(address)}
             onChangeClinicPinCode={(pinCode) => doctorProfileStore.setClinicPinCode(pinCode)}
             onChangeClinicCity={handleDoctorCityChange}
+            onChangeClinicGoogleMapsLink={(link) => doctorProfileStore.setClinicGoogleMapsLink(link)}
             onChangeIsAvailable={handleDoctorIsAvailableChange}
             onToggleAvailableDay={handleDoctorAvailableDayToggle}
             onAddAvailableSlot={handleDoctorAvailableSlotAdd}

@@ -17,6 +17,7 @@ export interface Address {
   longitude?: number | null;
   address?: string | null;
   pinCode?: string | null;
+  googleMapsLink?: string | null;
 }
 
 export interface UserProfile {

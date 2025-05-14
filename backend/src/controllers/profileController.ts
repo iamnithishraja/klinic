@@ -103,7 +103,7 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
             description, experience, specializations, qualifications,
             consultationFee, age, gender, consultationType,
             availableSlots, availableDays, isAvailable, clinicName, clinicPhone,
-            clinicEmail, clinicWebsite, coverImage, clinicAddress, city
+            clinicEmail, clinicWebsite, coverImage, clinicAddress, city, googleMapsLink
         } = req.body;
 
         const userId = req.user._id;
@@ -131,7 +131,20 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
         if (clinicEmail !== undefined && clinicEmail !== '') profileData.clinicEmail = clinicEmail;
         if (clinicWebsite !== undefined && clinicWebsite !== '') profileData.clinicWebsite = clinicWebsite;
         if (coverImage !== undefined && coverImage !== '') profileData.coverImage = coverImage;
-        if (clinicAddress !== undefined && clinicAddress !== '') profileData.clinicAddress = clinicAddress;
+        
+        // Handle clinic address and Google Maps link
+        if (clinicAddress !== undefined || googleMapsLink !== undefined) {
+            profileData.clinicAddress = profileData.clinicAddress || {};
+            
+            if (clinicAddress !== undefined && clinicAddress !== '') {
+                profileData.clinicAddress.address = clinicAddress;
+            }
+            
+            if (googleMapsLink !== undefined && googleMapsLink !== '') {
+                profileData.clinicAddress.googleMapsLink = googleMapsLink;
+            }
+        }
+        
         if (city !== undefined && city !== '') profileData.city = city;
 
         // Check if profile already exists for this user
@@ -198,44 +211,6 @@ const createUpdateLabProfile = async (req: CustomRequest, res: Response): Promis
     }
 };
 
-// Create or update delivery boy profile
-const createUpdateDeliveryProfile = async (req: CustomRequest, res: Response): Promise<void> => {
-    try {
-        const { profilePicture, age, gender, delivarablePinCodes } = req.body;
-
-        const userId = req.user._id;
-
-        // Create initial profile data object
-        const profileData: any = {
-            user: userId,
-            updatedAt: new Date()
-        };
-
-        // Add fields to profileData only if they are defined
-        if (profilePicture !== undefined && profilePicture !== '') profileData.profilePicture = profilePicture;
-        if (age !== undefined) profileData.age = age;
-        if (gender !== undefined && gender !== '') profileData.gender = gender;
-        if (delivarablePinCodes !== undefined && Array.isArray(delivarablePinCodes) && delivarablePinCodes.length > 0)
-            profileData.delivarablePinCodes = delivarablePinCodes;
-
-        // Check if profile already exists for this user
-        const existingProfile = await DeliveryBoyProfile.findOne({ user: userId });
-
-        let deliveryProfile;
-        if (existingProfile) {
-            // Update existing profile
-            deliveryProfile = await DeliveryBoyProfile.findByIdAndUpdate(existingProfile._id, profileData, { new: true });
-        } else {
-            // Create new profile
-            deliveryProfile = await DeliveryBoyProfile.create(profileData);
-        }
-
-        res.status(200).json(deliveryProfile);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-};
 
 // Request file upload URL
 const getUploadUrl = async (req: CustomRequest, res: Response): Promise<void> => {
@@ -261,6 +236,5 @@ export {
     getProfile,
     createUpdateDoctorProfile,
     createUpdateLabProfile,
-    createUpdateDeliveryProfile,
     getUploadUrl
 }; 

@@ -172,6 +172,7 @@ interface DoctorProfileState {
   clinicAddress: string;
   clinicPinCode: string;
   clinicCity: string;
+  clinicGoogleMapsLink: string;
   
   // Saved values for tracking changes
   savedValues: {
@@ -191,6 +192,7 @@ interface DoctorProfileState {
     clinicAddress: string;
     clinicPinCode: string;
     clinicCity: string;
+    clinicGoogleMapsLink: string;
     isAvailable: boolean;
     availableDays: string[];
     availableSlots: string[];
@@ -223,6 +225,7 @@ interface DoctorProfileState {
   setClinicAddress: (address: string) => void;
   setClinicPinCode: (pinCode: string) => void;
   setClinicCity: (city: string) => void;
+  setClinicGoogleMapsLink: (link: string) => void;
   setSavedValues: (values: DoctorProfileState['savedValues']) => void;
   updateFromApiResponse: (data: any) => void;
   prepareProfileData: () => any;
@@ -252,6 +255,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   clinicAddress: '',
   clinicPinCode: '',
   clinicCity: '',
+  clinicGoogleMapsLink: '',
   
   savedValues: {
     description: '',
@@ -270,6 +274,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     clinicAddress: '',
     clinicPinCode: '',
     clinicCity: '',
+    clinicGoogleMapsLink: '',
     isAvailable: false,
     availableDays: [],
     availableSlots: []
@@ -337,6 +342,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   setClinicAddress: (clinicAddress) => set({ clinicAddress }),
   setClinicPinCode: (clinicPinCode) => set({ clinicPinCode }),
   setClinicCity: (clinicCity) => set({ clinicCity }),
+  setClinicGoogleMapsLink: (clinicGoogleMapsLink) => set({ clinicGoogleMapsLink }),
   
   setSavedValues: (values) => set({ savedValues: values }),
   
@@ -346,38 +352,30 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     set((state) => {
       // Handle different API response formats
       
-      // Convert age and gender values from API
-      const newAge = data.age ? data.age.toString() : '';
-      const newGender = data.gender ? data.gender.charAt(0).toUpperCase() + data.gender.slice(1) : '';
+      // Extract key data
+      const newAge = data.age?.toString() || '';
       
-      // Use coverImage if available, otherwise fallback to profilePicture for backward compatibility
-      const imageUrl = data.coverImage || data.profilePicture || '';
-      
-      // Extract isAvailable status
-      const isAvailable = data.isAvailable !== undefined ? data.isAvailable : false;
-      
-      // Normalize consultation type
-      let consultationType = '';
-      if (data.consultationType) {
-        if (['in-person', 'online', 'both'].includes(data.consultationType)) {
-          consultationType = data.consultationType;
-        } else {
-          // Handle case variations
-          const typeStr = data.consultationType.toLowerCase();
-          if (typeStr.includes('person') || typeStr.includes('offline')) {
-            consultationType = 'in-person';
-          } else if (typeStr.includes('online')) {
-            consultationType = 'online';
-          } else if (typeStr.includes('both')) {
-            consultationType = 'both';
-          }
-        }
+      // Handle gender with title case
+      let newGender = '';
+      if (data.gender) {
+        newGender = data.gender.charAt(0).toUpperCase() + data.gender.slice(1);
       }
-      console.log(`Consultation type from API: "${data.consultationType}", normalized to: "${consultationType}"`);
       
-      // Available days and slots
-      const availableDays = Array.isArray(data.availableDays) ? data.availableDays : [];
-      const availableSlots = Array.isArray(data.availableSlots) ? data.availableSlots : [];
+      // Extract consultation type
+      const consultationType = data.consultationType || '';
+
+      // Determine availability status
+      const isAvailable = data.isAvailable === true || data.isAvailable === 'true';
+      
+      // Process available days and slots
+      const availableDays = data.availableDays || [];
+      const availableSlots = data.availableSlots || [];
+      
+      // Handle image URL
+      const imageUrl = data.coverImage || '';
+      
+      // Extract Google Maps link
+      const googleMapsLink = data.clinicAddress?.googleMapsLink || '';
       
       // Update saved values and current state
       return {
@@ -400,6 +398,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
         clinicAddress: data.clinicAddress?.address || '',
         clinicPinCode: data.clinicAddress?.pinCode || '',
         clinicCity: data.city || '',
+        clinicGoogleMapsLink: googleMapsLink,
         
         savedValues: {
           description: data.description || '',
@@ -420,6 +419,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
           clinicAddress: data.clinicAddress?.address || '',
           clinicPinCode: data.clinicAddress?.pinCode || '',
           clinicCity: data.city || '',
+          clinicGoogleMapsLink: googleMapsLink,
           isAvailable
         }
       };
@@ -436,6 +436,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     const clinicAddressData: Address = {
       address: state.clinicAddress,
       pinCode: state.clinicPinCode,
+      googleMapsLink: state.clinicGoogleMapsLink,
       latitude: null,
       longitude: null
     };
@@ -484,6 +485,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     clinicAddress: '',
     clinicPinCode: '',
     clinicCity: '',
+    clinicGoogleMapsLink: '',
     savedValues: {
       description: '',
       experience: '',
@@ -503,6 +505,7 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
       clinicAddress: '',
       clinicPinCode: '',
       clinicCity: '',
+      clinicGoogleMapsLink: '',
       isAvailable: false
     }
   })

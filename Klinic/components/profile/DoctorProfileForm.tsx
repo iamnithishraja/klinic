@@ -24,6 +24,7 @@ interface DoctorProfileFormProps {
   clinicAddress: string;
   clinicPinCode: string;
   clinicCity: string;
+  clinicGoogleMapsLink: string;
   cities: string[];
   isAvailable: boolean;
   availableDays: string[];
@@ -47,6 +48,7 @@ interface DoctorProfileFormProps {
   onChangeClinicAddress: (text: string) => void;
   onChangeClinicPinCode: (text: string) => void;
   onChangeClinicCity: (city: string) => void;
+  onChangeClinicGoogleMapsLink: (text: string) => void;
   onChangeIsAvailable: (value: boolean) => void;
   onToggleAvailableDay: (day: string) => void;
   onAddAvailableSlot: (slot: string) => void;
@@ -68,6 +70,7 @@ interface DoctorProfileFormProps {
     clinicAddress: string;
     clinicPinCode: string;
     clinicCity: string;
+    clinicGoogleMapsLink: string;
     isAvailable: boolean;
     availableDays: string[];
     availableSlots: string[];
@@ -93,6 +96,7 @@ const DoctorProfileForm = ({
   clinicAddress,
   clinicPinCode,
   clinicCity,
+  clinicGoogleMapsLink,
   cities,
   isAvailable,
   availableDays,
@@ -116,6 +120,7 @@ const DoctorProfileForm = ({
   onChangeClinicAddress,
   onChangeClinicPinCode,
   onChangeClinicCity,
+  onChangeClinicGoogleMapsLink,
   onChangeIsAvailable,
   onToggleAvailableDay,
   onAddAvailableSlot,
@@ -157,6 +162,7 @@ const DoctorProfileForm = ({
   const isClinicAddressChanged = clinicAddress !== savedValues.clinicAddress;
   const isClinicPinCodeChanged = clinicPinCode !== savedValues.clinicPinCode;
   const isClinicCityChanged = clinicCity !== savedValues.clinicCity;
+  const isClinicGoogleMapsLinkChanged = clinicGoogleMapsLink !== savedValues.clinicGoogleMapsLink;
   const isAvailableChanged = isAvailable !== savedValues.isAvailable;
   const isAvailableDaysChanged = JSON.stringify(availableDays) !== JSON.stringify(savedValues.availableDays);
   const isAvailableSlotsChanged = JSON.stringify(availableSlots) !== JSON.stringify(savedValues.availableSlots);
@@ -168,8 +174,8 @@ const DoctorProfileForm = ({
     isGenderChanged || isConsultationTypeChanged || isCoverImageChanged ||
     isClinicNameChanged || isClinicPhoneChanged || isClinicEmailChanged ||
     isClinicWebsiteChanged || isClinicAddressChanged || isClinicPinCodeChanged ||
-    isClinicCityChanged || isAvailableChanged || isAvailableDaysChanged || 
-    isAvailableSlotsChanged;
+    isClinicCityChanged || isClinicGoogleMapsLinkChanged || isAvailableChanged ||
+    isAvailableDaysChanged || isAvailableSlotsChanged;
 
   // Function to filter specializations based on input
   useEffect(() => {
@@ -1031,6 +1037,33 @@ const DoctorProfileForm = ({
                 isCityChanged={isClinicCityChanged}
               />
             </View>
+          </View>
+
+          {/* Google Maps Link */}
+          <View className="mb-6">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Google Maps Link
+              {isClinicGoogleMapsLinkChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
+            <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicGoogleMapsLinkChanged ? 'border-red-400' : 'border-gray-200'}`}>
+              <MaterialCommunityIcons
+                name="google-maps"
+                size={22}
+                color={isClinicGoogleMapsLinkChanged ? "#F87171" : "#6366F1"}
+                style={{ marginRight: 12 }}
+              />
+              <TextInput
+                value={clinicGoogleMapsLink}
+                onChangeText={onChangeClinicGoogleMapsLink}
+                placeholder="Paste Google Maps link for your clinic"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="url"
+                className="flex-1 text-gray-800"
+              />
+            </View>
+            <Text className="text-xs text-gray-500 mt-1">
+              Add a Google Maps link to help patients find your clinic easily
+            </Text>
           </View>
 
           {/* Clinic Address */}
