@@ -1,6 +1,6 @@
 import { S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 
 // Configure AWS SDK v3
@@ -33,6 +33,36 @@ export const generateUploadUrlProfile = async (fileType: string, fileName: strin
     } catch (error) {
         console.error('Error generating upload URL:', error);
         throw new Error('Failed to generate upload URL');
+    }
+};
+
+// Delete file from R2 storage
+export const deleteFileFromR2 = async (fileUrl: string): Promise<void> => {
+    try {
+        if (!fileUrl) return;
+        
+        // Extract the key from the URL
+        // Example URL: https://pub-0f703feb53794f768ba649b826a64db4.r2.dev/user/6820f9377f5263b276ea76e9/33614f5c-084e-4725-b339-46056f7be568.pdf
+        
+        // Parse the URL to extract just the path portion
+        const url = new URL(fileUrl);
+        const key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+        
+        console.log(`Attempting to delete file with key: ${key}`);
+        console.log(`Using bucket: ${BUCKET_NAME}`);
+        
+        const command = new DeleteObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key
+        });
+        
+        await s3Client.send(command);
+        console.log(`File deleted: ${key}`);
+    } catch (error) {
+        console.error('Error deleting file from R2:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        // We don't throw here to prevent the main operation from failing
+        // if file deletion fails
     }
 };
 

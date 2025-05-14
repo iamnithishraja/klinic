@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import type { CustomRequest } from '../types/userTypes';
 import { UserProfile, DoctorProfile, LaboratoryProfile, DeliveryBoyProfile } from '../models/profileModel';
 import mongoose from 'mongoose';
-import { generateUploadUrlProfile } from '../utils/fileUpload';
+import { generateUploadUrlProfile, deleteFileFromR2 } from '../utils/fileUpload';
 
 // Create or update user profile
 const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promise<void> => {
@@ -10,6 +10,14 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
         const { profilePicture, age, gender, medicalHistory, medicalHistoryPdf, address } = req.body;
 
         const userId = req.user._id;
+
+        // Check if profile already exists for this user
+        const existingProfile = await UserProfile.findOne({ user: userId });
+
+        // Delete existing medical history PDF if a new one is provided
+        if (existingProfile?.medicalHistoryPdf && medicalHistoryPdf && existingProfile.medicalHistoryPdf !== medicalHistoryPdf) {
+            await deleteFileFromR2(existingProfile.medicalHistoryPdf);
+        }
 
         const profileData = {
             user: userId,
@@ -21,9 +29,6 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
             address,
             updatedAt: new Date()
         };
-
-        // Check if profile already exists for this user
-        const existingProfile = await UserProfile.findOne({ user: userId });
 
         let userProfile;
         if (existingProfile) {

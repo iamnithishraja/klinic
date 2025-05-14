@@ -49,10 +49,6 @@ const userProfileSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
-    state: {
-        type: String,
-        default: null,
-    },
     createdAt: {
         type: Date,
         default: Date.now,
@@ -170,10 +166,6 @@ const doctorProfileSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
-    state: {
-        type: String,
-        default: null,
-    },
     createdAt: {
         type: Date,
         default: Date.now,
@@ -273,10 +265,6 @@ const laboratoryProfileSchema = new mongoose.Schema({
         default: false,
     },
     city: {
-        type: String,
-        default: null,
-    },
-    state: {
         type: String,
         default: null,
     },
