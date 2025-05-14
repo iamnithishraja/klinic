@@ -155,11 +155,14 @@ interface DoctorProfileState {
   availableQualifications: string[];
   consultationFee: string;
   consultationType: string;
+  availableDays: string[];
+  availableSlots: string[];
   
   // Personal details
   coverImage: string;
   age: string;
   gender: string;
+  isAvailable: boolean;
   
   // Clinic details
   clinicName: string;
@@ -188,6 +191,9 @@ interface DoctorProfileState {
     clinicAddress: string;
     clinicPinCode: string;
     clinicCity: string;
+    isAvailable: boolean;
+    availableDays: string[];
+    availableSlots: string[];
   };
 
   // Actions
@@ -204,6 +210,12 @@ interface DoctorProfileState {
   setCoverImage: (url: string) => void;
   setAge: (age: string) => void;
   setGender: (gender: string) => void;
+  setIsAvailable: (isAvailable: boolean) => void;
+  toggleAvailableDay: (day: string) => void;
+  setAvailableDays: (days: string[]) => void;
+  addAvailableSlot: (slot: string) => void;
+  removeAvailableSlot: (slot: string) => void;
+  setAvailableSlots: (slots: string[]) => void;
   setClinicName: (name: string) => void;
   setClinicPhone: (phone: string) => void;
   setClinicEmail: (email: string) => void;
@@ -227,9 +239,12 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   availableQualifications: [],
   consultationFee: '',
   consultationType: '',
+  availableDays: [],
+  availableSlots: [],
   coverImage: '',
   age: '',
   gender: '',
+  isAvailable: false,
   clinicName: '',
   clinicPhone: '',
   clinicEmail: '',
@@ -254,7 +269,10 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     clinicWebsite: '',
     clinicAddress: '',
     clinicPinCode: '',
-    clinicCity: ''
+    clinicCity: '',
+    isAvailable: false,
+    availableDays: [],
+    availableSlots: []
   },
 
   // Actions
@@ -279,6 +297,39 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   setCoverImage: (url) => set({ coverImage: url }),
   setAge: (age) => set({ age }),
   setGender: (gender) => set({ gender }),
+  setIsAvailable: (isAvailable) => set({ isAvailable }),
+  
+  // Day availability actions
+  toggleAvailableDay: (day) => set((state) => {
+    const currentDays = [...state.availableDays];
+    const index = currentDays.indexOf(day);
+    
+    // If day exists, remove it; otherwise add it
+    if (index !== -1) {
+      currentDays.splice(index, 1);
+    } else {
+      currentDays.push(day);
+    }
+    
+    return { availableDays: currentDays };
+  }),
+  
+  setAvailableDays: (availableDays) => set({ availableDays }),
+  
+  // Time slot actions
+  addAvailableSlot: (slot) => set((state) => {
+    if (state.availableSlots.includes(slot)) {
+      return state; // Slot already exists
+    }
+    return { availableSlots: [...state.availableSlots, slot].sort() };
+  }),
+  
+  removeAvailableSlot: (slot) => set((state) => ({
+    availableSlots: state.availableSlots.filter(s => s !== slot)
+  })),
+  
+  setAvailableSlots: (availableSlots) => set({ availableSlots }),
+  
   setClinicName: (clinicName) => set({ clinicName }),
   setClinicPhone: (clinicPhone) => set({ clinicPhone }),
   setClinicEmail: (clinicEmail) => set({ clinicEmail }),
@@ -302,6 +353,32 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
       // Use coverImage if available, otherwise fallback to profilePicture for backward compatibility
       const imageUrl = data.coverImage || data.profilePicture || '';
       
+      // Extract isAvailable status
+      const isAvailable = data.isAvailable !== undefined ? data.isAvailable : false;
+      
+      // Normalize consultation type
+      let consultationType = '';
+      if (data.consultationType) {
+        if (['in-person', 'online', 'both'].includes(data.consultationType)) {
+          consultationType = data.consultationType;
+        } else {
+          // Handle case variations
+          const typeStr = data.consultationType.toLowerCase();
+          if (typeStr.includes('person') || typeStr.includes('offline')) {
+            consultationType = 'in-person';
+          } else if (typeStr.includes('online')) {
+            consultationType = 'online';
+          } else if (typeStr.includes('both')) {
+            consultationType = 'both';
+          }
+        }
+      }
+      console.log(`Consultation type from API: "${data.consultationType}", normalized to: "${consultationType}"`);
+      
+      // Available days and slots
+      const availableDays = Array.isArray(data.availableDays) ? data.availableDays : [];
+      const availableSlots = Array.isArray(data.availableSlots) ? data.availableSlots : [];
+      
       // Update saved values and current state
       return {
         description: data.description || '',
@@ -309,10 +386,13 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
         specializations: data.specializations || [],
         qualifications: data.qualifications || [],
         consultationFee: data.consultationFee?.toString() || '',
-        consultationType: data.consultationType || '',
+        consultationType: consultationType,
+        availableDays,
+        availableSlots,
         coverImage: imageUrl,
         age: newAge,
         gender: newGender,
+        isAvailable,
         clinicName: data.clinicName || '',
         clinicPhone: data.clinicPhone || '',
         clinicEmail: data.clinicEmail || '',
@@ -329,7 +409,9 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
           consultationFee: data.consultationFee?.toString() || '',
           age: newAge,
           gender: newGender,
-          consultationType: data.consultationType || '',
+          consultationType: consultationType,
+          availableDays,
+          availableSlots,
           coverImage: imageUrl,
           clinicName: data.clinicName || '',
           clinicPhone: data.clinicPhone || '',
@@ -337,7 +419,8 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
           clinicWebsite: data.clinicWebsite || '',
           clinicAddress: data.clinicAddress?.address || '',
           clinicPinCode: data.clinicAddress?.pinCode || '',
-          clinicCity: data.city || ''
+          clinicCity: data.city || '',
+          isAvailable
         }
       };
     });
@@ -366,7 +449,10 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
       coverImage: state.coverImage,
       age: state.age ? parseInt(state.age) : undefined,
       gender: genderValue,
+      isAvailable: state.isAvailable,
       consultationType: state.consultationType as 'online' | 'in-person' | 'both',
+      availableDays: state.availableDays,
+      availableSlots: state.availableSlots,
       clinicName: state.clinicName,
       clinicPhone: state.clinicPhone,
       clinicEmail: state.clinicEmail,
@@ -385,9 +471,12 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     availableQualifications: [],
     consultationFee: '',
     consultationType: '',
+    availableDays: [],
+    availableSlots: [],
     coverImage: '',
     age: '',
     gender: '',
+    isAvailable: false,
     clinicName: '',
     clinicPhone: '',
     clinicEmail: '',
@@ -404,6 +493,8 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
       age: '',
       gender: '',
       consultationType: '',
+      availableDays: [],
+      availableSlots: [],
       coverImage: '',
       clinicName: '',
       clinicPhone: '',
@@ -411,7 +502,8 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
       clinicWebsite: '',
       clinicAddress: '',
       clinicPinCode: '',
-      clinicCity: ''
+      clinicCity: '',
+      isAvailable: false
     }
   })
 }));

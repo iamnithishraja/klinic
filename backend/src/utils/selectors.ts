@@ -35,6 +35,7 @@ const getSpecializations = () => {
         "ENT Specialist",
         "General Surgeon",
         "General Physician",
+        "Dentist",
     ];
     return specializations;
 }
@@ -48,7 +49,6 @@ const getQualifications = () => {
         "M.D",
         "M.S",
         "M.Ch",
-        "M.D",
         "M.S",
     ]
     return qualifications;

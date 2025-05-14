@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface CitySearchProps {
@@ -102,24 +102,22 @@ const CitySearch = ({
           {/* Results dropdown */}
           {showDropdown && filteredCities.length > 0 && (
             <View className="border-t border-gray-200 max-h-40">
-              <FlatList
-                data={filteredCities.slice(0, 10)} // Limit to 10 results
-                keyExtractor={(item) => item}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
+              <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+                {filteredCities.slice(0, 10).map((item) => (
                   <TouchableOpacity 
+                    key={item}
                     onPress={() => handleCityPress(item)}
                     className="px-4 py-2 border-b border-gray-100"
                   >
                     <Text className="text-gray-800">{item}</Text>
                   </TouchableOpacity>
+                ))}
+                {filteredCities.length > 10 && (
+                  <Text className="text-xs text-center text-gray-500 py-1">
+                    {filteredCities.length - 10} more results. Continue typing to refine.
+                  </Text>
                 )}
-              />
-              {filteredCities.length > 10 && (
-                <Text className="text-xs text-center text-gray-500 py-1">
-                  {filteredCities.length - 10} more results. Continue typing to refine.
-                </Text>
-              )}
+              </ScrollView>
             </View>
           )}
           

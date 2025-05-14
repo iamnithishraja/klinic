@@ -82,13 +82,13 @@ const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
             res.status(404).json({ message: 'Profile not found' });
             return;
         }
-        const avilableCities = getCities();
-        const avilableSpecializations = getSpecializations();
-        const avilableQualifications = getQualifications();
+        const availableCities = getCities();
+        const availableSpecializations = getSpecializations();
+        const availableQualifications = getQualifications();
         if (role === 'doctor') {
-            res.status(200).json({ profile, avilableCities, avilableSpecializations, avilableQualifications });
+            res.status(200).json({ profile, availableCities, availableSpecializations, availableQualifications });
         } else {
-            res.status(200).json({ profile, avilableCities });
+            res.status(200).json({ profile, availableCities });
         }
     } catch (error) {
         console.error(error);

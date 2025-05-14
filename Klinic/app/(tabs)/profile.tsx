@@ -105,7 +105,7 @@ const Profile = () => {
       try {
         console.log('Attempting to fetch profile data...');
         const profileData = await profileApi.fetchData();
-        console.log('Profile data received:', profileData);
+        console.log('Profile data received:', JSON.stringify(profileData, null, 2));
 
         // Handle new response format with profile and available data
         if (profileData && profileData.profile) {
@@ -113,25 +113,65 @@ const Profile = () => {
             userProfileStore.updateFromApiResponse(profileData.profile);
           } else if (user?.role === UserRole.DOCTOR) {
             doctorProfileStore.updateFromApiResponse(profileData.profile);
+            
+            // Log doctor profile state after update
+            console.log('Doctor profile state after API update:', {
+              specializations: doctorProfileStore.specializations,
+              qualifications: doctorProfileStore.qualifications,
+              isAvailable: doctorProfileStore.isAvailable
+            });
           }
 
           // Set available cities
-          if (profileData.avilableCities &&
+          if (profileData.availableCities &&
+            Array.isArray(profileData.availableCities)) {
+            setFilteredCities(profileData.availableCities);
+            uiStore.setCities(profileData.availableCities);
+            console.log(`Loaded ${profileData.availableCities.length} cities`);
+          } else if (profileData.avilableCities &&
             Array.isArray(profileData.avilableCities)) {
+            // Fallback to misspelled key if necessary
             setFilteredCities(profileData.avilableCities);
             uiStore.setCities(profileData.avilableCities);
+            console.log(`Loaded ${profileData.avilableCities.length} cities (from misspelled key)`);
+          } else {
+            console.warn('No cities found in API response');
           }
 
           // Set available specializations and qualifications for doctor profiles
           if (user?.role === UserRole.DOCTOR) {
-            if (profileData.avilableSpecializations &&
+            if (profileData.availableSpecializations &&
+              Array.isArray(profileData.availableSpecializations)) {
+              doctorProfileStore.setAvailableSpecializations(profileData.availableSpecializations);
+              console.log(`Loaded ${profileData.availableSpecializations.length} available specializations:`, profileData.availableSpecializations);
+            } else if (profileData.avilableSpecializations &&
               Array.isArray(profileData.avilableSpecializations)) {
+              // Fallback to misspelled key if necessary
               doctorProfileStore.setAvailableSpecializations(profileData.avilableSpecializations);
+              console.log(`Loaded ${profileData.avilableSpecializations.length} available specializations (from misspelled key):`, profileData.avilableSpecializations);
+            } else {
+              console.warn('No available specializations found in API response');
+              // Set some defaults if none are provided
+              const defaultSpecializations = ["Cardiologist", "Dermatologist", "Pediatrician", "Neurologist", "Orthopedic Surgeon"];
+              doctorProfileStore.setAvailableSpecializations(defaultSpecializations);
+              console.log('Using default specializations:', defaultSpecializations);
             }
 
-            if (profileData.avilableQualifications &&
+            if (profileData.availableQualifications &&
+              Array.isArray(profileData.availableQualifications)) {
+              doctorProfileStore.setAvailableQualifications(profileData.availableQualifications);
+              console.log(`Loaded ${profileData.availableQualifications.length} available qualifications:`, profileData.availableQualifications);
+            } else if (profileData.avilableQualifications &&
               Array.isArray(profileData.avilableQualifications)) {
+              // Fallback to misspelled key if necessary
               doctorProfileStore.setAvailableQualifications(profileData.avilableQualifications);
+              console.log(`Loaded ${profileData.avilableQualifications.length} available qualifications (from misspelled key):`, profileData.avilableQualifications);
+            } else {
+              console.warn('No available qualifications found in API response');
+              // Set some defaults if none are provided
+              const defaultQualifications = ["MBBS", "MD", "MS", "DM"];
+              doctorProfileStore.setAvailableQualifications(defaultQualifications);
+              console.log('Using default qualifications:', defaultQualifications);
             }
           }
         } else {
@@ -387,6 +427,168 @@ const Profile = () => {
     }
   };
 
+  // Handle doctor isAvailable toggle with immediate save
+  const handleDoctorIsAvailableChange = async (newIsAvailable: boolean) => {
+    try {
+      // Set the availability status in store
+      doctorProfileStore.setIsAvailable(newIsAvailable);
+
+      // Prepare profile data
+      const profileData = doctorProfileStore.prepareProfileData();
+
+      // Override isAvailable with new value
+      profileData.isAvailable = newIsAvailable;
+
+      // Silent update
+      console.log('Auto-saving doctor availability status change...');
+      const success = await doctorProfileApi.updateDataSilent(profileData);
+
+      if (success) {
+        console.log('Doctor availability status updated successfully');
+        // Update saved values
+        doctorProfileStore.setSavedValues({
+          ...doctorProfileStore.savedValues,
+          isAvailable: newIsAvailable
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving doctor availability status:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+
+  // Handle doctor availableDays toggle with immediate save
+  const handleDoctorAvailableDayToggle = async (day: string) => {
+    try {
+      // Toggle the day in the store
+      doctorProfileStore.toggleAvailableDay(day);
+      
+      // Get the updated days array after toggling
+      const updatedDays = [...doctorProfileStore.availableDays];
+      
+      // Prepare profile data
+      const profileData = doctorProfileStore.prepareProfileData();
+
+      // Override availableDays with updated array
+      profileData.availableDays = updatedDays;
+
+      // Silent update
+      console.log('Auto-saving doctor available days change...');
+      const success = await doctorProfileApi.updateDataSilent(profileData);
+
+      if (success) {
+        console.log('Doctor available days updated successfully');
+        // Update saved values
+        doctorProfileStore.setSavedValues({
+          ...doctorProfileStore.savedValues,
+          availableDays: updatedDays
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving doctor available days:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+
+  // Handle doctor availableSlots add with immediate save
+  const handleDoctorAvailableSlotAdd = async (slot: string) => {
+    try {
+      // Add the slot to the store
+      doctorProfileStore.addAvailableSlot(slot);
+      
+      // Get the updated slots array after adding
+      const updatedSlots = [...doctorProfileStore.availableSlots];
+      
+      // Prepare profile data
+      const profileData = doctorProfileStore.prepareProfileData();
+
+      // Override availableSlots with updated array
+      profileData.availableSlots = updatedSlots;
+
+      // Silent update
+      console.log('Auto-saving doctor available slots change...');
+      const success = await doctorProfileApi.updateDataSilent(profileData);
+
+      if (success) {
+        console.log('Doctor available slots updated successfully');
+        // Update saved values
+        doctorProfileStore.setSavedValues({
+          ...doctorProfileStore.savedValues,
+          availableSlots: updatedSlots
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving doctor available slots:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+
+  // Handle doctor availableSlots remove with immediate save
+  const handleDoctorAvailableSlotRemove = async (slot: string) => {
+    try {
+      // Remove the slot from the store
+      doctorProfileStore.removeAvailableSlot(slot);
+      
+      // Get the updated slots array after removing
+      const updatedSlots = doctorProfileStore.availableSlots.filter(s => s !== slot);
+      
+      // Prepare profile data
+      const profileData = doctorProfileStore.prepareProfileData();
+
+      // Override availableSlots with updated array
+      profileData.availableSlots = updatedSlots;
+
+      // Silent update
+      console.log('Auto-saving doctor available slots change...');
+      const success = await doctorProfileApi.updateDataSilent(profileData);
+
+      if (success) {
+        console.log('Doctor available slots updated successfully');
+        // Update saved values
+        doctorProfileStore.setSavedValues({
+          ...doctorProfileStore.savedValues,
+          availableSlots: updatedSlots
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving doctor available slots:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+
+  // Check if there are unsaved changes in the doctor profile
+  const hasDoctorProfileChanges = () => {
+    const state = doctorProfileStore;
+    const { savedValues } = doctorProfileStore;
+
+    // For arrays like specializations and qualifications
+    const isSpecializationsChanged = JSON.stringify(state.specializations) !== JSON.stringify(savedValues.specializations);
+    const isQualificationsChanged = JSON.stringify(state.qualifications) !== JSON.stringify(savedValues.qualifications);
+    const isAvailableDaysChanged = JSON.stringify(state.availableDays) !== JSON.stringify(savedValues.availableDays);
+    const isAvailableSlotsChanged = JSON.stringify(state.availableSlots) !== JSON.stringify(savedValues.availableSlots);
+
+    // For other primitive fields
+    return state.description !== savedValues.description ||
+      state.experience !== savedValues.experience ||
+      isSpecializationsChanged ||
+      isQualificationsChanged ||
+      state.consultationFee !== savedValues.consultationFee ||
+      state.age !== savedValues.age ||
+      state.gender !== savedValues.gender ||
+      state.isAvailable !== savedValues.isAvailable ||
+      state.consultationType !== savedValues.consultationType ||
+      state.coverImage !== savedValues.coverImage ||
+      state.clinicName !== savedValues.clinicName ||
+      state.clinicPhone !== savedValues.clinicPhone ||
+      state.clinicEmail !== savedValues.clinicEmail ||
+      state.clinicWebsite !== savedValues.clinicWebsite ||
+      state.clinicAddress !== savedValues.clinicAddress ||
+      state.clinicPinCode !== savedValues.clinicPinCode ||
+      state.clinicCity !== savedValues.clinicCity ||
+      isAvailableDaysChanged ||
+      isAvailableSlotsChanged;
+  };
+
   // Save doctor profile
   const handleUpdateDoctorProfile = async () => {
     try {
@@ -411,6 +613,9 @@ const Profile = () => {
           age: doctorProfileStore.age,
           gender: doctorProfileStore.gender,
           consultationType: doctorProfileStore.consultationType,
+          isAvailable: doctorProfileStore.isAvailable,
+          availableDays: doctorProfileStore.availableDays,
+          availableSlots: doctorProfileStore.availableSlots,
           coverImage: doctorProfileStore.coverImage,
           clinicName: doctorProfileStore.clinicName,
           clinicPhone: doctorProfileStore.clinicPhone,
@@ -464,34 +669,6 @@ const Profile = () => {
       pinCode !== savedValues.pinCode ||
       city !== savedValues.city ||
       medicalHistoryPdf !== savedValues.medicalHistoryPdf;
-  };
-
-  // Check if there are unsaved changes in the doctor profile
-  const hasDoctorProfileChanges = () => {
-    const state = doctorProfileStore;
-    const { savedValues } = doctorProfileStore;
-
-    // For arrays like specializations and qualifications
-    const isSpecializationsChanged = JSON.stringify(state.specializations) !== JSON.stringify(savedValues.specializations);
-    const isQualificationsChanged = JSON.stringify(state.qualifications) !== JSON.stringify(savedValues.qualifications);
-
-    // For other primitive fields
-    return state.description !== savedValues.description ||
-      state.experience !== savedValues.experience ||
-      isSpecializationsChanged ||
-      isQualificationsChanged ||
-      state.consultationFee !== savedValues.consultationFee ||
-      state.age !== savedValues.age ||
-      state.gender !== savedValues.gender ||
-      state.consultationType !== savedValues.consultationType ||
-      state.coverImage !== savedValues.coverImage ||
-      state.clinicName !== savedValues.clinicName ||
-      state.clinicPhone !== savedValues.clinicPhone ||
-      state.clinicEmail !== savedValues.clinicEmail ||
-      state.clinicWebsite !== savedValues.clinicWebsite ||
-      state.clinicAddress !== savedValues.clinicAddress ||
-      state.clinicPinCode !== savedValues.clinicPinCode ||
-      state.clinicCity !== savedValues.clinicCity;
   };
 
   // Regular handlers for other fields (will show highlights and require save button)
@@ -653,6 +830,38 @@ const Profile = () => {
     }
   };
 
+  // Handle consultation type change with immediate save
+  const handleDoctorConsultationTypeChange = async (newType: string) => {
+    try {
+      console.log(`Changing consultation type to: ${newType}`);
+      
+      // Set consultation type in store
+      doctorProfileStore.setConsultationType(newType);
+
+      // Prepare profile data
+      const profileData = doctorProfileStore.prepareProfileData();
+
+      // Override consultation type with new value
+      profileData.consultationType = newType;
+
+      // Silent update
+      console.log('Auto-saving doctor consultation type change...');
+      const success = await doctorProfileApi.updateDataSilent(profileData);
+
+      if (success) {
+        console.log('Doctor consultation type updated successfully');
+        // Update saved values
+        doctorProfileStore.setSavedValues({
+          ...doctorProfileStore.savedValues,
+          consultationType: newType
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-saving doctor consultation type:', error);
+      // Don't show alert to avoid disrupting user experience
+    }
+  };
+
   // Render the correct profile form based on user role
   const renderProfileForm = () => {
     if (!user) return null;
@@ -681,6 +890,7 @@ const Profile = () => {
           />
         );
       case UserRole.DOCTOR:
+        console.log("Rendering doctor form with consultationType:", doctorProfileStore.consultationType);
         return (
           <DoctorProfileForm
             description={doctorProfileStore.description}
@@ -701,6 +911,9 @@ const Profile = () => {
             clinicAddress={doctorProfileStore.clinicAddress}
             clinicPinCode={doctorProfileStore.clinicPinCode}
             clinicCity={doctorProfileStore.clinicCity}
+            isAvailable={doctorProfileStore.isAvailable}
+            availableDays={doctorProfileStore.availableDays}
+            availableSlots={doctorProfileStore.availableSlots}
             cities={uiStore.cities}
             uploadingCoverImage={uiStore.uploadingCoverImage}
             onChangeDescription={(text) => doctorProfileStore.setDescription(text)}
@@ -712,7 +925,7 @@ const Profile = () => {
             onChangeConsultationFee={(fee) => doctorProfileStore.setConsultationFee(fee)}
             onChangeAge={(age) => doctorProfileStore.setAge(age)}
             onChangeGender={handleDoctorGenderChange}
-            onChangeConsultationType={(type) => doctorProfileStore.setConsultationType(type)}
+            onChangeConsultationType={handleDoctorConsultationTypeChange}
             onChangeCoverImage={handleCoverImagePick}
             onChangeClinicName={(name) => doctorProfileStore.setClinicName(name)}
             onChangeClinicPhone={(phone) => doctorProfileStore.setClinicPhone(phone)}
@@ -721,6 +934,10 @@ const Profile = () => {
             onChangeClinicAddress={(address) => doctorProfileStore.setClinicAddress(address)}
             onChangeClinicPinCode={(pinCode) => doctorProfileStore.setClinicPinCode(pinCode)}
             onChangeClinicCity={handleDoctorCityChange}
+            onChangeIsAvailable={handleDoctorIsAvailableChange}
+            onToggleAvailableDay={handleDoctorAvailableDayToggle}
+            onAddAvailableSlot={handleDoctorAvailableSlotAdd}
+            onRemoveAvailableSlot={handleDoctorAvailableSlotRemove}
             savedValues={doctorProfileStore.savedValues}
           />
         );
