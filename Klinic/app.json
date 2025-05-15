@@ -14,7 +14,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.klinic.Klinic"
+      "bundleIdentifier": "com.klinic.kliinic"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.klinic.Klinic",
+      "package": "com.klinic.kliinic",
       "jsEngine": "hermes",
       "compileSdkVersion": 33,
       "targetSdkVersion": 33,
