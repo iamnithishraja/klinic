@@ -1,4 +1,4 @@
-package com.anonymous.Klinic
+package com.klinic.Klinic
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

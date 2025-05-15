@@ -14,7 +14,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Klinic"
+      "bundleIdentifier": "com.klinic.Klinic"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +22,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.Klinic"
+      "package": "com.klinic.Klinic",
+      "jsEngine": "hermes",
+      "compileSdkVersion": 33,
+      "targetSdkVersion": 33,
+      "buildToolsVersion": "33.0.2"
     },
     "web": {
       "bundler": "metro",
