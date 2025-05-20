@@ -187,37 +187,6 @@ const laboratoryProfileSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
-    availableDays: {
-        type: [String],
-        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        default: null,
-    },
-    availableSlots: {
-        type: [String],
-        default: null,
-    },
-    laboratoryAddress: {
-        latitude: {
-            type: Number,
-            default: null,
-        },
-        longitude: {
-            type: Number,
-            default: null,
-        },
-        address: {
-            type: String,
-            default: null,
-        },
-        pinCode: {
-            type: String,
-            default: null,
-        },
-        googleMapsLink: {
-            type: String,
-            default: null,
-        },
-    },
     laboratoryPhone: {
         type: String,
         default: null,
@@ -230,63 +199,95 @@ const laboratoryProfileSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
-    laboratoryServices: {
-        type: [
-            {
-                name: {
-                    type: String,
-                    default: null,
-                },
-                description: {
-                    type: String,
-                    default: null,
-                },
-                coverImage: {
-                    type: String,
-                    default: null,
-                },
-                category: {
-                    type: String,
-                    default: null,
-                },
-                collectionType: {
-                    type: String,
-                    enum: ['home', 'lab', 'both'],
-                    default: null,
-                },
-                tests: [
-                    {
-                        name: {
-                            type: String,
-                            default: null,
-                        },
-                        description: {
-                            type: String,
-                            default: null,
-                        },
-                    }
-                ],
-                price: {
-                    type: Number,
-                    default: null,
-                },
-            }
-        ],
+    laboratoryAddress: {
+        address: {
+            type: String,
+            default: null,
+        },
+        pinCode: {
+            type: String,
+            default: null,
+        },
+        googleMapsLink: {
+            type: String,
+            default: null,
+        },
+        latitude: {
+            type: Number,
+            default: null,
+        },
+        longitude: {
+            type: Number,
+            default: null,
+        },
+    },
+    laboratoryServices: [{
+        name: {
+            type: String,
+            required: true,
+        },
+        description: {
+            type: String,
+            default: null,
+        },
+        coverImage: {
+            type: String,
+            default: null,
+        },
+        collectionType: {
+            type: String,
+            enum: ['home', 'lab', 'both'],
+            default: 'both',
+        },
+        price: {
+            type: Number,
+            default: null,
+        },
+        category: {
+            type: String,
+            default: null,
+        },
+        tests: [{
+            name: {
+                type: String,
+                required: true,
+            },
+            description: {
+                type: String,
+                default: null,
+            },
+        }],
+    }],
+    coverImage: {
+        type: String,
+        default: null,
+    },
+    city: {
+        type: String,
         default: null,
     },
     isVerified: {
         type: Boolean,
         default: false,
     },
-    city: {
-        type: String,
+    isAvailable: {
+        type: Boolean,
+        default: false,
+    },
+    availableDays: {
+        type: [String],
+        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
         default: null,
     },
-    createdAt: {
+    availableSlots: {
+        type: [String],
+        default: null,
+    },
+    updatedAt: {
         type: Date,
         default: Date.now,
     },
-    updatedAt: {
+    createdAt: {
         type: Date,
         default: Date.now,
     },

@@ -527,6 +527,11 @@ interface LaboratoryProfileState {
   
   // Cover image
   coverImage: string;
+
+  // Availability
+  isAvailable: boolean;
+  availableDays: string[];
+  availableSlots: string[];
   
   // Saved values for tracking changes
   savedValues: {
@@ -540,6 +545,9 @@ interface LaboratoryProfileState {
     laboratoryGoogleMapsLink: string;
     laboratoryServices: LaboratoryService[];
     coverImage: string;
+    isAvailable: boolean;
+    availableDays: string[];
+    availableSlots: string[];
   };
   
   // Actions
@@ -552,6 +560,14 @@ interface LaboratoryProfileState {
   setLaboratoryCity: (city: string) => void;
   setLaboratoryGoogleMapsLink: (link: string) => void;
   setCoverImage: (url: string) => void;
+  
+  // Availability actions
+  setIsAvailable: (isAvailable: boolean) => void;
+  toggleAvailableDay: (day: string) => void;
+  setAvailableDays: (days: string[]) => void;
+  addAvailableSlot: (slot: string) => void;
+  removeAvailableSlot: (slot: string) => void;
+  setAvailableSlots: (slots: string[]) => void;
   
   // Laboratory service actions
   addLaboratoryService: (service: Omit<LaboratoryService, 'id' | 'tests'>) => void;
@@ -582,6 +598,9 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
   laboratoryGoogleMapsLink: '',
   laboratoryServices: [],
   coverImage: '',
+  isAvailable: false,
+  availableDays: [],
+  availableSlots: [],
   
   savedValues: {
     laboratoryName: '',
@@ -593,7 +612,10 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
     laboratoryCity: '',
     laboratoryGoogleMapsLink: '',
     laboratoryServices: [],
-    coverImage: ''
+    coverImage: '',
+    isAvailable: false,
+    availableDays: [],
+    availableSlots: []
   },
   
   // Basic field actions
@@ -606,6 +628,37 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
   setLaboratoryCity: (laboratoryCity) => set({ laboratoryCity }),
   setLaboratoryGoogleMapsLink: (laboratoryGoogleMapsLink) => set({ laboratoryGoogleMapsLink }),
   setCoverImage: (url) => set({ coverImage: url }),
+  
+  // Availability actions
+  setIsAvailable: (isAvailable) => set({ isAvailable }),
+  
+  toggleAvailableDay: (day) => set((state) => {
+    const currentDays = [...state.availableDays];
+    const index = currentDays.indexOf(day);
+    
+    if (index !== -1) {
+      currentDays.splice(index, 1);
+    } else {
+      currentDays.push(day);
+    }
+    
+    return { availableDays: currentDays };
+  }),
+  
+  setAvailableDays: (availableDays) => set({ availableDays }),
+  
+  addAvailableSlot: (slot) => set((state) => {
+    if (state.availableSlots.includes(slot)) {
+      return state;
+    }
+    return { availableSlots: [...state.availableSlots, slot].sort() };
+  }),
+  
+  removeAvailableSlot: (slot) => set((state) => ({
+    availableSlots: state.availableSlots.filter(s => s !== slot)
+  })),
+  
+  setAvailableSlots: (availableSlots) => set({ availableSlots }),
   
   // Laboratory service actions
   addLaboratoryService: (service) => set((state) => {
@@ -724,7 +777,10 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
         laboratoryCity: data.city || '',
         laboratoryGoogleMapsLink: googleMapsLink,
         laboratoryServices: services,
-        coverImage
+        coverImage,
+        isAvailable: data.isAvailable || false,
+        availableDays: data.availableDays || [],
+        availableSlots: data.availableSlots || []
       };
       
       // Return updated state
@@ -739,6 +795,9 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
         laboratoryGoogleMapsLink: googleMapsLink,
         laboratoryServices: services,
         coverImage,
+        isAvailable: data.isAvailable || false,
+        availableDays: data.availableDays || [],
+        availableSlots: data.availableSlots || [],
         savedValues
       };
     });
@@ -778,7 +837,10 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
       laboratoryAddress: laboratoryAddressData,
       city: state.laboratoryCity,
       laboratoryServices,
-      coverImage: state.coverImage
+      coverImage: state.coverImage,
+      isAvailable: state.isAvailable,
+      availableDays: state.availableDays,
+      availableSlots: state.availableSlots
     };
   },
   
@@ -793,6 +855,9 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
     laboratoryGoogleMapsLink: '',
     laboratoryServices: [],
     coverImage: '',
+    isAvailable: false,
+    availableDays: [],
+    availableSlots: [],
     savedValues: {
       laboratoryName: '',
       laboratoryPhone: '',
@@ -803,7 +868,10 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
       laboratoryCity: '',
       laboratoryGoogleMapsLink: '',
       laboratoryServices: [],
-      coverImage: ''
+      coverImage: '',
+      isAvailable: false,
+      availableDays: [],
+      availableSlots: []
     }
   })
 }));

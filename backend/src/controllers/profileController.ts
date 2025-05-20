@@ -231,15 +231,16 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
 // Create or update laboratory profile
 const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const {
             laboratoryName, laboratoryPhone, laboratoryEmail, laboratoryWebsite,
-            laboratoryAddress, city, laboratoryServices, coverImage
+            laboratoryAddress, city, laboratoryServices, coverImage,
+            isAvailable, availableDays, availableSlots
         } = req.body;
         
-
         const userId = req.user._id;
 
         // Create initial profile data object
@@ -254,6 +255,23 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
         if (laboratoryEmail !== undefined && laboratoryEmail !== '') profileData.laboratoryEmail = laboratoryEmail;
         if (laboratoryWebsite !== undefined && laboratoryWebsite !== '') profileData.laboratoryWebsite = laboratoryWebsite;
         if (coverImage !== undefined && coverImage !== '') profileData.coverImage = coverImage;
+        if (city !== undefined && city !== '') profileData.city = city;
+        if (isAvailable !== undefined) profileData.isAvailable = isAvailable;
+
+        // Handle available days
+        if (availableDays !== undefined && Array.isArray(availableDays) && availableDays.length > 0) {
+            const validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const filteredDays = availableDays.filter(day => validDays.includes(day));
+            if (filteredDays.length > 0) {
+                profileData.availableDays = filteredDays;
+            }
+        }
+
+        // Handle available slots
+        if (availableSlots !== undefined && Array.isArray(availableSlots) && availableSlots.length > 0) {
+            profileData.availableSlots = availableSlots;
+        }
+
         // Handle laboratory address
         if (laboratoryAddress !== undefined) {
             profileData.laboratoryAddress = profileData.laboratoryAddress || {};
@@ -261,13 +279,13 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
             // Check if laboratoryAddress is an object or a string
             if (typeof laboratoryAddress === 'object' && laboratoryAddress !== null) {
                 // It's an object, extract its properties
-                if (laboratoryAddress.address !== undefined) {
+                if (laboratoryAddress.address !== undefined && laboratoryAddress.address !== '') {
                     profileData.laboratoryAddress.address = laboratoryAddress.address;
                 }
-                if (laboratoryAddress.pinCode !== undefined) {
+                if (laboratoryAddress.pinCode !== undefined && laboratoryAddress.pinCode !== '') {
                     profileData.laboratoryAddress.pinCode = laboratoryAddress.pinCode;
                 }
-                if (laboratoryAddress.googleMapsLink !== undefined) {
+                if (laboratoryAddress.googleMapsLink !== undefined && laboratoryAddress.googleMapsLink !== '') {
                     profileData.laboratoryAddress.googleMapsLink = laboratoryAddress.googleMapsLink;
                 }
                 if (laboratoryAddress.latitude !== undefined) {
@@ -279,38 +297,47 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
             }
         }
         
-        if (city !== undefined && city !== '') profileData.city = city;
-        
         // Handle laboratory services
         if (laboratoryServices !== undefined && Array.isArray(laboratoryServices) && laboratoryServices.length > 0) {
             profileData.laboratoryServices = laboratoryServices.map(service => {
-                const serviceData: any = {
-                    name: service.name,
-                    description: service.description || '',
-                    collectionType: service.collectionType || 'both',
-                    price: service.price || 0
-                };
+                const serviceData: any = {};
                 
-                if (service.coverImage) {
+                // Only add fields if they have values
+                if (service.name !== undefined && service.name !== '') {
+                    serviceData.name = service.name;
+                }
+                if (service.description !== undefined && service.description !== '') {
+                    serviceData.description = service.description;
+                }
+                if (service.coverImage !== undefined && service.coverImage !== '') {
                     serviceData.coverImage = service.coverImage;
                 }
-                
-                // Add category if it exists
-                if (service.category) {
+                if (service.category !== undefined && service.category !== '') {
                     serviceData.category = service.category;
                 }
+                if (service.collectionType !== undefined && ['home', 'lab', 'both'].includes(service.collectionType)) {
+                    serviceData.collectionType = service.collectionType;
+                }
+                if (service.price !== undefined && service.price !== null) {
+                    serviceData.price = service.price;
+                }
                 
-                if (service.tests && Array.isArray(service.tests)) {
-                    serviceData.tests = service.tests.map((test: any) => ({
-                        name: test.name,
-                        description: test.description || ''
-                    }));
-                } else {
-                    serviceData.tests = [];
+                // Handle tests array
+                if (service.tests && Array.isArray(service.tests) && service.tests.length > 0) {
+                    serviceData.tests = service.tests.map((test: any) => {
+                        const testData: any = {};
+                        if (test.name !== undefined && test.name !== '') {
+                            testData.name = test.name;
+                        }
+                        if (test.description !== undefined && test.description !== '') {
+                            testData.description = test.description;
+                        }
+                        return testData;
+                    }).filter((test: any) => Object.keys(test).length > 0); // Only include tests with at least one field
                 }
                 
                 return serviceData;
-            });
+            }).filter(service => Object.keys(service).length > 0); // Only include services with at least one field
         }
 
         // Check if profile already exists for this user
