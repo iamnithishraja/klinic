@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import apiClient from '@/api/client';
+import { useUserStore } from '@/store/userStore';
 
 // Components
 import FormInput from '@/components/FormInput';
@@ -10,6 +11,7 @@ import FormButton from '@/components/FormButton';
 import ErrorMessage from '@/components/ErrorMessage';
 import FloatingIcons from '@/components/FloatingIcons';
 import Logo from '@/components/Logo';
+import ChangeEmailPhoneModal from '@/components/ChangeEmailPhoneModal';
 
 export default function Verify() {
     const [emailOtp, setEmailOtp] = React.useState('');
@@ -19,8 +21,11 @@ export default function Verify() {
     const [error, setError] = React.useState('');
     const [success, setSuccess] = React.useState('');
     const [timer, setTimer] = React.useState(30);
+    const [showChangeModal, setShowChangeModal] = React.useState(false);
     const router = useRouter();
     const intervalIdRef = React.useRef<number | null>(null);
+    const user = useUserStore(state => state.user);
+    const setUser = useUserStore(state => state.setUser);
 
     // Field-specific validation errors
     const [emailOtpError, setEmailOtpError] = React.useState('');
@@ -131,6 +136,38 @@ export default function Verify() {
         }
     };
 
+    const handleChangeEmailPhone = async (newEmail: string, newPhone: string) => {
+        setLoading(true);
+        setError('');
+        setSuccess('');
+
+        try {
+            const response = await apiClient.post('/api/v1/change-email-phone', {
+                email: newEmail,
+                phone: newPhone
+            });
+            
+            // Update user in store
+            setUser(response.data);
+            
+            // Reset OTP fields
+            setEmailOtp('');
+            setPhoneOtp('');
+            
+            // Reset timer and resend OTP
+            setTimer(60);
+            await handleResendOtp();
+            
+            setSuccess('Email and phone updated successfully! New OTP sent.');
+        } catch (err: unknown) {
+            console.error('Change email/phone failed:', err);
+            const error = err as { response?: { data?: { message?: string } } };
+            throw new Error(error.response?.data?.message || 'Failed to update email/phone. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <LinearGradient
             colors={['#F9FAFB', '#EEF2FF']}
@@ -204,6 +241,7 @@ export default function Verify() {
                             iconName="email-outline"
                             keyboardType="numeric"
                             error={emailOtpError}
+                            rightText={user?.email}
                         />
 
                         <FormInput
@@ -214,6 +252,7 @@ export default function Verify() {
                             iconName="phone-outline"
                             keyboardType="numeric"
                             error={phoneOtpError}
+                            rightText={user?.phone}
                         />
 
                         <FormButton
@@ -229,30 +268,51 @@ export default function Verify() {
                             >
                                 Didn't receive the code?
                             </Text>
-                            {timer > 0 ? (
-                                <Text
-                                    className="text-primary font-medium"
-                                    style={{ fontFamily: 'System' }}
-                                >
-                                    Resend in {timer} seconds
-                                </Text>
-                            ) : (
+                            <View className="flex-row gap-4">
+                                {timer > 0 ? (
+                                    <Text
+                                        className="text-primary font-medium"
+                                        style={{ fontFamily: 'System' }}
+                                    >
+                                        Resend in {timer} seconds
+                                    </Text>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={handleResendOtp}
+                                        disabled={resendLoading}
+                                    >
+                                        <Text
+                                            className="text-primary font-bold"
+                                            style={{ fontFamily: 'System' }}
+                                        >
+                                            {resendLoading ? 'Sending...' : 'Resend Code'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                                 <TouchableOpacity
-                                    onPress={handleResendOtp}
-                                    disabled={resendLoading}
+                                    onPress={() => setShowChangeModal(true)}
+                                    disabled={loading}
                                 >
                                     <Text
                                         className="text-primary font-bold"
                                         style={{ fontFamily: 'System' }}
                                     >
-                                        {resendLoading ? 'Sending...' : 'Resend Code'}
+                                        Change Email/Phone
                                     </Text>
                                 </TouchableOpacity>
-                            )}
+                            </View>
                         </View>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            <ChangeEmailPhoneModal
+                visible={showChangeModal}
+                onClose={() => setShowChangeModal(false)}
+                onSubmit={handleChangeEmailPhone}
+                currentEmail={user?.email || ''}
+                currentPhone={user?.phone || ''}
+            />
         </LinearGradient>
     );
 }

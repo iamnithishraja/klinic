@@ -19,6 +19,7 @@ interface FormInputProps {
   editable?: boolean;
   containerStyle?: string;
   onPress?: () => void;
+  rightText?: string;
 }
 
 const FormInput = ({
@@ -38,6 +39,7 @@ const FormInput = ({
   editable = true,
   containerStyle = '',
   onPress,
+  rightText,
 }: FormInputProps) => {
   const inputContainer = (
     <View className={`flex-row items-center border rounded-xl px-4 py-3 bg-white shadow-sm ${error ? 'border-red-500' : 'border-divider'}`}>
@@ -61,11 +63,16 @@ const FormInput = ({
         numberOfLines={multiline ? numberOfLines : undefined}
         style={{ 
           fontFamily: 'System',
-          paddingRight: secureTextEntry ? 40 : 0,
+          paddingRight: secureTextEntry || rightText ? 40 : 0,
           textAlignVertical: multiline ? 'top' : 'center',
           minHeight: multiline ? numberOfLines * 20 : undefined,
         }}
       />
+      {rightText && (
+        <Text className="text-text-secondary text-sm mr-2">
+          {rightText}
+        </Text>
+      )}
       {secureTextEntry && togglePassword && (
         <TouchableOpacity 
           onPress={togglePassword}

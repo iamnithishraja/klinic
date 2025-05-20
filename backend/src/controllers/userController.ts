@@ -86,4 +86,19 @@ const getUser = async (req: CustomRequest, res: Response): Promise<void> => {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
-export { registerUser, loginUser, resendOtp, getUser, verifyOtp }; 
+
+const changeEmailPhone = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { email, phone } = req.body;
+        const user = await User.findByIdAndUpdate(req.user._id, { email, phone }, { new: true });
+        if (!user) {
+            res.status(401).json({ message: 'Invalid email or phone' });
+            return;
+        }
+        await sendOtp(user.email, user.phone);
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+export { registerUser, loginUser, resendOtp, getUser, verifyOtp, changeEmailPhone }; 

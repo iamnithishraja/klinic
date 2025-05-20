@@ -93,6 +93,10 @@ const doctorProfileSchema = new mongoose.Schema({
         type: Number,
         default: null,
     },
+    registrationNumber: {
+        type: String,
+        default: null,
+    },
     gender: {
         type: String,
         enum: ['male', 'female'],
