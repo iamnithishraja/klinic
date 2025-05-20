@@ -8,7 +8,7 @@ interface UserProfileState {
   age: string;
   gender: string;
   medicalHistory: string;
-  medicalHistoryPdf: string;
+  medicalHistoryPdfs: string[];
   address: string;
   pinCode: string;
   city: string;
@@ -18,10 +18,10 @@ interface UserProfileState {
     age: string;
     gender: string;
     medicalHistory: string;
+    medicalHistoryPdfs: string[];
     address: string;
     pinCode: string;
     city: string;
-    medicalHistoryPdf: string;
   };
 
   // Actions
@@ -29,7 +29,7 @@ interface UserProfileState {
   setAge: (age: string) => void;
   setGender: (gender: string) => void;
   setMedicalHistory: (history: string) => void;
-  setMedicalHistoryPdf: (url: string) => void;
+  setMedicalHistoryPdfs: (pdfs: string[]) => void;
   setAddress: (address: string) => void;
   setPinCode: (pinCode: string) => void;
   setCity: (city: string) => void;
@@ -44,7 +44,7 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
   age: '',
   gender: '',
   medicalHistory: '',
-  medicalHistoryPdf: '',
+  medicalHistoryPdfs: [],
   address: '',
   pinCode: '',
   city: '',
@@ -53,10 +53,10 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
     age: '',
     gender: '',
     medicalHistory: '',
+    medicalHistoryPdfs: [],
     address: '',
     pinCode: '',
     city: '',
-    medicalHistoryPdf: ''
   },
 
   // Actions
@@ -64,7 +64,7 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
   setAge: (age) => set({ age }),
   setGender: (gender) => set({ gender }),
   setMedicalHistory: (medicalHistory) => set({ medicalHistory }),
-  setMedicalHistoryPdf: (url) => set({ medicalHistoryPdf: url }),
+  setMedicalHistoryPdfs: (pdfs) => set({ medicalHistoryPdfs: pdfs }),
   setAddress: (address) => set({ address }),
   setPinCode: (pinCode) => set({ pinCode }),
   setCity: (city) => set({ city }),
@@ -103,10 +103,10 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
         age: newAge,
         gender: newGender,
         medicalHistory: newMedicalHistory,
+        medicalHistoryPdfs: data.medicalHistoryPdfs || [],
         address: newAddress,
         pinCode: newPinCode,
         city: newCity,
-        medicalHistoryPdf: data.medicalHistoryPdf || ''
       };
       
       return {
@@ -114,7 +114,7 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
         age: newAge,
         gender: newGender,
         medicalHistory: newMedicalHistory,
-        medicalHistoryPdf: data.medicalHistoryPdf || '',
+        medicalHistoryPdfs: data.medicalHistoryPdfs || [],
         address: newAddress,
         pinCode: newPinCode,
         city: newCity,
@@ -128,7 +128,7 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
     age: '',
     gender: '',
     medicalHistory: '',
-    medicalHistoryPdf: '',
+    medicalHistoryPdfs: [],
     address: '',
     pinCode: '',
     city: '',
@@ -136,10 +136,10 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
       age: '',
       gender: '',
       medicalHistory: '',
+      medicalHistoryPdfs: [],
       address: '',
       pinCode: '',
       city: '',
-      medicalHistoryPdf: ''
     }
   })
 }));

@@ -374,8 +374,9 @@ const Profile = () => {
         if (pdfUrl) {
           console.log('PDF uploaded successfully, URL:', pdfUrl);
 
-          // Update PDF in store
-          userProfileStore.setMedicalHistoryPdf(pdfUrl);
+          // Add new PDF to the array in store
+          const updatedPdfs = [...userProfileStore.medicalHistoryPdfs, pdfUrl];
+          userProfileStore.setMedicalHistoryPdfs(updatedPdfs);
 
           // Auto-save the PDF change
           const profileData = {
@@ -383,7 +384,7 @@ const Profile = () => {
             age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
             gender: userProfileStore.gender.toLowerCase(),
             medicalHistory: userProfileStore.medicalHistory,
-            medicalHistoryPdf: pdfUrl,
+            medicalHistoryPdfs: updatedPdfs,
             address: {
               address: userProfileStore.address,
               pinCode: userProfileStore.pinCode,
@@ -401,7 +402,7 @@ const Profile = () => {
             // Update saved values
             userProfileStore.setSavedValues({
               ...userProfileStore.savedValues,
-              medicalHistoryPdf: pdfUrl
+              medicalHistoryPdfs: updatedPdfs
             });
 
             // Notify user of successful upload
@@ -419,6 +420,50 @@ const Profile = () => {
       alert('Failed to upload document');
     } finally {
       uiStore.setUploadingPdf(false);
+    }
+  };
+
+  // Document delete handler for user profile
+  const handleDocumentDelete = async (index: number) => {
+    try {
+      // Create a new array without the deleted PDF
+      const updatedPdfs = userProfileStore.medicalHistoryPdfs.filter((_, i) => i !== index);
+      
+      // Update the store
+      userProfileStore.setMedicalHistoryPdfs(updatedPdfs);
+
+      // Auto-save the change
+      const profileData = {
+        profilePicture: userProfileStore.profilePicture,
+        age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
+        gender: userProfileStore.gender.toLowerCase(),
+        medicalHistory: userProfileStore.medicalHistory,
+        medicalHistoryPdfs: updatedPdfs,
+        address: {
+          address: userProfileStore.address,
+          pinCode: userProfileStore.pinCode,
+          latitude: null,
+          longitude: null
+        } as Address,
+        city: userProfileStore.city
+      };
+
+      console.log('Auto-saving PDF deletion...');
+      const success = await userProfileApi.updateDataSilent(profileData);
+
+      if (success) {
+        console.log('PDF deletion saved successfully');
+        // Update saved values
+        userProfileStore.setSavedValues({
+          ...userProfileStore.savedValues,
+          medicalHistoryPdfs: updatedPdfs
+        });
+      } else {
+        alert('Failed to save PDF deletion. Please try saving manually.');
+      }
+    } catch (error) {
+      console.error('Error deleting PDF:', error);
+      alert('Failed to delete PDF');
     }
   };
 
@@ -464,7 +509,7 @@ const Profile = () => {
         age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
         gender: userProfileStore.gender.toLowerCase(),
         medicalHistory: userProfileStore.medicalHistory,
-        medicalHistoryPdf: userProfileStore.medicalHistoryPdf,
+        medicalHistoryPdfs: userProfileStore.medicalHistoryPdfs,
         address: {
           address: userProfileStore.address,
           pinCode: userProfileStore.pinCode,
@@ -488,7 +533,7 @@ const Profile = () => {
           address: userProfileStore.address,
           pinCode: userProfileStore.pinCode,
           city: userProfileStore.city,
-          medicalHistoryPdf: userProfileStore.medicalHistoryPdf
+          medicalHistoryPdfs: userProfileStore.medicalHistoryPdfs
         });
       }
     } catch (error) {
@@ -761,15 +806,15 @@ const Profile = () => {
       userProfileStore.address !== userProfileStore.savedValues.address ||
       userProfileStore.pinCode !== userProfileStore.savedValues.pinCode ||
       userProfileStore.city !== userProfileStore.savedValues.city ||
-      userProfileStore.medicalHistoryPdf !== userProfileStore.savedValues.medicalHistoryPdf;
+      userProfileStore.medicalHistoryPdfs !== userProfileStore.savedValues.medicalHistoryPdfs;
 
     // Using hasUnsavedChanges state as ProfileUIState doesn't have setHasUnsavedChanges method
     const hasUnsavedChanges = hasChanges;
-  }, [userProfileStore.age, userProfileStore.gender, userProfileStore.medicalHistory, userProfileStore.address, userProfileStore.pinCode, userProfileStore.city, userProfileStore.medicalHistoryPdf, userProfileStore.savedValues]);
+  }, [userProfileStore.age, userProfileStore.gender, userProfileStore.medicalHistory, userProfileStore.address, userProfileStore.pinCode, userProfileStore.city, userProfileStore.medicalHistoryPdfs, userProfileStore.savedValues]);
 
   // Check if there are unsaved changes in the user profile
   const hasUserProfileChanges = () => {
-    const { age, gender, medicalHistory, address, pinCode, city, medicalHistoryPdf } = userProfileStore;
+    const { age, gender, medicalHistory, address, pinCode, city, medicalHistoryPdfs } = userProfileStore;
     const { savedValues } = userProfileStore;
 
     return age !== savedValues.age ||
@@ -778,7 +823,7 @@ const Profile = () => {
       address !== savedValues.address ||
       pinCode !== savedValues.pinCode ||
       city !== savedValues.city ||
-      medicalHistoryPdf !== savedValues.medicalHistoryPdf;
+      medicalHistoryPdfs !== savedValues.medicalHistoryPdfs;
   };
 
   // Regular handlers for other fields (will show highlights and require save button)
@@ -812,7 +857,7 @@ const Profile = () => {
         age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
         gender: newGender.toLowerCase(),
         medicalHistory: userProfileStore.medicalHistory,
-        medicalHistoryPdf: userProfileStore.medicalHistoryPdf,
+        medicalHistoryPdfs: userProfileStore.medicalHistoryPdfs,
         address: {
           address: userProfileStore.address,
           pinCode: userProfileStore.pinCode,
@@ -852,7 +897,7 @@ const Profile = () => {
         age: userProfileStore.age ? parseInt(userProfileStore.age) : undefined,
         gender: userProfileStore.gender.toLowerCase(),
         medicalHistory: userProfileStore.medicalHistory,
-        medicalHistoryPdf: userProfileStore.medicalHistoryPdf,
+        medicalHistoryPdfs: userProfileStore.medicalHistoryPdfs,
         address: {
           address: userProfileStore.address,
           pinCode: userProfileStore.pinCode,
@@ -1023,7 +1068,7 @@ const Profile = () => {
             pinCode={userProfileStore.pinCode}
             city={userProfileStore.city}
             medicalHistory={userProfileStore.medicalHistory}
-            medicalHistoryPdf={userProfileStore.medicalHistoryPdf}
+            medicalHistoryPdfs={userProfileStore.medicalHistoryPdfs}
             uploadingPdf={uiStore.uploadingPdf}
             cities={uiStore.cities}
             userRole={user.role}
@@ -1034,6 +1079,7 @@ const Profile = () => {
             onChangeCity={handleCityChange}
             onChangeMedicalHistory={handleMedicalHistoryChange}
             onDocumentPick={handleDocumentPick}
+            onDocumentDelete={handleDocumentDelete}
             savedValues={userProfileStore.savedValues}
           />
         );

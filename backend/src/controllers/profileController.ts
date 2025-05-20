@@ -8,7 +8,7 @@ import { getCategoriesTestType, getCities, getQualifications, getSpecializations
 // Create or update user profile
 const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-        const { profilePicture, age, gender, medicalHistory, medicalHistoryPdf, address, city } = req.body;
+        const { profilePicture, age, gender, medicalHistory, medicalHistoryPdfs, address, city } = req.body;
 
         const userId = req.user._id;
 
@@ -18,8 +18,10 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
             existingProfile = await DeliveryBoyProfile.findOne({ user: userId });
         }
         // Delete existing medical history PDF if a new one is provided
-        if (existingProfile?.medicalHistoryPdf && medicalHistoryPdf && existingProfile.medicalHistoryPdf !== medicalHistoryPdf) {
-            await deleteFileFromR2(existingProfile.medicalHistoryPdf);
+        if (existingProfile?.medicalHistoryPdfs && medicalHistoryPdfs && existingProfile.medicalHistoryPdfs !== medicalHistoryPdfs) {
+            for (const pdf of existingProfile.medicalHistoryPdfs) {
+                await deleteFileFromR2(pdf);
+            }
         }
 
         // Create initial profile data object
@@ -33,7 +35,7 @@ const createUpdateUserProfile = async (req: CustomRequest, res: Response): Promi
         if (age !== undefined) profileData.age = age;
         if (gender !== undefined && gender !== '') profileData.gender = gender;
         if (medicalHistory !== undefined) profileData.medicalHistory = medicalHistory;
-        if (medicalHistoryPdf !== undefined && medicalHistoryPdf !== '') profileData.medicalHistoryPdf = medicalHistoryPdf;
+        if (medicalHistoryPdfs !== undefined && medicalHistoryPdfs !== '' && medicalHistoryPdfs.length > 0) profileData.medicalHistoryPdfs = medicalHistoryPdfs;
         if (address !== undefined && address !== '') profileData.address = address;
         if (city !== undefined && city !== '') profileData.city = city;
 

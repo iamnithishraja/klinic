@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Linking, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { Picker } from '@react-native-picker/picker';
@@ -13,7 +13,7 @@ interface UserProfileFormProps {
   pinCode: string;
   city: string;
   medicalHistory: string;
-  medicalHistoryPdf: string;
+  medicalHistoryPdfs: string[] | null;
   uploadingPdf: boolean;
   cities: string[];
   userRole?: UserRole;
@@ -24,6 +24,7 @@ interface UserProfileFormProps {
   onChangeCity: (city: string) => void;
   onChangeMedicalHistory: (text: string) => void;
   onDocumentPick: () => void;
+  onDocumentDelete: (index: number) => void;
   savedValues: {
     age: string;
     gender: string;
@@ -31,7 +32,7 @@ interface UserProfileFormProps {
     pinCode: string;
     city: string;
     medicalHistory: string;
-    medicalHistoryPdf: string;
+    medicalHistoryPdfs: string[];
   };
 }
 
@@ -42,7 +43,7 @@ const UserProfileForm = ({
   pinCode,
   city,
   medicalHistory,
-  medicalHistoryPdf,
+  medicalHistoryPdfs,
   uploadingPdf,
   cities,
   userRole = UserRole.USER,
@@ -53,15 +54,16 @@ const UserProfileForm = ({
   onChangeCity,
   onChangeMedicalHistory,
   onDocumentPick,
+  onDocumentDelete,
   savedValues
 }: UserProfileFormProps) => {
   const genderOptions = ['Male', 'Female'];
   const isDeliveryPartner = userRole === UserRole.DELIVERY_BOY;
 
   // Function to open PDF externally
-  const openPdfExternally = () => {
-    if (medicalHistoryPdf) {
-      Linking.openURL(medicalHistoryPdf)
+  const openPdfExternally = (pdfUrl: string) => {
+    if (pdfUrl) {
+      Linking.openURL(pdfUrl)
         .catch(err => console.error('Error opening PDF:', err));
     }
   };
@@ -73,13 +75,13 @@ const UserProfileForm = ({
   const isPinCodeChanged = pinCode !== savedValues.pinCode;
   const isCityChanged = city !== savedValues.city;
   const isMedicalHistoryChanged = medicalHistory !== savedValues.medicalHistory;
-  const isPdfChanged = medicalHistoryPdf !== savedValues.medicalHistoryPdf;
+  const isPdfsChanged = JSON.stringify(medicalHistoryPdfs) !== JSON.stringify(savedValues.medicalHistoryPdfs);
 
   return (
     <View>
       {/* Message about unsaved changes - Moved to top */}
       {(isAgeChanged || isGenderChanged || isAddressChanged || isPinCodeChanged || isCityChanged || 
-        (!isDeliveryPartner && (isMedicalHistoryChanged || isPdfChanged))) && (
+        (!isDeliveryPartner && (isMedicalHistoryChanged || isPdfsChanged))) && (
         <View className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl">
           <Text className="text-red-600 text-sm">
             Fields with red highlights have unsaved changes. Click the "Save Changes" button to save your updates.
@@ -238,65 +240,66 @@ const UserProfileForm = ({
             </View>
           </View>
 
-          {/* Medical History PDF Upload */}
+          {/* Medical History PDFs Section */}
           <View className="mb-6">
-            <Text className="text-gray-700 font-medium text-base mb-2">
-              Medical History PDF
-              {isPdfChanged && <Text className="text-red-500 ml-1">*</Text>}
-            </Text>
-            <TouchableOpacity
-              onPress={onDocumentPick}
-              disabled={uploadingPdf}
-              className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isPdfChanged ? 'border-red-400' : 'border-gray-200'}`}
-            >
-              <MaterialCommunityIcons
-                name="file-pdf-box"
-                size={22}
-                color={isPdfChanged ? "#F87171" : "#6366F1"}
-                style={{ marginRight: 12 }}
-              />
-              {uploadingPdf ? (
-                <View className="flex-row items-center">
-                  <ActivityIndicator size="small" color="#6366F1" />
-                  <Text className="text-gray-500 ml-2">Uploading...</Text>
-                </View>
-              ) : medicalHistoryPdf ? (
-                <View className="flex-row items-center justify-between flex-1">
-                  <Text className="text-gray-800">PDF uploaded successfully</Text>
-                  <MaterialCommunityIcons 
-                    name={isPdfChanged ? "alert-circle" : "check-circle"} 
-                    size={20} 
-                    color={isPdfChanged ? "#F87171" : "#10B981"} 
-                  />
-                </View>
-              ) : (
-                <Text className="flex-1 text-gray-400">Upload medical history PDF</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* PDF Preview Section */}
-          {medicalHistoryPdf ? (
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-gray-700 font-medium text-base">PDF Preview</Text>
-                <TouchableOpacity onPress={openPdfExternally} className="px-3 py-1 bg-primary rounded-lg">
-                  <Text className="text-white font-medium">Open Full PDF</Text>
-                </TouchableOpacity>
-              </View>
-              <View 
-                className={`border rounded-xl overflow-hidden bg-white shadow-sm ${isPdfChanged ? 'border-red-400' : 'border-gray-200'}`}
-                style={{ height: 300 }} // Fixed height for the preview
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-gray-700 font-medium text-base">
+                Medical History PDFs
+                {isPdfsChanged && <Text className="text-red-500 ml-1">*</Text>}
+              </Text>
+              <TouchableOpacity
+                onPress={onDocumentPick}
+                disabled={uploadingPdf}
+                className="flex-row items-center bg-primary px-3 py-1.5 rounded-lg"
               >
-                <WebView
-                  source={{ uri: medicalHistoryPdf }}
-                  style={{ flex: 1 }}
-                  renderLoading={() => <ActivityIndicator size="large" color="#6366F1" />}
-                  startInLoadingState={true}
-                />
-              </View>
+                <MaterialCommunityIcons name="plus" size={20} color="white" />
+                <Text className="text-white font-medium ml-1">Add PDF</Text>
+              </TouchableOpacity>
             </View>
-          ) : null}
+
+            {/* PDF List */}
+            <ScrollView className="max-h-[200px]">
+              {medicalHistoryPdfs?.map((pdf, index) => (
+                <View 
+                  key={index}
+                  className={`flex-row items-center justify-between border rounded-xl px-4 py-3 mb-2 bg-white shadow-sm ${isPdfsChanged ? 'border-red-400' : 'border-gray-200'}`}
+                >
+                  <View className="flex-row items-center flex-1">
+                    <MaterialCommunityIcons
+                      name="file-pdf-box"
+                      size={22}
+                      color={isPdfsChanged ? "#F87171" : "#6366F1"}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text className="text-gray-800 flex-1" numberOfLines={1}>
+                      PDF {index + 1}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center">
+                    <TouchableOpacity 
+                      onPress={() => openPdfExternally(pdf)}
+                      className="mr-2 p-2"
+                    >
+                      <MaterialCommunityIcons name="eye" size={20} color="#6366F1" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      onPress={() => onDocumentDelete(index)}
+                      className="p-2"
+                    >
+                      <MaterialCommunityIcons name="close-circle" size={20} color="#F87171" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            {uploadingPdf && (
+              <View className="mt-2 flex-row items-center">
+                <ActivityIndicator size="small" color="#6366F1" />
+                <Text className="text-gray-500 ml-2">Uploading PDF...</Text>
+              </View>
+            )}
+          </View>
         </>
       )}
     </View>

@@ -23,10 +23,7 @@ const userProfileSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
-    medicalHistoryPdf: {
-        type: String,
-        default: null,
-    },
+    medicalHistoryPdfs: [String],
     address: {
         latitude: {
             type: Number,
