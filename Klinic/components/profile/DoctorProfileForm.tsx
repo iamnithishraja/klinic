@@ -17,14 +17,17 @@ interface DoctorProfileFormProps {
   gender: string;
   consultationType: string;
   coverImage: string;
-  clinicName: string;
-  clinicPhone: string;
-  clinicEmail: string;
-  clinicWebsite: string;
-  clinicAddress: string;
-  clinicPinCode: string;
-  clinicCity: string;
-  clinicGoogleMapsLink: string;
+  registrationNumber: string;
+  clinics: Array<{
+    clinicName: string;
+    clinicPhone: string;
+    clinicEmail: string;
+    clinicWebsite: string;
+    clinicAddress: string;
+    clinicPinCode: string;
+    clinicCity: string;
+    clinicGoogleMapsLink: string;
+  }>;
   cities: string[];
   isAvailable: boolean;
   availableDays: string[];
@@ -41,14 +44,17 @@ interface DoctorProfileFormProps {
   onChangeGender: (gender: string) => void;
   onChangeConsultationType: (type: string) => void;
   onChangeCoverImage: () => void;
-  onChangeClinicName: (text: string) => void;
-  onChangeClinicPhone: (text: string) => void;
-  onChangeClinicEmail: (text: string) => void;
-  onChangeClinicWebsite: (text: string) => void;
-  onChangeClinicAddress: (text: string) => void;
-  onChangeClinicPinCode: (text: string) => void;
-  onChangeClinicCity: (city: string) => void;
-  onChangeClinicGoogleMapsLink: (text: string) => void;
+  onChangeRegistrationNumber: (text: string) => void;
+  onAddClinic: () => void;
+  onRemoveClinic: (index: number) => void;
+  onChangeClinicName: (text: string, index: number) => void;
+  onChangeClinicPhone: (text: string, index: number) => void;
+  onChangeClinicEmail: (text: string, index: number) => void;
+  onChangeClinicWebsite: (text: string, index: number) => void;
+  onChangeClinicAddress: (text: string, index: number) => void;
+  onChangeClinicPinCode: (text: string, index: number) => void;
+  onChangeClinicCity: (city: string, index: number) => void;
+  onChangeClinicGoogleMapsLink: (text: string, index: number) => void;
   onChangeIsAvailable: (value: boolean) => void;
   onToggleAvailableDay: (day: string) => void;
   onAddAvailableSlot: (slot: string) => void;
@@ -63,14 +69,17 @@ interface DoctorProfileFormProps {
     gender: string;
     consultationType: string;
     coverImage: string;
-    clinicName: string;
-    clinicPhone: string;
-    clinicEmail: string;
-    clinicWebsite: string;
-    clinicAddress: string;
-    clinicPinCode: string;
-    clinicCity: string;
-    clinicGoogleMapsLink: string;
+    registrationNumber: string;
+    clinics: Array<{
+      clinicName: string;
+      clinicPhone: string;
+      clinicEmail: string;
+      clinicWebsite: string;
+      clinicAddress: string;
+      clinicPinCode: string;
+      clinicCity: string;
+      clinicGoogleMapsLink: string;
+    }>;
     isAvailable: boolean;
     availableDays: string[];
     availableSlots: string[];
@@ -78,30 +87,24 @@ interface DoctorProfileFormProps {
 }
 
 const DoctorProfileForm = ({
-  description,
-  experience,
-  specializations,
-  availableSpecializations,
-  qualifications,
-  availableQualifications,
-  consultationFee,
-  age,
-  gender,
-  consultationType,
-  coverImage,
-  clinicName,
-  clinicPhone,
-  clinicEmail,
-  clinicWebsite,
-  clinicAddress,
-  clinicPinCode,
-  clinicCity,
-  clinicGoogleMapsLink,
-  cities,
-  isAvailable,
-  availableDays,
-  availableSlots,
-  uploadingCoverImage,
+  description = '',
+  experience = '',
+  specializations = [],
+  availableSpecializations = [],
+  qualifications = [],
+  availableQualifications = [],
+  consultationFee = '',
+  age = '',
+  gender = '',
+  consultationType = '',
+  coverImage = '',
+  registrationNumber = '',
+  clinics = [],
+  cities = [],
+  isAvailable = false,
+  availableDays = [],
+  availableSlots = [],
+  uploadingCoverImage = false,
   onChangeDescription,
   onChangeExperience,
   onAddSpecialization,
@@ -113,6 +116,9 @@ const DoctorProfileForm = ({
   onChangeGender,
   onChangeConsultationType,
   onChangeCoverImage,
+  onChangeRegistrationNumber,
+  onAddClinic,
+  onRemoveClinic,
   onChangeClinicName,
   onChangeClinicPhone,
   onChangeClinicEmail,
@@ -125,7 +131,22 @@ const DoctorProfileForm = ({
   onToggleAvailableDay,
   onAddAvailableSlot,
   onRemoveAvailableSlot,
-  savedValues
+  savedValues = {
+    description: '',
+    experience: '',
+    specializations: [],
+    qualifications: [],
+    consultationFee: '',
+    age: '',
+    gender: '',
+    consultationType: '',
+    coverImage: '',
+    registrationNumber: '',
+    clinics: [],
+    isAvailable: false,
+    availableDays: [],
+    availableSlots: []
+  }
 }: DoctorProfileFormProps) => {
   const genderOptions = ['Male', 'Female'];
   const consultationTypeOptions = ['in-person', 'online', 'both'];
@@ -160,14 +181,15 @@ const DoctorProfileForm = ({
   const isGenderChanged = gender !== savedValues.gender;
   const isConsultationTypeChanged = consultationType !== savedValues.consultationType;
   const isCoverImageChanged = coverImage !== savedValues.coverImage;
-  const isClinicNameChanged = clinicName !== savedValues.clinicName;
-  const isClinicPhoneChanged = clinicPhone !== savedValues.clinicPhone;
-  const isClinicEmailChanged = clinicEmail !== savedValues.clinicEmail;
-  const isClinicWebsiteChanged = clinicWebsite !== savedValues.clinicWebsite;
-  const isClinicAddressChanged = clinicAddress !== savedValues.clinicAddress;
-  const isClinicPinCodeChanged = clinicPinCode !== savedValues.clinicPinCode;
-  const isClinicCityChanged = clinicCity !== savedValues.clinicCity;
-  const isClinicGoogleMapsLinkChanged = clinicGoogleMapsLink !== savedValues.clinicGoogleMapsLink;
+  const isRegistrationNumberChanged = registrationNumber !== savedValues.registrationNumber;
+  const isClinicNameChanged = JSON.stringify(clinics) !== JSON.stringify(savedValues.clinics);
+  const isClinicPhoneChanged = JSON.stringify(clinics.map(c => c.clinicPhone)) !== JSON.stringify(savedValues.clinics.map(c => c.clinicPhone));
+  const isClinicEmailChanged = JSON.stringify(clinics.map(c => c.clinicEmail)) !== JSON.stringify(savedValues.clinics.map(c => c.clinicEmail));
+  const isClinicWebsiteChanged = JSON.stringify(clinics.map(c => c.clinicWebsite)) !== JSON.stringify(savedValues.clinics.map(c => c.clinicWebsite));
+  const isClinicAddressChanged = JSON.stringify(clinics.map(c => c.clinicAddress)) !== JSON.stringify(savedValues.clinics.map(c => c.clinicAddress));
+  const isClinicPinCodeChanged = JSON.stringify(clinics.map(c => c.clinicPinCode)) !== JSON.stringify(savedValues.clinics.map(c => c.clinicPinCode));
+  const isClinicCityChanged = JSON.stringify(clinics.map(c => c.clinicCity)) !== JSON.stringify(savedValues.clinics.map(c => c.clinicCity));
+  const isClinicGoogleMapsLinkChanged = JSON.stringify(clinics.map(c => c.clinicGoogleMapsLink)) !== JSON.stringify(savedValues.clinics.map(c => c.clinicGoogleMapsLink));
   const isAvailableChanged = isAvailable !== savedValues.isAvailable;
   const isAvailableDaysChanged = JSON.stringify(availableDays) !== JSON.stringify(savedValues.availableDays);
   const isAvailableSlotsChanged = JSON.stringify(availableSlots) !== JSON.stringify(savedValues.availableSlots);
@@ -177,10 +199,10 @@ const DoctorProfileForm = ({
     isDescriptionChanged || isExperienceChanged || isSpecializationsChanged ||
     isQualificationsChanged || isConsultationFeeChanged || isAgeChanged ||
     isGenderChanged || isConsultationTypeChanged || isCoverImageChanged ||
-    isClinicNameChanged || isClinicPhoneChanged || isClinicEmailChanged ||
-    isClinicWebsiteChanged || isClinicAddressChanged || isClinicPinCodeChanged ||
-    isClinicCityChanged || isClinicGoogleMapsLinkChanged || isAvailableChanged ||
-    isAvailableDaysChanged || isAvailableSlotsChanged;
+    isRegistrationNumberChanged || isClinicNameChanged || isClinicPhoneChanged ||
+    isClinicEmailChanged || isClinicWebsiteChanged || isClinicAddressChanged ||
+    isClinicPinCodeChanged || isClinicCityChanged || isClinicGoogleMapsLinkChanged ||
+    isAvailableChanged || isAvailableDaysChanged || isAvailableSlotsChanged;
 
   // Function to filter specializations based on input
   useEffect(() => {
@@ -690,6 +712,29 @@ const DoctorProfileForm = ({
         <View className="mb-6">
           <Text className="text-gray-800 font-bold text-lg mb-4">Professional Information</Text>
 
+          {/* Registration Number */}
+          <View className="mb-6">
+            <Text className="text-gray-700 font-medium text-base mb-2">
+              Registration Number
+              {isRegistrationNumberChanged && <Text className="text-red-500 ml-1">*</Text>}
+            </Text>
+            <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isRegistrationNumberChanged ? 'border-red-400' : 'border-gray-200'}`}>
+              <MaterialCommunityIcons
+                name="card-account-details"
+                size={22}
+                color={isRegistrationNumberChanged ? "#F87171" : "#6366F1"}
+                style={{ marginRight: 12 }}
+              />
+              <TextInput
+                value={registrationNumber}
+                onChangeText={onChangeRegistrationNumber}
+                placeholder="Enter your medical registration number"
+                placeholderTextColor="#9CA3AF"
+                className="flex-1 text-gray-800"
+              />
+            </View>
+          </View>
+
           {/* Experience and Consultation Fee in the same row */}
           <View className="flex-row mb-6 gap-3">
             {/* Experience Input */}
@@ -934,201 +979,231 @@ const DoctorProfileForm = ({
 
         {/* Clinic Information */}
         <View className="mb-6">
-          <Text className="text-gray-800 font-bold text-lg mb-4">Clinic Information</Text>
-
-          {/* Clinic Name */}
-          <View className="mb-6">
-            <Text className="text-gray-700 font-medium text-base mb-2">
-              Clinic Name
-              {isClinicNameChanged && <Text className="text-red-500 ml-1">*</Text>}
-            </Text>
-            <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicNameChanged ? 'border-red-400' : 'border-gray-200'}`}>
-              <MaterialCommunityIcons
-                name="hospital-building"
-                size={22}
-                color={isClinicNameChanged ? "#F87171" : "#6366F1"}
-                style={{ marginRight: 12 }}
-              />
-              <TextInput
-                value={clinicName}
-                onChangeText={onChangeClinicName}
-                placeholder="Enter clinic name"
-                placeholderTextColor="#9CA3AF"
-                className="flex-1 text-gray-800"
-              />
-            </View>
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-gray-800 font-bold text-lg">Clinic Information</Text>
+            <TouchableOpacity
+              onPress={onAddClinic}
+              className="bg-primary px-4 py-2 rounded-lg"
+            >
+              <Text className="text-white font-medium">Add Clinic</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Clinic Contact in the same row */}
-          <View className="flex-row mb-6 gap-3">
-            {/* Clinic Phone */}
-            <View className="flex-1">
-              <Text className="text-gray-700 font-medium text-base mb-2">
-                Clinic Phone
-                {isClinicPhoneChanged && <Text className="text-red-500 ml-1">*</Text>}
-              </Text>
-              <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicPhoneChanged ? 'border-red-400' : 'border-gray-200'}`}>
-                <MaterialCommunityIcons
-                  name="phone"
-                  size={22}
-                  color={isClinicPhoneChanged ? "#F87171" : "#6366F1"}
-                  style={{ marginRight: 12 }}
-                />
-                <TextInput
-                  value={clinicPhone}
-                  onChangeText={onChangeClinicPhone}
-                  placeholder="e.g., 9876543210"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="phone-pad"
-                  className="flex-1 text-gray-800"
-                />
+          {clinics.map((clinic, index) => (
+            <View key={index} className="mb-6 p-4 border border-gray-200 rounded-xl">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-gray-700 font-medium text-base">Clinic {index + 1}</Text>
+                <TouchableOpacity
+                  onPress={() => onRemoveClinic(index)}
+                  className="bg-red-100 p-2 rounded-lg"
+                >
+                  <MaterialCommunityIcons name="delete" size={20} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Clinic Name */}
+              <View className="mb-4">
+                <Text className="text-gray-700 font-medium text-base mb-2">
+                  Clinic Name
+                  {isClinicNameChanged && <Text className="text-red-500 ml-1">*</Text>}
+                </Text>
+                <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicNameChanged ? 'border-red-400' : 'border-gray-200'}`}>
+                  <MaterialCommunityIcons
+                    name="hospital-building"
+                    size={22}
+                    color={isClinicNameChanged ? "#F87171" : "#6366F1"}
+                    style={{ marginRight: 12 }}
+                  />
+                  <TextInput
+                    value={clinic.clinicName}
+                    onChangeText={(text) => onChangeClinicName(text, index)}
+                    placeholder="Enter clinic name"
+                    placeholderTextColor="#9CA3AF"
+                    className="flex-1 text-gray-800"
+                  />
+                </View>
+              </View>
+
+              {/* Clinic Contact in the same row */}
+              <View className="flex-row mb-4 gap-3">
+                {/* Clinic Phone */}
+                <View className="flex-1">
+                  <Text className="text-gray-700 font-medium text-base mb-2">
+                    Clinic Phone
+                    {isClinicPhoneChanged && <Text className="text-red-500 ml-1">*</Text>}
+                  </Text>
+                  <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicPhoneChanged ? 'border-red-400' : 'border-gray-200'}`}>
+                    <MaterialCommunityIcons
+                      name="phone"
+                      size={22}
+                      color={isClinicPhoneChanged ? "#F87171" : "#6366F1"}
+                      style={{ marginRight: 12 }}
+                    />
+                    <TextInput
+                      value={clinic.clinicPhone}
+                      onChangeText={(text) => onChangeClinicPhone(text, index)}
+                      placeholder="e.g., 9876543210"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="phone-pad"
+                      className="flex-1 text-gray-800"
+                    />
+                  </View>
+                </View>
+
+                {/* Clinic Email */}
+                <View className="flex-1">
+                  <Text className="text-gray-700 font-medium text-base mb-2">
+                    Clinic Email
+                    {isClinicEmailChanged && <Text className="text-red-500 ml-1">*</Text>}
+                  </Text>
+                  <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicEmailChanged ? 'border-red-400' : 'border-gray-200'}`}>
+                    <MaterialCommunityIcons
+                      name="email"
+                      size={22}
+                      color={isClinicEmailChanged ? "#F87171" : "#6366F1"}
+                      style={{ marginRight: 12 }}
+                    />
+                    <TextInput
+                      value={clinic.clinicEmail}
+                      onChangeText={(text) => onChangeClinicEmail(text, index)}
+                      placeholder="e.g., clinic@example.com"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="email-address"
+                      className="flex-1 text-gray-800"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Clinic Website */}
+              <View className="mb-4">
+                <Text className="text-gray-700 font-medium text-base mb-2">
+                  Clinic Website
+                  {isClinicWebsiteChanged && <Text className="text-red-500 ml-1">*</Text>}
+                </Text>
+                <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicWebsiteChanged ? 'border-red-400' : 'border-gray-200'}`}>
+                  <MaterialCommunityIcons
+                    name="web"
+                    size={22}
+                    color={isClinicWebsiteChanged ? "#F87171" : "#6366F1"}
+                    style={{ marginRight: 12 }}
+                  />
+                  <TextInput
+                    value={clinic.clinicWebsite}
+                    onChangeText={(text) => onChangeClinicWebsite(text, index)}
+                    placeholder="e.g., https://www.example.com"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="url"
+                    className="flex-1 text-gray-800"
+                  />
+                </View>
+              </View>
+
+              {/* Clinic Pin Code and City */}
+              <View className="flex-row mb-4 gap-3">
+                {/* Clinic Pin Code */}
+                <View className="flex-1">
+                  <Text className="text-gray-700 font-medium text-base mb-2">
+                    Clinic Pin Code
+                    {isClinicPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
+                  </Text>
+                  <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicPinCodeChanged ? 'border-red-400' : 'border-gray-200'}`}>
+                    <MaterialCommunityIcons
+                      name="map-marker-radius"
+                      size={22}
+                      color={isClinicPinCodeChanged ? "#F87171" : "#6366F1"}
+                      style={{ marginRight: 12 }}
+                    />
+                    <TextInput
+                      value={clinic.clinicPinCode}
+                      onChangeText={(text) => onChangeClinicPinCode(text, index)}
+                      placeholder="Enter clinic pin code"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numeric"
+                      maxLength={6}
+                      className="flex-1 text-gray-800"
+                    />
+                  </View>
+                </View>
+
+                {/* Clinic City */}
+                <View className="flex-1">
+                  <CitySearch
+                    allCities={cities}
+                    selectedCity={clinic.clinicCity}
+                    onCitySelect={(city) => onChangeClinicCity(city, index)}
+                    isCityChanged={isClinicCityChanged}
+                  />
+                </View>
+              </View>
+
+              {/* Google Maps Link */}
+              <View className="mb-4">
+                <Text className="text-gray-700 font-medium text-base mb-2">
+                  Google Maps Link
+                  {isClinicGoogleMapsLinkChanged && <Text className="text-red-500 ml-1">*</Text>}
+                </Text>
+                <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicGoogleMapsLinkChanged ? 'border-red-400' : 'border-gray-200'}`}>
+                  <MaterialCommunityIcons
+                    name="google-maps"
+                    size={22}
+                    color={isClinicGoogleMapsLinkChanged ? "#F87171" : "#6366F1"}
+                    style={{ marginRight: 12 }}
+                  />
+                  <TextInput
+                    value={clinic.clinicGoogleMapsLink}
+                    onChangeText={(text) => onChangeClinicGoogleMapsLink(text, index)}
+                    placeholder="Paste Google Maps link for your clinic"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="url"
+                    className="flex-1 text-gray-800"
+                  />
+                </View>
+                <Text className="text-xs text-gray-500 mt-1">
+                  Add a Google Maps link to help patients find your clinic easily
+                </Text>
+              </View>
+
+              {/* Clinic Address */}
+              <View className="mb-4">
+                <Text className="text-gray-700 font-medium text-base mb-2">
+                  Clinic Address
+                  {isClinicAddressChanged && <Text className="text-red-500 ml-1">*</Text>}
+                </Text>
+                <View className={`flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicAddressChanged ? 'border-red-400' : 'border-gray-200'}`}>
+                  <MaterialCommunityIcons
+                    name="map-marker"
+                    size={22}
+                    color={isClinicAddressChanged ? "#F87171" : "#6366F1"}
+                    style={{ marginRight: 12, marginTop: 2 }}
+                  />
+                  <TextInput
+                    value={clinic.clinicAddress}
+                    onChangeText={(text) => onChangeClinicAddress(text, index)}
+                    placeholder="Enter clinic address"
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    keyboardType="default"
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    className="flex-1 text-gray-800 min-h-[80px]"
+                    style={{ textAlignVertical: 'top' }}
+                    autoCorrect={false}
+                  />
+                </View>
               </View>
             </View>
+          ))}
 
-            {/* Clinic Email */}
-            <View className="flex-1">
-              <Text className="text-gray-700 font-medium text-base mb-2">
-                Clinic Email
-                {isClinicEmailChanged && <Text className="text-red-500 ml-1">*</Text>}
+          {clinics.length === 0 && (
+            <View className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+              <Text className="text-gray-500 text-center">
+                No clinics added yet. Click "Add Clinic" to add your first clinic.
               </Text>
-              <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicEmailChanged ? 'border-red-400' : 'border-gray-200'}`}>
-                <MaterialCommunityIcons
-                  name="email"
-                  size={22}
-                  color={isClinicEmailChanged ? "#F87171" : "#6366F1"}
-                  style={{ marginRight: 12 }}
-                />
-                <TextInput
-                  value={clinicEmail}
-                  onChangeText={onChangeClinicEmail}
-                  placeholder="e.g., clinic@example.com"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="email-address"
-                  className="flex-1 text-gray-800"
-                />
-              </View>
             </View>
-          </View>
-
-          {/* Clinic Website */}
-          <View className="mb-6">
-            <Text className="text-gray-700 font-medium text-base mb-2">
-              Clinic Website
-              {isClinicWebsiteChanged && <Text className="text-red-500 ml-1">*</Text>}
-            </Text>
-            <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicWebsiteChanged ? 'border-red-400' : 'border-gray-200'}`}>
-              <MaterialCommunityIcons
-                name="web"
-                size={22}
-                color={isClinicWebsiteChanged ? "#F87171" : "#6366F1"}
-                style={{ marginRight: 12 }}
-              />
-              <TextInput
-                value={clinicWebsite}
-                onChangeText={onChangeClinicWebsite}
-                placeholder="e.g., https://www.example.com"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="url"
-                className="flex-1 text-gray-800"
-              />
-            </View>
-          </View>
-
-          {/* Clinic Pin Code and City */}
-          <View className="flex-row mb-6 gap-3">
-            {/* Clinic Pin Code */}
-            <View className="flex-1">
-              <Text className="text-gray-700 font-medium text-base mb-2">
-                Clinic Pin Code
-                {isClinicPinCodeChanged && <Text className="text-red-500 ml-1">*</Text>}
-              </Text>
-              <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicPinCodeChanged ? 'border-red-400' : 'border-gray-200'}`}>
-                <MaterialCommunityIcons
-                  name="map-marker-radius"
-                  size={22}
-                  color={isClinicPinCodeChanged ? "#F87171" : "#6366F1"}
-                  style={{ marginRight: 12 }}
-                />
-                <TextInput
-                  value={clinicPinCode}
-                  onChangeText={onChangeClinicPinCode}
-                  placeholder="Enter clinic pin code"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                  maxLength={6}
-                  className="flex-1 text-gray-800"
-                />
-              </View>
-            </View>
-
-            {/* Clinic City */}
-            <View className="flex-1">
-              <CitySearch
-                allCities={cities}
-                selectedCity={clinicCity}
-                onCitySelect={onChangeClinicCity}
-                isCityChanged={isClinicCityChanged}
-              />
-            </View>
-          </View>
-
-          {/* Google Maps Link */}
-          <View className="mb-6">
-            <Text className="text-gray-700 font-medium text-base mb-2">
-              Google Maps Link
-              {isClinicGoogleMapsLinkChanged && <Text className="text-red-500 ml-1">*</Text>}
-            </Text>
-            <View className={`flex-row items-center border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicGoogleMapsLinkChanged ? 'border-red-400' : 'border-gray-200'}`}>
-              <MaterialCommunityIcons
-                name="google-maps"
-                size={22}
-                color={isClinicGoogleMapsLinkChanged ? "#F87171" : "#6366F1"}
-                style={{ marginRight: 12 }}
-              />
-              <TextInput
-                value={clinicGoogleMapsLink}
-                onChangeText={onChangeClinicGoogleMapsLink}
-                placeholder="Paste Google Maps link for your clinic"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="url"
-                className="flex-1 text-gray-800"
-              />
-            </View>
-            <Text className="text-xs text-gray-500 mt-1">
-              Add a Google Maps link to help patients find your clinic easily
-            </Text>
-          </View>
-
-          {/* Clinic Address */}
-          <View className="mb-6">
-            <Text className="text-gray-700 font-medium text-base mb-2">
-              Clinic Address
-              {isClinicAddressChanged && <Text className="text-red-500 ml-1">*</Text>}
-            </Text>
-            <View className={`flex-row items-start border rounded-xl px-4 py-3.5 bg-white shadow-sm ${isClinicAddressChanged ? 'border-red-400' : 'border-gray-200'}`}>
-              <MaterialCommunityIcons
-                name="map-marker"
-                size={22}
-                color={isClinicAddressChanged ? "#F87171" : "#6366F1"}
-                style={{ marginRight: 12, marginTop: 2 }}
-              />
-              <TextInput
-                value={clinicAddress}
-                onChangeText={onChangeClinicAddress}
-                placeholder="Enter clinic address"
-                placeholderTextColor="#9CA3AF"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                keyboardType="default"
-                returnKeyType="done"
-                blurOnSubmit={true}
-                className="flex-1 text-gray-800 min-h-[80px]"
-                style={{ textAlignVertical: 'top' }}
-                autoCorrect={false}
-              />
-            </View>
-          </View>
+          )}
         </View>
       </View>
       

@@ -683,6 +683,7 @@ const Profile = () => {
     const isQualificationsChanged = JSON.stringify(state.qualifications) !== JSON.stringify(savedValues.qualifications);
     const isAvailableDaysChanged = JSON.stringify(state.availableDays) !== JSON.stringify(savedValues.availableDays);
     const isAvailableSlotsChanged = JSON.stringify(state.availableSlots) !== JSON.stringify(savedValues.availableSlots);
+    const isClinicsChanged = JSON.stringify(state.clinics) !== JSON.stringify(savedValues.clinics);
 
     // For other primitive fields
     return state.description !== savedValues.description ||
@@ -695,14 +696,8 @@ const Profile = () => {
       state.isAvailable !== savedValues.isAvailable ||
       state.consultationType !== savedValues.consultationType ||
       state.coverImage !== savedValues.coverImage ||
-      state.clinicName !== savedValues.clinicName ||
-      state.clinicPhone !== savedValues.clinicPhone ||
-      state.clinicEmail !== savedValues.clinicEmail ||
-      state.clinicWebsite !== savedValues.clinicWebsite ||
-      state.clinicAddress !== savedValues.clinicAddress ||
-      state.clinicPinCode !== savedValues.clinicPinCode ||
-      state.clinicCity !== savedValues.clinicCity ||
-      state.clinicGoogleMapsLink !== savedValues.clinicGoogleMapsLink ||
+      state.registrationNumber !== savedValues.registrationNumber ||
+      isClinicsChanged ||
       isAvailableDaysChanged ||
       isAvailableSlotsChanged;
   };
@@ -735,14 +730,8 @@ const Profile = () => {
           availableDays: doctorProfileStore.availableDays,
           availableSlots: doctorProfileStore.availableSlots,
           coverImage: doctorProfileStore.coverImage,
-          clinicName: doctorProfileStore.clinicName,
-          clinicPhone: doctorProfileStore.clinicPhone,
-          clinicEmail: doctorProfileStore.clinicEmail,
-          clinicWebsite: doctorProfileStore.clinicWebsite,
-          clinicAddress: doctorProfileStore.clinicAddress,
-          clinicPinCode: doctorProfileStore.clinicPinCode,
-          clinicCity: doctorProfileStore.clinicCity,
-          clinicGoogleMapsLink: doctorProfileStore.clinicGoogleMapsLink
+          registrationNumber: doctorProfileStore.registrationNumber,
+          clinics: doctorProfileStore.clinics
         });
       }
     } catch (error) {
@@ -958,8 +947,13 @@ const Profile = () => {
   // Handle doctor city change with immediate save
   const handleDoctorCityChange = async (newCity: string) => {
     try {
-      // Set city in store
-      doctorProfileStore.setClinicCity(newCity);
+      // If there are no clinics, add one
+      if (doctorProfileStore.clinics.length === 0) {
+        doctorProfileStore.addClinic();
+      }
+
+      // Update the first clinic's city
+      doctorProfileStore.updateClinic(0, 'clinicCity', newCity);
 
       // Prepare profile data
       const profileData = doctorProfileStore.prepareProfileData();
@@ -976,7 +970,7 @@ const Profile = () => {
         // Update saved values
         doctorProfileStore.setSavedValues({
           ...doctorProfileStore.savedValues,
-          clinicCity: newCity
+          clinics: doctorProfileStore.clinics
         });
       }
     } catch (error) {
@@ -1098,14 +1092,8 @@ const Profile = () => {
             gender={doctorProfileStore.gender}
             consultationType={doctorProfileStore.consultationType}
             coverImage={doctorProfileStore.coverImage}
-            clinicName={doctorProfileStore.clinicName}
-            clinicPhone={doctorProfileStore.clinicPhone}
-            clinicEmail={doctorProfileStore.clinicEmail}
-            clinicWebsite={doctorProfileStore.clinicWebsite}
-            clinicAddress={doctorProfileStore.clinicAddress}
-            clinicPinCode={doctorProfileStore.clinicPinCode}
-            clinicCity={doctorProfileStore.clinicCity}
-            clinicGoogleMapsLink={doctorProfileStore.clinicGoogleMapsLink}
+            registrationNumber={doctorProfileStore.registrationNumber}
+            clinics={doctorProfileStore.clinics}
             cities={uiStore.cities}
             isAvailable={doctorProfileStore.isAvailable}
             availableDays={doctorProfileStore.availableDays}
@@ -1122,14 +1110,17 @@ const Profile = () => {
             onChangeGender={handleDoctorGenderChange}
             onChangeConsultationType={handleDoctorConsultationTypeChange}
             onChangeCoverImage={handleCoverImagePick}
-            onChangeClinicName={(name) => doctorProfileStore.setClinicName(name)}
-            onChangeClinicPhone={(phone) => doctorProfileStore.setClinicPhone(phone)}
-            onChangeClinicEmail={(email) => doctorProfileStore.setClinicEmail(email)}
-            onChangeClinicWebsite={(website) => doctorProfileStore.setClinicWebsite(website)}
-            onChangeClinicAddress={(address) => doctorProfileStore.setClinicAddress(address)}
-            onChangeClinicPinCode={(pinCode) => doctorProfileStore.setClinicPinCode(pinCode)}
-            onChangeClinicCity={handleDoctorCityChange}
-            onChangeClinicGoogleMapsLink={(link) => doctorProfileStore.setClinicGoogleMapsLink(link)}
+            onChangeRegistrationNumber={(text) => doctorProfileStore.setRegistrationNumber(text)}
+            onAddClinic={() => doctorProfileStore.addClinic()}
+            onRemoveClinic={(index) => doctorProfileStore.removeClinic(index)}
+            onChangeClinicName={(text, index) => doctorProfileStore.updateClinic(index, 'clinicName', text)}
+            onChangeClinicPhone={(text, index) => doctorProfileStore.updateClinic(index, 'clinicPhone', text)}
+            onChangeClinicEmail={(text, index) => doctorProfileStore.updateClinic(index, 'clinicEmail', text)}
+            onChangeClinicWebsite={(text, index) => doctorProfileStore.updateClinic(index, 'clinicWebsite', text)}
+            onChangeClinicAddress={(text, index) => doctorProfileStore.updateClinic(index, 'clinicAddress', text)}
+            onChangeClinicPinCode={(text, index) => doctorProfileStore.updateClinic(index, 'clinicPinCode', text)}
+            onChangeClinicCity={(city, index) => doctorProfileStore.updateClinic(index, 'clinicCity', city)}
+            onChangeClinicGoogleMapsLink={(text, index) => doctorProfileStore.updateClinic(index, 'clinicGoogleMapsLink', text)}
             onChangeIsAvailable={handleDoctorIsAvailableChange}
             onToggleAvailableDay={handleDoctorAvailableDayToggle}
             onAddAvailableSlot={handleDoctorAvailableSlotAdd}

@@ -119,8 +119,7 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
         const {
             description, experience, specializations, qualifications,
             consultationFee, age, gender, consultationType,
-            availableSlots, availableDays, isAvailable, clinicName, clinicPhone,
-            clinicEmail, clinicWebsite, coverImage, clinicAddress, city, googleMapsLink
+            availableSlots, availableDays, isAvailable, clinics, city, coverImage
         } = req.body;
 
         const userId = req.user._id;
@@ -143,47 +142,76 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
         if (availableSlots !== undefined && Array.isArray(availableSlots) && availableSlots.length > 0) profileData.availableSlots = availableSlots;
         if (availableDays !== undefined && Array.isArray(availableDays) && availableDays.length > 0) profileData.availableDays = availableDays;
         if (isAvailable !== undefined) profileData.isAvailable = isAvailable;
-        if (clinicName !== undefined && clinicName !== '') profileData.clinicName = clinicName;
-        if (clinicPhone !== undefined && clinicPhone !== '') profileData.clinicPhone = clinicPhone;
-        if (clinicEmail !== undefined && clinicEmail !== '') profileData.clinicEmail = clinicEmail;
-        if (clinicWebsite !== undefined && clinicWebsite !== '') profileData.clinicWebsite = clinicWebsite;
         if (coverImage !== undefined && coverImage !== '') profileData.coverImage = coverImage;
+        if (city !== undefined && city !== '') profileData.city = city;
 
-        // Handle clinic address and Google Maps link
-        if (clinicAddress !== undefined || googleMapsLink !== undefined) {
-            profileData.clinicAddress = profileData.clinicAddress || {};
+        // Handle clinics array
+        if (clinics !== undefined && Array.isArray(clinics) && clinics.length > 0) {
+            const validClinics = clinics.filter(clinic => {
+                // Check if clinic has at least one meaningful field
+                return clinic && (
+                    (clinic.clinicName !== undefined && clinic.clinicName !== '') ||
+                    (clinic.clinicPhone !== undefined && clinic.clinicPhone !== '') ||
+                    (clinic.clinicEmail !== undefined && clinic.clinicEmail !== '') ||
+                    (clinic.clinicWebsite !== undefined && clinic.clinicWebsite !== '') ||
+                    (clinic.clinicAddress && (
+                        (clinic.clinicAddress.address !== undefined && clinic.clinicAddress.address !== '') ||
+                        (clinic.clinicAddress.pinCode !== undefined && clinic.clinicAddress.pinCode !== '') ||
+                        (clinic.clinicAddress.googleMapsLink !== undefined && clinic.clinicAddress.googleMapsLink !== '') ||
+                        (clinic.clinicAddress.latitude !== undefined) ||
+                        (clinic.clinicAddress.longitude !== undefined)
+                    ))
+                );
+            }).map(clinic => {
+                const clinicData: any = {};
 
-            if (clinicAddress !== undefined) {
-                // Check if clinicAddress is an object or a string
-                if (typeof clinicAddress === 'object' && clinicAddress !== null) {
-                    // It's an object, extract its properties
-                    if (clinicAddress.address !== undefined) {
-                        profileData.clinicAddress.address = clinicAddress.address;
-                    }
-                    if (clinicAddress.pinCode !== undefined) {
-                        profileData.clinicAddress.pinCode = clinicAddress.pinCode;
-                    }
-                    if (clinicAddress.googleMapsLink !== undefined) {
-                        profileData.clinicAddress.googleMapsLink = clinicAddress.googleMapsLink;
-                    }
-                    if (clinicAddress.latitude !== undefined) {
-                        profileData.clinicAddress.latitude = clinicAddress.latitude;
-                    }
-                    if (clinicAddress.longitude !== undefined) {
-                        profileData.clinicAddress.longitude = clinicAddress.longitude;
-                    }
-                } else if (clinicAddress !== '') {
-                    // It's a string, assign it directly to address
-                    profileData.clinicAddress.address = clinicAddress;
+                // Add clinic fields only if they are defined and not empty
+                if (clinic.clinicName !== undefined && clinic.clinicName !== '') {
+                    clinicData.clinicName = clinic.clinicName;
                 }
-            }
+                if (clinic.clinicPhone !== undefined && clinic.clinicPhone !== '') {
+                    clinicData.clinicPhone = clinic.clinicPhone;
+                }
+                if (clinic.clinicEmail !== undefined && clinic.clinicEmail !== '') {
+                    clinicData.clinicEmail = clinic.clinicEmail;
+                }
+                if (clinic.clinicWebsite !== undefined && clinic.clinicWebsite !== '') {
+                    clinicData.clinicWebsite = clinic.clinicWebsite;
+                }
 
-            if (googleMapsLink !== undefined && googleMapsLink !== '') {
-                profileData.clinicAddress.googleMapsLink = googleMapsLink;
+                // Handle clinic address
+                if (clinic.clinicAddress) {
+                    const addressData: any = {};
+                    
+                    if (clinic.clinicAddress.address !== undefined && clinic.clinicAddress.address !== '') {
+                        addressData.address = clinic.clinicAddress.address;
+                    }
+                    if (clinic.clinicAddress.pinCode !== undefined && clinic.clinicAddress.pinCode !== '') {
+                        addressData.pinCode = clinic.clinicAddress.pinCode;
+                    }
+                    if (clinic.clinicAddress.googleMapsLink !== undefined && clinic.clinicAddress.googleMapsLink !== '') {
+                        addressData.googleMapsLink = clinic.clinicAddress.googleMapsLink;
+                    }
+                    if (clinic.clinicAddress.latitude !== undefined) {
+                        addressData.latitude = clinic.clinicAddress.latitude;
+                    }
+                    if (clinic.clinicAddress.longitude !== undefined) {
+                        addressData.longitude = clinic.clinicAddress.longitude;
+                    }
+
+                    // Only add clinicAddress if it has at least one field
+                    if (Object.keys(addressData).length > 0) {
+                        clinicData.clinicAddress = addressData;
+                    }
+                }
+
+                return clinicData;
+            });
+
+            if (validClinics.length > 0) {
+                profileData.clinics = validClinics;
             }
         }
-
-        if (city !== undefined && city !== '') profileData.city = city;
 
         // Check if profile already exists for this user
         const existingProfile = await DoctorProfile.findOne({ user: userId });
@@ -203,7 +231,6 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
         res.status(500).json({ message: 'Internal server error' });
     }
 };
-
 // Create or update laboratory profile
 const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response): Promise<void> => {
     try {

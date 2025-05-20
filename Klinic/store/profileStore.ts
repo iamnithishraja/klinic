@@ -157,6 +157,7 @@ interface DoctorProfileState {
   consultationType: string;
   availableDays: string[];
   availableSlots: string[];
+  registrationNumber: string;
   
   // Personal details
   coverImage: string;
@@ -165,14 +166,16 @@ interface DoctorProfileState {
   isAvailable: boolean;
   
   // Clinic details
-  clinicName: string;
-  clinicPhone: string;
-  clinicEmail: string;
-  clinicWebsite: string;
-  clinicAddress: string;
-  clinicPinCode: string;
-  clinicCity: string;
-  clinicGoogleMapsLink: string;
+  clinics: Array<{
+    clinicName: string;
+    clinicPhone: string;
+    clinicEmail: string;
+    clinicWebsite: string;
+    clinicAddress: string;
+    clinicPinCode: string;
+    clinicCity: string;
+    clinicGoogleMapsLink: string;
+  }>;
   
   // Saved values for tracking changes
   savedValues: {
@@ -185,14 +188,17 @@ interface DoctorProfileState {
     gender: string;
     consultationType: string;
     coverImage: string;
-    clinicName: string;
-    clinicPhone: string;
-    clinicEmail: string;
-    clinicWebsite: string;
-    clinicAddress: string;
-    clinicPinCode: string;
-    clinicCity: string;
-    clinicGoogleMapsLink: string;
+    registrationNumber: string;
+    clinics: Array<{
+      clinicName: string;
+      clinicPhone: string;
+      clinicEmail: string;
+      clinicWebsite: string;
+      clinicAddress: string;
+      clinicPinCode: string;
+      clinicCity: string;
+      clinicGoogleMapsLink: string;
+    }>;
     isAvailable: boolean;
     availableDays: string[];
     availableSlots: string[];
@@ -218,14 +224,10 @@ interface DoctorProfileState {
   addAvailableSlot: (slot: string) => void;
   removeAvailableSlot: (slot: string) => void;
   setAvailableSlots: (slots: string[]) => void;
-  setClinicName: (name: string) => void;
-  setClinicPhone: (phone: string) => void;
-  setClinicEmail: (email: string) => void;
-  setClinicWebsite: (website: string) => void;
-  setClinicAddress: (address: string) => void;
-  setClinicPinCode: (pinCode: string) => void;
-  setClinicCity: (city: string) => void;
-  setClinicGoogleMapsLink: (link: string) => void;
+  setRegistrationNumber: (registrationNumber: string) => void;
+  addClinic: () => void;
+  removeClinic: (index: number) => void;
+  updateClinic: (index: number, field: string, value: string) => void;
   setSavedValues: (values: DoctorProfileState['savedValues']) => void;
   updateFromApiResponse: (data: any) => void;
   prepareProfileData: () => any;
@@ -244,18 +246,12 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   consultationType: '',
   availableDays: [],
   availableSlots: [],
+  registrationNumber: '',
   coverImage: '',
   age: '',
   gender: '',
   isAvailable: false,
-  clinicName: '',
-  clinicPhone: '',
-  clinicEmail: '',
-  clinicWebsite: '',
-  clinicAddress: '',
-  clinicPinCode: '',
-  clinicCity: '',
-  clinicGoogleMapsLink: '',
+  clinics: [],
   
   savedValues: {
     description: '',
@@ -267,14 +263,8 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     gender: '',
     consultationType: '',
     coverImage: '',
-    clinicName: '',
-    clinicPhone: '',
-    clinicEmail: '',
-    clinicWebsite: '',
-    clinicAddress: '',
-    clinicPinCode: '',
-    clinicCity: '',
-    clinicGoogleMapsLink: '',
+    registrationNumber: '',
+    clinics: [],
     isAvailable: false,
     availableDays: [],
     availableSlots: []
@@ -347,14 +337,30 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   
   setAvailableSlots: (availableSlots) => set({ availableSlots }),
   
-  setClinicName: (clinicName) => set({ clinicName }),
-  setClinicPhone: (clinicPhone) => set({ clinicPhone }),
-  setClinicEmail: (clinicEmail) => set({ clinicEmail }),
-  setClinicWebsite: (clinicWebsite) => set({ clinicWebsite }),
-  setClinicAddress: (clinicAddress) => set({ clinicAddress }),
-  setClinicPinCode: (clinicPinCode) => set({ clinicPinCode }),
-  setClinicCity: (clinicCity) => set({ clinicCity }),
-  setClinicGoogleMapsLink: (clinicGoogleMapsLink) => set({ clinicGoogleMapsLink }),
+  setRegistrationNumber: (registrationNumber) => set({ registrationNumber }),
+
+  addClinic: () => set((state) => ({
+    clinics: [...state.clinics, {
+      clinicName: '',
+      clinicPhone: '',
+      clinicEmail: '',
+      clinicWebsite: '',
+      clinicAddress: '',
+      clinicPinCode: '',
+      clinicCity: '',
+      clinicGoogleMapsLink: '',
+    }]
+  })),
+
+  removeClinic: (index) => set((state) => ({
+    clinics: state.clinics.filter((_, i) => i !== index)
+  })),
+
+  updateClinic: (index, field, value) => set((state) => ({
+    clinics: state.clinics.map((clinic, i) => 
+      i === index ? { ...clinic, [field]: value } : clinic
+    )
+  })),
   
   setSavedValues: (values) => set({ savedValues: values }),
   
@@ -362,77 +368,55 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     if (!data) return;
     
     set((state) => {
-      // Handle different API response formats
-      
-      // Extract key data
-      const newAge = data.age?.toString() || '';
-      
-      // Handle gender with title case
-      let newGender = '';
-      if (data.gender) {
-        newGender = data.gender.charAt(0).toUpperCase() + data.gender.slice(1);
-      }
-      
-      // Extract consultation type
-      const consultationType = data.consultationType || '';
-
-      // Determine availability status
-      const isAvailable = data.isAvailable === true || data.isAvailable === 'true';
-      
-      // Process available days and slots
-      const availableDays = data.availableDays || [];
-      const availableSlots = data.availableSlots || [];
-      
-      // Handle image URL
-      const imageUrl = data.coverImage || '';
-      
-      // Extract Google Maps link
-      const googleMapsLink = data.clinicAddress?.googleMapsLink || '';
-      
-      // Update saved values and current state
+      const clinics = data.clinics || [];
       return {
         description: data.description || '',
         experience: data.experience?.toString() || '',
         specializations: data.specializations || [],
         qualifications: data.qualifications || [],
         consultationFee: data.consultationFee?.toString() || '',
-        consultationType: consultationType,
-        availableDays,
-        availableSlots,
-        coverImage: imageUrl,
-        age: newAge,
-        gender: newGender,
-        isAvailable,
-        clinicName: data.clinicName || '',
-        clinicPhone: data.clinicPhone || '',
-        clinicEmail: data.clinicEmail || '',
-        clinicWebsite: data.clinicWebsite || '',
-        clinicAddress: data.clinicAddress?.address || '',
-        clinicPinCode: data.clinicAddress?.pinCode || '',
-        clinicCity: data.city || '',
-        clinicGoogleMapsLink: googleMapsLink,
-        
+        age: data.age?.toString() || '',
+        gender: data.gender || '',
+        registrationNumber: data.registrationNumber || '',
+        consultationType: data.consultationType || '',
+        isAvailable: data.isAvailable || false,
+        availableDays: data.availableDays || [],
+        availableSlots: data.availableSlots || [],
+        coverImage: data.coverImage || '',
+        clinics: clinics.map((clinic: any) => ({
+          clinicName: clinic.clinicName || '',
+          clinicPhone: clinic.clinicPhone || '',
+          clinicEmail: clinic.clinicEmail || '',
+          clinicWebsite: clinic.clinicWebsite || '',
+          clinicAddress: clinic.clinicAddress?.address || '',
+          clinicPinCode: clinic.clinicAddress?.pinCode || '',
+          clinicCity: clinic.clinicAddress?.city || '',
+          clinicGoogleMapsLink: clinic.clinicAddress?.googleMapsLink || '',
+        })),
         savedValues: {
           description: data.description || '',
           experience: data.experience?.toString() || '',
           specializations: data.specializations || [],
           qualifications: data.qualifications || [],
           consultationFee: data.consultationFee?.toString() || '',
-          age: newAge,
-          gender: newGender,
-          consultationType: consultationType,
-          availableDays,
-          availableSlots,
-          coverImage: imageUrl,
-          clinicName: data.clinicName || '',
-          clinicPhone: data.clinicPhone || '',
-          clinicEmail: data.clinicEmail || '',
-          clinicWebsite: data.clinicWebsite || '',
-          clinicAddress: data.clinicAddress?.address || '',
-          clinicPinCode: data.clinicAddress?.pinCode || '',
-          clinicCity: data.city || '',
-          clinicGoogleMapsLink: googleMapsLink,
-          isAvailable
+          age: data.age?.toString() || '',
+          gender: data.gender || '',
+          registrationNumber: data.registrationNumber || '',
+          consultationType: data.consultationType || '',
+          isAvailable: data.isAvailable || false,
+          availableDays: data.availableDays || [],
+          availableSlots: data.availableSlots || [],
+          coverImage: data.coverImage || '',
+          clinics: clinics.map((clinic: any) => ({
+            clinicName: clinic.clinicName || '',
+            clinicPhone: clinic.clinicPhone || '',
+            clinicEmail: clinic.clinicEmail || '',
+            clinicWebsite: clinic.clinicWebsite || '',
+            clinicAddress: clinic.clinicAddress?.address || '',
+            clinicPinCode: clinic.clinicAddress?.pinCode || '',
+            clinicCity: clinic.clinicAddress?.city || '',
+            clinicGoogleMapsLink: clinic.clinicAddress?.googleMapsLink || '',
+          }))
         }
       };
     });
@@ -440,38 +424,34 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
   
   prepareProfileData: () => {
     const state = get();
-    
-    // Convert gender to lowercase as per backend model
-    const genderValue = state.gender ? state.gender.toLowerCase() : undefined;
-    
-    // Format clinic address as per backend model
-    const clinicAddressData: Address = {
-      address: state.clinicAddress,
-      pinCode: state.clinicPinCode,
-      googleMapsLink: state.clinicGoogleMapsLink,
-      latitude: null,
-      longitude: null
-    };
-    
     return {
       description: state.description,
       experience: state.experience ? parseInt(state.experience) : undefined,
       specializations: state.specializations,
       qualifications: state.qualifications,
       consultationFee: state.consultationFee ? parseInt(state.consultationFee) : undefined,
-      coverImage: state.coverImage,
       age: state.age ? parseInt(state.age) : undefined,
-      gender: genderValue,
+      gender: state.gender.toLowerCase(),
+      registrationNumber: state.registrationNumber,
+      consultationType: state.consultationType,
       isAvailable: state.isAvailable,
-      consultationType: state.consultationType as 'online' | 'in-person' | 'both',
       availableDays: state.availableDays,
       availableSlots: state.availableSlots,
-      clinicName: state.clinicName,
-      clinicPhone: state.clinicPhone,
-      clinicEmail: state.clinicEmail,
-      clinicWebsite: state.clinicWebsite,
-      clinicAddress: clinicAddressData,
-      city: state.clinicCity // City as a top-level property
+      coverImage: state.coverImage,
+      clinics: state.clinics.map(clinic => ({
+        clinicName: clinic.clinicName,
+        clinicPhone: clinic.clinicPhone,
+        clinicEmail: clinic.clinicEmail,
+        clinicWebsite: clinic.clinicWebsite,
+        clinicAddress: {
+          address: clinic.clinicAddress,
+          pinCode: clinic.clinicPinCode,
+          googleMapsLink: clinic.clinicGoogleMapsLink,
+          latitude: null,
+          longitude: null
+        }
+      })),
+      city: state.clinics[0]?.clinicCity || null
     };
   },
   
@@ -490,14 +470,8 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
     age: '',
     gender: '',
     isAvailable: false,
-    clinicName: '',
-    clinicPhone: '',
-    clinicEmail: '',
-    clinicWebsite: '',
-    clinicAddress: '',
-    clinicPinCode: '',
-    clinicCity: '',
-    clinicGoogleMapsLink: '',
+    registrationNumber: '',
+    clinics: [],
     savedValues: {
       description: '',
       experience: '',
@@ -507,18 +481,12 @@ export const useDoctorProfileStore = create<DoctorProfileState>((set, get) => ({
       age: '',
       gender: '',
       consultationType: '',
-      availableDays: [],
-      availableSlots: [],
       coverImage: '',
-      clinicName: '',
-      clinicPhone: '',
-      clinicEmail: '',
-      clinicWebsite: '',
-      clinicAddress: '',
-      clinicPinCode: '',
-      clinicCity: '',
-      clinicGoogleMapsLink: '',
-      isAvailable: false
+      registrationNumber: '',
+      clinics: [],
+      isAvailable: false,
+      availableDays: [],
+      availableSlots: []
     }
   })
 }));

@@ -121,44 +121,48 @@ const doctorProfileSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    clinicPhone: {
-        type: String,
-        default: null,
-    },
-    clinicEmail: {
-        type: String,
-        default: null,
-    },
-    clinicWebsite: {
-        type: String,
-        default: null,
-    },
-    clinicImages: {
-        type: [String],
-        default: null,
-    },
-    clinicAddress: {
-        latitude: {
-            type: Number,
-            default: null,
-        },
-        longitude: {
-            type: Number,
-            default: null,
-        },
-        address: {
-            type: String,
-            default: null,
-        },
-        pinCode: {
-            type: String,
-            default: null,
-        },
-        googleMapsLink: {
-            type: String,
-            default: null,
-        },
-    },
+    clinics: [
+        {
+            clinicName: {
+                type: String,
+                default: null,
+            },
+            clinicPhone: {
+                type: String,
+                default: null,
+            },
+            clinicEmail: {
+                type: String,
+                default: null,
+            },
+            clinicWebsite: {
+                type: String,
+                default: null,
+            },
+            clinicAddress: {
+                latitude: {
+                    type: Number,
+                    default: null,
+                },
+                longitude: {
+                    type: Number,
+                    default: null,
+                },
+                address: {
+                    type: String,
+                    default: null,
+                },
+                pinCode: {
+                    type: String,
+                    default: null,
+                },
+                googleMapsLink: {
+                    type: String,
+                    default: null,
+                },
+            }
+        }
+    ],
     city: {
         type: String,
         default: null,
@@ -181,6 +185,15 @@ const laboratoryProfileSchema = new mongoose.Schema({
     },
     laboratoryName: {
         type: String,
+        default: null,
+    },
+    availableDays: {
+        type: [String],
+        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        default: null,
+    },
+    availableSlots: {
+        type: [String],
         default: null,
     },
     laboratoryAddress: {
