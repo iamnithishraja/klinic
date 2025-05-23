@@ -5,46 +5,60 @@ import { Platform } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: '#4F46E5', // Primary color from theme
+        tabBarInactiveTintColor: '#6B7280', // Text secondary color from theme
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
           ios: {
-            // Use a transparent background on iOS to show the blur effect
             position: 'absolute',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            borderTopWidth: 0,
+            elevation: 0,
+            height: 88,
+            paddingBottom: 20,
           },
-          default: {},
+          default: {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderTopWidth: 0,
+            elevation: 8,
+            height: 64,
+            paddingBottom: 8,
+          },
         }),
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="house" color={color} weight="medium" />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="doctors"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Doctors',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="stethoscope" color={color} weight="medium" />,
+        }}
+      />
+      <Tabs.Screen
+        name="laboratories"
+        options={{
+          title: 'Laboratories',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="cross.case" color={color} weight="medium" />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.circle" color={color} weight="medium" />,
         }}
       />
     </Tabs>

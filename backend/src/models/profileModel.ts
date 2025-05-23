@@ -121,6 +121,10 @@ const doctorProfileSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    rating: {
+        type: Number,
+        default: 0,
+    },
     clinics: [
         {
             clinicName: {
@@ -229,6 +233,10 @@ const laboratoryProfileSchema = new mongoose.Schema({
         description: {
             type: String,
             default: null,
+        },
+        rating: {
+            type: Number,
+            default: 0,
         },
         coverImage: {
             type: String,
