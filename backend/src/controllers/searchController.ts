@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type { CustomRequest } from '../types/userTypes';
 import { DoctorProfile, LaboratoryProfile } from '../models/profileModel';
 import { getCategoriesTestType, getSpecializations, getCities } from '../utils/selectors';
+import { getUserCity } from '../utils/userUtils';
 
 // Search doctors with filters
 const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> => {
@@ -20,8 +21,8 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             page = 1,
             limit = 10
         } = req.query;
-
-        const userCity = req.user?.city; // Assuming user city is available in req.user
+        console.log(req.query);
+        const userCity = await getUserCity(req.user._id); // Assuming user city is available in req.user
         const skip = (Number(page) - 1) * Number(limit);
 
         // Build filter query
@@ -93,7 +94,7 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
                 .populate('user', 'name email phone profilePicture')
                 .sort({ createdAt: -1 })
                 .lean();
-
+            
             // Filter by doctor name after population if search is provided
             let filteredUserCityDoctors = userCityDoctors;
             if (search && search !== '') {
@@ -145,7 +146,6 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
                 .skip(skip)
                 .limit(Number(limit))
                 .lean();
-
             // Filter by doctor name after population if search is provided
             if (search && search !== '') {
                 const searchRegex = new RegExp(search as string, 'i');
@@ -198,8 +198,8 @@ const searchLaboratories = async (req: CustomRequest, res: Response): Promise<vo
             page = 1,
             limit = 10
         } = req.query;
-
-        const userCity = req.user?.city; // Assuming user city is available in req.user
+        const userCity = await getUserCity(req.user._id);
+        console.log(req.query);
         const skip = (Number(page) - 1) * Number(limit);
 
         // Build filter query

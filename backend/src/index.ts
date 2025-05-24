@@ -3,6 +3,7 @@ import { connectDatabse } from "./config/database";
 import userRouter from "./routes/userRoutes";
 import profileRouter from "./routes/profileRoutes";
 import bodyParser from "body-parser";
+import searchRouter from "./routes/searchRoutes";
 const app = express();
 
 connectDatabse();
@@ -20,6 +21,7 @@ app.post("/api/v1/sendNotification", async (req, res) => {
 
 app.use('/api/v1/', userRouter);
 app.use('/api/v1/', profileRouter);
+app.use('/api/v1/', searchRouter);
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");

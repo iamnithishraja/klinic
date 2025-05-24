@@ -1,30 +1,29 @@
 import { View, FlatList, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
-import DoctorCard from './DoctorCard';
-import { useDoctorStore } from '../store/doctorStore';
+import LaboratoryCard from './LaboratoryCard';
+import { useLaboratoryStore } from '../store/laboratoryStore';
 
-interface Doctor {
-  // We'll type this properly later
+interface Laboratory {
   _id: string;
   [key: string]: any;
 }
 
-export default function DoctorList() {
+export default function LaboratoryList() {
   const { 
-    doctors, 
+    laboratories, 
     pagination,
     isLoading,
     isLoadingMore,
-    searchDoctors,
+    searchLaboratories,
     loadMore
-  } = useDoctorStore();
+  } = useLaboratoryStore();
 
   useEffect(() => {
-    searchDoctors();
+    searchLaboratories();
   }, []);
 
   const handleRefresh = () => {
-    searchDoctors(undefined, true);
+    searchLaboratories(undefined, true);
   };
 
   const handleLoadMore = () => {
@@ -45,9 +44,9 @@ export default function DoctorList() {
   return (
     <View className="flex-1">
       <FlatList
-        data={doctors}
+        data={laboratories}
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <DoctorCard doctor={item} />}
+        renderItem={({ item }) => <LaboratoryCard laboratory={item} />}
         refreshing={isLoading}
         onRefresh={handleRefresh}
         onEndReached={handleLoadMore}
