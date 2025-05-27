@@ -1,10 +1,9 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
 
 export default function TabLayout() {
   return (
@@ -14,51 +13,52 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#6B7280', // Text secondary color from theme
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            position: 'absolute',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            borderTopWidth: 0,
-            elevation: 0,
-            height: 88,
-            paddingBottom: 20,
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
+        ),
+        appearance: 'light',
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: -2,
           },
-          default: {
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderTopWidth: 0,
-            elevation: 8,
-            height: 64,
-            paddingBottom: 8,
-          },
-        }),
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="house" color={color} weight="medium" />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={24} name="house" color={color} weight="medium" />,
         }}
       />
       <Tabs.Screen
         name="doctors"
         options={{
           title: 'Doctors',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="stethoscope" color={color} weight="medium" />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={24} name="stethoscope" color={color} weight="medium" />,
         }}
       />
       <Tabs.Screen
         name="laboratories"
         options={{
           title: 'Laboratories',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="cross.case" color={color} weight="medium" />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={24} name="cross.case" color={color} weight="medium" />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.circle" color={color} weight="medium" />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={24} name="person.circle" color={color} weight="medium" />,
         }}
       />
     </Tabs>

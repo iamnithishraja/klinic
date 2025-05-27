@@ -72,7 +72,7 @@ export const doctorService = {
       // Make sure we're using the correct endpoint
       const response = await apiClient.get(`/api/v1/doctors?${queryString}`);
       
-      console.log('API Response:', response.data);
+      console.log('API Response:', JSON.stringify(response.data));
       
       // If doctors array is empty but we have filters data, create a fallback response
       if (!response.data.doctors || response.data.doctors.length === 0) {

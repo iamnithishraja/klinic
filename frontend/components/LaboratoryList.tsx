@@ -1,5 +1,6 @@
 import { View, FlatList, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LaboratoryCard from './LaboratoryCard';
 import { useLaboratoryStore } from '../store/laboratoryStore';
 
@@ -9,6 +10,7 @@ interface Laboratory {
 }
 
 export default function LaboratoryList() {
+  const insets = useSafeAreaInsets();
   const { 
     laboratories, 
     pagination,
@@ -42,7 +44,12 @@ export default function LaboratoryList() {
   };
 
   return (
-    <View className="flex-1">
+    <View 
+      className="flex-1"
+      style={{
+        paddingBottom: insets.bottom + 60 // Add extra padding for bottom tab bar
+      }}
+    >
       <FlatList
         data={laboratories}
         keyExtractor={(item) => item._id}
@@ -52,6 +59,7 @@ export default function LaboratoryList() {
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );

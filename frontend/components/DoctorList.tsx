@@ -1,5 +1,6 @@
 import { View, FlatList, ActivityIndicator } from 'react-native';
 import { useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DoctorCard from './DoctorCard';
 import { useDoctorStore } from '../store/doctorStore';
 
@@ -10,6 +11,7 @@ interface Doctor {
 }
 
 export default function DoctorList() {
+  const insets = useSafeAreaInsets();
   const { 
     doctors, 
     pagination,
@@ -43,7 +45,12 @@ export default function DoctorList() {
   };
 
   return (
-    <View className="flex-1">
+    <View 
+      className="flex-1"
+      style={{
+        paddingBottom: insets.bottom + 60 // Add extra padding for bottom tab bar
+      }}
+    >
       <FlatList
         data={doctors}
         keyExtractor={(item) => item._id}
@@ -53,6 +60,10 @@ export default function DoctorList() {
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: 16
+        }}
       />
     </View>
   );

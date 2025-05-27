@@ -91,9 +91,10 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             }
 
             const userCityDoctors = await DoctorProfile.find(userCityQuery)
-                .populate('user', 'name email phone profilePicture')
+                .populate('user')
                 .sort({ createdAt: -1 })
                 .lean();
+            console.log(userCityDoctors[0]?.user);
             
             // Filter by doctor name after population if search is provided
             let filteredUserCityDoctors = userCityDoctors;
@@ -115,7 +116,7 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             }
 
             const otherCityDoctors = await DoctorProfile.find(otherCitiesQuery)
-                .populate('user', 'name email phone profilePicture')
+                .populate('user')
                 .sort({ createdAt: -1 })
                 .lean();
 

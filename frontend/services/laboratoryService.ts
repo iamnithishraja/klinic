@@ -22,6 +22,12 @@ export interface Laboratory {
     price: number;
     collectionType: 'home' | 'lab' | 'both';
     rating: number;
+    description: string;
+    coverImage?: string;
+    tests?: Array<{
+      name: string;
+      description: string;
+    }>;
   }>;
   rating: number;
   isAvailable: boolean;
