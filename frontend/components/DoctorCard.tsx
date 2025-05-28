@@ -90,14 +90,18 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
           </View>
 
           {/* Other Info */}
-          <View className="flex-row items-center">
-            <View className="flex-row items-center mr-4">
+          <View className="flex-row items-center flex-wrap">
+            <View className="flex-row items-center mr-4 mb-2">
               <FontAwesome name="stethoscope" size={14} color="#4B5563" />
               <Text className="text-gray-600 text-sm ml-2">{doctor.experience} years exp.</Text>
             </View>
-            <View className="flex-row items-center">
+            <View className="flex-row items-center mr-4 mb-2">
               <FontAwesome name="map-marker" size={14} color="#4B5563" />
               <Text className="text-gray-600 text-sm ml-2">{doctor.city}</Text>
+            </View>
+            <View className="flex-row items-center mb-2">
+              <FontAwesome name={doctor.gender === 'female' ? 'female' : 'male'} size={14} color="#4B5563" />
+              <Text className="text-gray-600 text-sm ml-2 capitalize">{doctor.gender || 'Not specified'}</Text>
             </View>
           </View>
         </View>

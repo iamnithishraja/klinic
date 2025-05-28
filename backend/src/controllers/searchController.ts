@@ -22,70 +22,107 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             limit = 10
         } = req.query;
         console.log(req.query);
-        const userCity = await getUserCity(req.user._id); // Assuming user city is available in req.user
+        const userCity = await getUserCity(req.user._id);
         const skip = (Number(page) - 1) * Number(limit);
 
-        // Build filter query
-        const filterQuery: any = {
+        // Build base filter query
+        const baseFilterQuery: any = {
             isAvailable: true
         };
 
         // Gender filter
         if (gender && gender !== '') {
-            filterQuery.gender = gender;
+            baseFilterQuery.gender = gender;
         }
 
         // Specialization filter
         if (specialization && specialization !== '') {
-            filterQuery.specializations = { $in: [specialization] };
+            baseFilterQuery.specializations = { $in: [specialization] };
         }
 
         // Consultation type filter
         if (consultationType && consultationType !== '') {
-            filterQuery.consultationType = { $in: [consultationType, 'both'] };
+            baseFilterQuery.consultationType = { $in: [consultationType, 'both'] };
         }
 
         // Fee range filter
         if (minFee || maxFee) {
-            filterQuery.consultationFee = {};
-            if (minFee) filterQuery.consultationFee.$gte = Number(minFee);
-            if (maxFee) filterQuery.consultationFee.$lte = Number(maxFee);
+            baseFilterQuery.consultationFee = {};
+            if (minFee) baseFilterQuery.consultationFee.$gte = Number(minFee);
+            if (maxFee) baseFilterQuery.consultationFee.$lte = Number(maxFee);
         }
 
         // Rating filter
         if (minRating) {
-            filterQuery.rating = { $gte: Number(minRating) };
+            baseFilterQuery.rating = { $gte: Number(minRating) };
         }
 
-        // Search filter (doctor name, clinic name)
-        if (search && search !== '') {
-            const searchRegex = new RegExp(search as string, 'i');
-            filterQuery.$or = [
-                { 'clinics.clinicName': searchRegex },
-                // We'll also populate user and search by name
-            ];
-        }
-
-        // Date availability filter - only check day
+        // Date availability filter
         if (date) {
             const selectedDate = new Date(date as string);
             const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
-            filterQuery.availableDays = { $in: [dayName] };
+            baseFilterQuery.availableDays = { $in: [dayName] };
         }
 
-        // Location filters - create separate queries for city priority
         let doctorProfiles: any[] = [];
         let totalCount = 0;
 
+        // If city is specified in params, filter by that city only
         if (city && city !== '') {
-            // Search in specific city
-            filterQuery.city = city;
+            const filterQuery = { ...baseFilterQuery, city: city };
+            
+            // Add pinCode filter if provided
             if (pinCode && pinCode !== '') {
                 filterQuery['clinics.clinicAddress.pinCode'] = pinCode;
             }
-        } else if (userCity) {
+
+            // Handle search with name/clinic matching
+            if (search && search !== '') {
+                const searchRegex = new RegExp(search as string, 'i');
+                
+                // Find doctors by user name
+                const doctorsWithMatchingNames = await DoctorProfile.find(filterQuery)
+                    .populate({
+                        path: 'user',
+                        match: { name: searchRegex },
+                        select: '_id name'
+                    })
+                    .lean();
+
+                const matchingDoctorIds = doctorsWithMatchingNames
+                    .filter(doc => doc.user)
+                    .map(doc => doc._id);
+
+                // Create search filter for clinic names or matching doctor IDs
+                const searchFilter = {
+                    ...filterQuery,
+                    $or: [
+                        { 'clinics.clinicName': searchRegex },
+                        ...(matchingDoctorIds.length > 0 ? [{ _id: { $in: matchingDoctorIds } }] : [])
+                    ]
+                };
+
+                totalCount = await DoctorProfile.countDocuments(searchFilter);
+                doctorProfiles = await DoctorProfile.find(searchFilter)
+                    .populate('user', 'name email phone profilePicture')
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(Number(limit))
+                    .lean();
+            } else {
+                totalCount = await DoctorProfile.countDocuments(filterQuery);
+                doctorProfiles = await DoctorProfile.find(filterQuery)
+                    .populate('user', 'name email phone profilePicture')
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(Number(limit))
+                    .lean();
+            }
+        } 
+        // If no city filter but user has a city, prioritize user's city
+        else if (userCity) {
             // First get doctors from user's city
-            const userCityQuery = { ...filterQuery, city: userCity };
+            const userCityQuery = { ...baseFilterQuery, city: userCity };
             if (pinCode && pinCode !== '') {
                 userCityQuery['clinics.clinicAddress.pinCode'] = pinCode;
             }
@@ -94,7 +131,6 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
                 .populate('user')
                 .sort({ createdAt: -1 })
                 .lean();
-            console.log(userCityDoctors[0]?.user);
             
             // Filter by doctor name after population if search is provided
             let filteredUserCityDoctors = userCityDoctors;
@@ -108,7 +144,7 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
 
             // Then get doctors from other cities
             const otherCitiesQuery = { 
-                ...filterQuery, 
+                ...baseFilterQuery, 
                 city: { $ne: userCity }
             };
             if (pinCode && pinCode !== '') {
@@ -134,26 +170,54 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             const allDoctors = [...filteredUserCityDoctors, ...filteredOtherCityDoctors];
             totalCount = allDoctors.length;
             doctorProfiles = allDoctors.slice(skip, skip + Number(limit));
-        } else {
-            // No user city or specific city filter
+        } 
+        // No city filter and no user city
+        else {
+            const filterQuery = { ...baseFilterQuery };
             if (pinCode && pinCode !== '') {
                 filterQuery['clinics.clinicAddress.pinCode'] = pinCode;
             }
             
-            totalCount = await DoctorProfile.countDocuments(filterQuery);
-            doctorProfiles = await DoctorProfile.find(filterQuery)
-                .populate('user', 'name email phone profilePicture')
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(Number(limit))
-                .lean();
-            // Filter by doctor name after population if search is provided
             if (search && search !== '') {
                 const searchRegex = new RegExp(search as string, 'i');
-                doctorProfiles = doctorProfiles.filter(doctor => 
-                    (doctor.user as any)?.name?.match(searchRegex) ||
-                    doctor.clinics?.some((clinic: any) => clinic.clinicName?.match(searchRegex))
-                );
+                
+                // Find doctors by user name
+                const doctorsWithMatchingNames = await DoctorProfile.find(filterQuery)
+                    .populate({
+                        path: 'user',
+                        match: { name: searchRegex },
+                        select: '_id name'
+                    })
+                    .lean();
+
+                const matchingDoctorIds = doctorsWithMatchingNames
+                    .filter(doc => doc.user)
+                    .map(doc => doc._id);
+
+                // Create search filter
+                const searchFilter = {
+                    ...filterQuery,
+                    $or: [
+                        { 'clinics.clinicName': searchRegex },
+                        ...(matchingDoctorIds.length > 0 ? [{ _id: { $in: matchingDoctorIds } }] : [])
+                    ]
+                };
+
+                totalCount = await DoctorProfile.countDocuments(searchFilter);
+                doctorProfiles = await DoctorProfile.find(searchFilter)
+                    .populate('user', 'name email phone profilePicture')
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(Number(limit))
+                    .lean();
+            } else {
+                totalCount = await DoctorProfile.countDocuments(filterQuery);
+                doctorProfiles = await DoctorProfile.find(filterQuery)
+                    .populate('user', 'name email phone profilePicture')
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(Number(limit))
+                    .lean();
             }
         }
 
@@ -199,107 +263,230 @@ const searchLaboratories = async (req: CustomRequest, res: Response): Promise<vo
             page = 1,
             limit = 10
         } = req.query;
+        
+        console.log('Search parameters:', req.query);
+        
         const userCity = await getUserCity(req.user._id);
-        console.log(req.query);
+        console.log('User city:', userCity);
+        
         const skip = (Number(page) - 1) * Number(limit);
 
-        // Build filter query
-        const filterQuery: any = {
+        // Build base filter query for laboratories (not services)
+        const baseFilterQuery: any = {
             isAvailable: true
         };
 
-        // Category filter
-        if (category && category !== '') {
-            filterQuery['laboratoryServices.category'] = category;
-        }
-
-        // Collection type filter
-        if (collectionType && collectionType !== '') {
-            filterQuery['laboratoryServices.collectionType'] = { $in: [collectionType, 'both'] };
-        }
-
-        // Price range filter
-        if (minPrice || maxPrice) {
-            const priceFilter: any = {};
-            if (minPrice) priceFilter.$gte = Number(minPrice);
-            if (maxPrice) priceFilter.$lte = Number(maxPrice);
-            filterQuery['laboratoryServices.price'] = priceFilter;
-        }
-
-        // Rating filter for services
-        if (minRating) {
-            filterQuery['laboratoryServices.rating'] = { $gte: Number(minRating) };
-        }
+        // Debug: Check total laboratories without any filters
+        const totalLabsCount = await LaboratoryProfile.countDocuments({});
+        const availableLabsCount = await LaboratoryProfile.countDocuments({ isAvailable: true });
+        console.log(`Total laboratories in DB: ${totalLabsCount}`);
+        console.log(`Available laboratories in DB: ${availableLabsCount}`);
 
         // Search filter (laboratory name, service name)
         if (search && search !== '') {
             const searchRegex = new RegExp(search as string, 'i');
-            filterQuery.$or = [
+            baseFilterQuery.$or = [
                 { laboratoryName: searchRegex },
-                { 'laboratoryServices.name': searchRegex }
+                { 'laboratoryServices.name': searchRegex },
+                { 'laboratoryServices.tests.name': searchRegex }
             ];
         }
 
-        // Date availability filter - only check day
+        // Date availability filter
         if (date) {
             const selectedDate = new Date(date as string);
             const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
-            filterQuery.availableDays = { $in: [dayName] };
+            baseFilterQuery.availableDays = { $in: [dayName] };
+            console.log('Date filter applied:', dayName);
         }
 
-        // Location filters - create separate queries for city priority
+        // Build service filter conditions for $filter in aggregation
+        const serviceFilterConditions: any[] = [];
+        
+        if (category && category !== '') {
+            serviceFilterConditions.push({ $eq: ['$$service.category', category] });
+        }
+        
+        if (collectionType && collectionType !== '') {
+            serviceFilterConditions.push({
+                $or: [
+                    { $eq: ['$$service.collectionType', collectionType] },
+                    { $eq: ['$$service.collectionType', 'both'] }
+                ]
+            });
+        }
+        
+        if (minPrice || maxPrice) {
+            const priceConditions: any[] = [];
+            if (minPrice) priceConditions.push({ $gte: ['$$service.price', Number(minPrice)] });
+            if (maxPrice) priceConditions.push({ $lte: ['$$service.price', Number(maxPrice)] });
+            serviceFilterConditions.push(...priceConditions);
+        }
+        
+        if (minRating) {
+            serviceFilterConditions.push({ $gte: ['$$service.rating', Number(minRating)] });
+        }
+
+        console.log('Service filter conditions:', serviceFilterConditions);
+
+        // Build aggregation pipeline
+        const aggregationPipeline: any[] = [];
+
+        // Add location filters to match stage
+        let locationMatch: any = { ...baseFilterQuery };
+        
+        // If city is specified in params, filter by that city only
+        if (city && city !== '') {
+            locationMatch.city = city;
+            if (pinCode && pinCode !== '') {
+                locationMatch['laboratoryAddress.pinCode'] = pinCode;
+            }
+        }
+        
+        console.log('Location match filter:', locationMatch);
+        
+        aggregationPipeline.push({ $match: locationMatch });
+
+        // Filter laboratory services if any service filters are applied
+        if (serviceFilterConditions.length > 0) {
+            const filterCondition = serviceFilterConditions.length === 1 
+                ? serviceFilterConditions[0]
+                : { $and: serviceFilterConditions };
+
+            aggregationPipeline.push({
+                $addFields: {
+                    laboratoryServices: {
+                        $filter: {
+                            input: '$laboratoryServices',
+                            as: 'service',
+                            cond: filterCondition
+                        }
+                    }
+                }
+            });
+
+            // Remove laboratories with no matching services
+            aggregationPipeline.push({
+                $match: {
+                    'laboratoryServices.0': { $exists: true }
+                }
+            });
+        }
+
+        // Add population stage
+        aggregationPipeline.push({
+            $lookup: {
+                from: 'users',
+                localField: 'user',
+                foreignField: '_id',
+                as: 'user',
+                pipeline: [
+                    { $project: { name: 1, email: 1, phone: 1 } }
+                ]
+            }
+        });
+
+        aggregationPipeline.push({
+            $unwind: {
+                path: '$user',
+                preserveNullAndEmptyArrays: true
+            }
+        });
+
+        console.log('Aggregation pipeline:', JSON.stringify(aggregationPipeline, null, 2));
+
         let laboratoryProfiles: any[] = [];
         let totalCount = 0;
 
-        if (city && city !== '') {
-            // Search in specific city
-            filterQuery.city = city;
-            if (pinCode && pinCode !== '') {
-                filterQuery['laboratoryAddress.pinCode'] = pinCode;
-            }
-        } else if (userCity) {
+        // Handle city prioritization for aggregation
+        if (!city && userCity) {
+            console.log('Using city prioritization logic');
+            
             // First get labs from user's city
-            const userCityQuery = { ...filterQuery, city: userCity };
+            const userCityPipeline = [...aggregationPipeline];
+            userCityPipeline[0].$match = { ...userCityPipeline[0].$match, city: userCity };
+            
             if (pinCode && pinCode !== '') {
-                userCityQuery['laboratoryAddress.pinCode'] = pinCode;
+                userCityPipeline.splice(-1, 0, { $match: { 'laboratoryAddress.pinCode': pinCode } });
             }
 
-            const userCityLabs = await LaboratoryProfile.find(userCityQuery)
-                .populate('user', 'name email phone')
-                .sort({ createdAt: -1 })
-                .lean();
+            const userCityLabs = await LaboratoryProfile.aggregate([
+                ...userCityPipeline,
+                { $sort: { createdAt: -1 } }
+            ]);
+
+            console.log(`User city labs found: ${userCityLabs.length}`);
 
             // Then get labs from other cities
-            const otherCitiesQuery = { 
-                ...filterQuery, 
-                city: { $ne: userCity }
-            };
+            const otherCitiesPipeline = [...aggregationPipeline];
+            otherCitiesPipeline[0].$match = { ...otherCitiesPipeline[0].$match, city: { $ne: userCity } };
+            
             if (pinCode && pinCode !== '') {
-                otherCitiesQuery['laboratoryAddress.pinCode'] = pinCode;
+                otherCitiesPipeline.splice(-1, 0, { $match: { 'laboratoryAddress.pinCode': pinCode } });
             }
 
-            const otherCityLabs = await LaboratoryProfile.find(otherCitiesQuery)
-                .populate('user', 'name email phone')
-                .sort({ createdAt: -1 })
-                .lean();
+            const otherCityLabs = await LaboratoryProfile.aggregate([
+                ...otherCitiesPipeline,
+                { $sort: { createdAt: -1 } }
+            ]);
+
+            console.log(`Other city labs found: ${otherCityLabs.length}`);
 
             // Combine results with user city first
             const allLabs = [...userCityLabs, ...otherCityLabs];
             totalCount = allLabs.length;
             laboratoryProfiles = allLabs.slice(skip, skip + Number(limit));
         } else {
-            // No user city or specific city filter
-            if (pinCode && pinCode !== '') {
-                filterQuery['laboratoryAddress.pinCode'] = pinCode;
-            }
+            console.log('Using standard aggregation logic');
             
-            totalCount = await LaboratoryProfile.countDocuments(filterQuery);
-            laboratoryProfiles = await LaboratoryProfile.find(filterQuery)
-                .populate('user', 'name email phone')
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(Number(limit))
-                .lean();
+            // Handle pinCode for non-user-city scenarios
+            if (!city && pinCode && pinCode !== '') {
+                aggregationPipeline.push({
+                    $match: { 'laboratoryAddress.pinCode': pinCode }
+                });
+            }
+
+            // Get total count
+            const countPipeline = [
+                ...aggregationPipeline,
+                { $count: 'total' }
+            ];
+            
+            console.log('Count pipeline:', JSON.stringify(countPipeline, null, 2));
+            
+            const countResult = await LaboratoryProfile.aggregate(countPipeline);
+            totalCount = countResult.length > 0 ? countResult[0].total : 0;
+            console.log('Total count from aggregation:', totalCount);
+
+            // Get paginated results
+            const finalPipeline = [
+                ...aggregationPipeline,
+                { $sort: { createdAt: -1 } },
+                { $skip: skip },
+                { $limit: Number(limit) }
+            ];
+            
+            console.log('Final pipeline:', JSON.stringify(finalPipeline, null, 2));
+            
+            laboratoryProfiles = await LaboratoryProfile.aggregate(finalPipeline);
+            console.log('Laboratory profiles found:', laboratoryProfiles.length);
+        }
+
+        // Debug: If no labs found, let's check what's in the database
+        if (laboratoryProfiles.length === 0) {
+            console.log('No laboratories found. Checking database structure...');
+            
+            // Get a sample document to understand the structure
+            const sampleLab = await LaboratoryProfile.findOne({}).limit(1);
+            console.log('Sample laboratory document:', JSON.stringify(sampleLab, null, 2));
+            
+            // Check if there are any labs that match the base filter
+            const matchingLabs = await LaboratoryProfile.find(baseFilterQuery).limit(5);
+            console.log('Labs matching base filter:', matchingLabs.length);
+            
+            if (matchingLabs.length > 0) {
+                console.log('Sample matching lab:', JSON.stringify(matchingLabs[0], null, 2));
+            }
         }
 
         const totalPages = Math.ceil(totalCount / Number(limit));
@@ -322,7 +509,7 @@ const searchLaboratories = async (req: CustomRequest, res: Response): Promise<vo
             }
         });
     } catch (error) {
-        console.error(error);
+        console.error('Error in searchLaboratories:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
