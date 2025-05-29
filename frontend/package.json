@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "test": "jest --watchAll",
     "lint": "expo lint",
-    "android": "expo run:android"
+    "android": "expo run:android",
+    "web-build": "expo export --platform web"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
