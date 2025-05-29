@@ -4,10 +4,12 @@ import userRouter from "./routes/userRoutes";
 import profileRouter from "./routes/profileRoutes";
 import bodyParser from "body-parser";
 import searchRouter from "./routes/searchRoutes";
+import cors from "cors";
 const app = express();
 
 connectDatabse();
 
+app.use(cors({ origin: "*" }));
 app.use(bodyParser.json({ limit: "35mb" }));
 
 // app.get("/", (req, res) => {
