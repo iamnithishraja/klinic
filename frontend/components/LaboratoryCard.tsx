@@ -10,8 +10,8 @@ interface LaboratoryCardProps {
 export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
   const router = useRouter();
 
-  const handleViewDetails = () => {
-    router.push(`/laboratories/${laboratory._id}`);
+  const handleViewDetails = (serviceIndex: number) => {
+    router.push(`/laboratories/${laboratory._id}?serviceIndex=${serviceIndex}`);
   };
 
   return (
@@ -20,7 +20,7 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
       {laboratory.laboratoryServices.map((service, index) => (
         <Pressable
           key={index}
-          onPress={handleViewDetails}
+          onPress={() => handleViewDetails(index)}
           className="bg-white rounded-xl overflow-hidden shadow-lg mb-6 border border-gray-100"
         >
           {/* Service Cover Image */}
@@ -132,10 +132,13 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
 
             {/* Book Now Button */}
             <View className="mt-4 flex-row justify-end">
-              <View className="bg-primary px-4 py-2.5 rounded-lg flex-row items-center">
+              <Pressable 
+                onPress={() => handleViewDetails(index)}
+                className="bg-primary px-4 py-2.5 rounded-lg flex-row items-center"
+              >
                 <Text className="text-white font-semibold mr-2">Book Now</Text>
                 <FontAwesome name="arrow-right" size={14} color="white" />
-              </View>
+              </Pressable>
             </View>
           </View>
         </Pressable>

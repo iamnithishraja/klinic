@@ -25,6 +25,11 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    status: {
+        type: String,
+        enum: ['upcoming', 'completed'],
+        default: 'upcoming',
+    },
     notes: {
         type: String,
         default: null,

@@ -21,6 +21,11 @@ const labAppointmentsSchema = new mongoose.Schema({
         enum: ['in-person', 'online', 'both'],
         default: null,
     },
+    status: {
+        type: String,
+        enum: ['upcoming', 'completed'],
+        default: 'upcoming',
+    },
     createdAt: {
         type: Date,
         default: Date.now,
