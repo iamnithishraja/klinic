@@ -29,7 +29,10 @@ export default function DoctorList() {
   } = useDoctorStore();
 
   useEffect(() => {
-    searchDoctors();
+    // Only search if no doctors are loaded yet
+    if (doctors.length === 0 && !isLoading) {
+      searchDoctors();
+    }
   }, []);
 
   const handleSearch = (query: string) => {

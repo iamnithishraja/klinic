@@ -1,5 +1,5 @@
 import { View, Text, Image, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import { Doctor } from '../services/doctorService';
 import { FontAwesome } from '@expo/vector-icons';
 
@@ -8,8 +8,6 @@ interface DoctorCardProps {
 }
 
 export default function DoctorCard({ doctor }: DoctorCardProps) {
-  const router = useRouter();
-
   const handleViewDetails = () => {
     router.push(`/doctors/${doctor._id}`);
   };

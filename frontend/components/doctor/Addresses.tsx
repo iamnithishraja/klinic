@@ -22,10 +22,11 @@ interface Clinic {
 interface AddressesProps {
   clinics: Clinic[];
   onSelectClinic?: (clinic: Clinic) => void;
+  disabled?: boolean;
 }
 
-export default function Addresses({ clinics, onSelectClinic }: AddressesProps) {
-  const [selectedClinicIndex, setSelectedClinicIndex] = useState(0);
+export default function Addresses({ clinics, onSelectClinic, disabled = false }: AddressesProps) {
+  const [selectedClinicIndex, setSelectedClinicIndex] = useState<number | null>(null);
 
   if (!clinics || clinics.length === 0) {
     return (
@@ -36,6 +37,8 @@ export default function Addresses({ clinics, onSelectClinic }: AddressesProps) {
   }
 
   const handleSelectClinic = (index: number) => {
+    if (disabled) return; // Don't allow selection if disabled
+    
     setSelectedClinicIndex(index);
     if (onSelectClinic) {
       onSelectClinic(clinics[index]);
@@ -48,8 +51,13 @@ export default function Addresses({ clinics, onSelectClinic }: AddressesProps) {
         <Pressable
           key={index}
           onPress={() => handleSelectClinic(index)}
-          className={`bg-gray-50 p-4 rounded-lg mb-2 border ${
-            selectedClinicIndex === index ? 'border-primary' : 'border-transparent'
+          disabled={disabled}
+          className={`p-4 rounded-lg mb-2 border ${
+            disabled 
+              ? 'bg-gray-100 border-gray-200' 
+              : selectedClinicIndex === index 
+                ? 'bg-gray-50 border-primary' 
+                : 'bg-gray-50 border-transparent'
           }`}
         >
           <View className="flex-row justify-between items-start">
