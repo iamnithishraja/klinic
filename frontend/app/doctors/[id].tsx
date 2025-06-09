@@ -4,6 +4,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useDoctorStore } from '@/store/doctorStore';
 import DoctorInfo from '@/components/doctor/DoctorInfo';
 import Addresses from '@/components/doctor/Addresses';
+import PaymentModal from '@/components/PaymentModal';
 // @ts-ignore
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import apiClient from '@/api/client';
@@ -170,6 +171,8 @@ export default function DoctorDetails() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedClinic, setSelectedClinic] = useState<any>(null);
   const [selectedConsultationType, setSelectedConsultationType] = useState<'in-person' | 'online' | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
   
   // Get doctors from the Zustand store
   const { doctors } = useDoctorStore();
@@ -245,16 +248,11 @@ export default function DoctorDetails() {
         const response = await apiClient.post('/api/v1/book-appointment-doctor', bookingData);
         
         if (response.status === 201) {
-          Alert.alert(
-            'Appointment Booked!',
-            `Your appointment with Dr. ${doctor?.user?.name} has been booked successfully.\n\nDate: ${selectedDay}\nTime: ${selectedSlot}\nType: ${selectedConsultationType === 'in-person' ? 'In-Person' : 'Online'}${isInPerson && selectedClinic ? `\nClinic: ${selectedClinic.clinicName}` : ''}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
-            [
-              {
-                text: 'OK',
-                onPress: () => router.navigate('/doctors')
-              }
-            ]
-          );
+          const appointmentId = response.data._id;
+          setBookedAppointmentId(appointmentId);
+          
+          // Show payment modal
+          setShowPaymentModal(true);
         }
       } catch (error: any) {
         console.error('Booking error:', error);
@@ -279,6 +277,19 @@ export default function DoctorDetails() {
 
   const handleGoBack = () => {
     router.navigate('/doctors');
+  };
+
+  const handlePaymentSuccess = () => {
+    Alert.alert(
+      'Appointment Confirmed!',
+      `Your appointment with Dr. ${doctor?.user?.name} has been booked and paid successfully.\n\nDate: ${selectedDay}\nTime: ${selectedSlot}\nType: ${selectedConsultationType === 'in-person' ? 'In-Person' : 'Online'}${selectedConsultationType === 'in-person' && selectedClinic ? `\nClinic: ${selectedClinic.clinicName}` : ''}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
+      [
+        {
+          text: 'OK',
+          onPress: () => router.navigate('/doctors')
+        }
+      ]
+    );
   };
 
   // Check if all selections are made for button enabling
@@ -451,6 +462,23 @@ export default function DoctorDetails() {
           {isBookingEnabled ? 'Book Appointment' : 'Complete All Selections'}
         </Text>
       </Pressable>
+      
+      {/* Payment Modal */}
+      {showPaymentModal && bookedAppointmentId && (
+        <PaymentModal
+          visible={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          appointmentData={{
+            appointmentId: bookedAppointmentId,
+            appointmentType: 'doctor',
+            amount: doctor?.consultationFee || 500, // Default fee if not available
+            consultationType: selectedConsultationType || '',
+            doctorName: doctor?.user?.name || 'Doctor'
+          }}
+          isOnlineRequired={selectedConsultationType === 'online'}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
     </View>
   );
 } 

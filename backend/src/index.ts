@@ -7,6 +7,8 @@ import searchRouter from "./routes/searchRoutes";
 import cors from "cors";
 import dotenv from "dotenv";
 import appointmentRouter from "./routes/appoitmentRoutes";
+import paymentRouter from "./routes/paymentRoutes";
+import Razorpay from "razorpay";
 dotenv.config();
 const app = express();
 
@@ -14,6 +16,13 @@ connectDatabse();
 
 app.use(cors({ origin: "*" }));
 app.use(bodyParser.json({ limit: "35mb" }));
+
+export const razorpayInstance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEYID || "your-razorpay-keyid",
+  key_secret: process.env.RAZORPAY_API_SECRET,
+});
+console.log(process.env.RAZORPAY_KEYID);
+console.log(process.env.RAZORPAY_API_SECRET);
 
 // app.get("/", (req, res) => {
 //   res.send("Hello chutiye");
@@ -23,6 +32,7 @@ app.use('/api/v1/', userRouter);
 app.use('/api/v1/', profileRouter);
 app.use('/api/v1/', searchRouter);
 app.use('/api/v1/', appointmentRouter);
+app.use('/api/v1/', paymentRouter);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server is running on port ${process.env.PORT || 3000}`);

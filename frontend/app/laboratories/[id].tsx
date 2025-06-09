@@ -11,6 +11,7 @@ import ServiceInfo from '@/components/laboratory/ServiceInfo';
 import CollectionTypeSelector from '@/components/laboratory/CollectionTypeSelector';
 import Slots from '@/components/laboratory/Slots';
 import LaboratoryAddress from '@/components/laboratory/LaboratoryAddress';
+import PaymentModal from '@/components/PaymentModal';
 
 export default function LaboratoryServiceDetails() {
   const { id, serviceIndex } = useLocalSearchParams();
@@ -20,6 +21,8 @@ export default function LaboratoryServiceDetails() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedCollectionType, setSelectedCollectionType] = useState<'lab' | 'home' | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
   
   // Get laboratories from the Zustand store
   const { laboratories, searchLaboratories } = useLaboratoryStore();
@@ -174,16 +177,11 @@ export default function LaboratoryServiceDetails() {
         const response = await apiClient.post('/api/v1/book-appointment-lab', bookingData);
         
         if (response.status === 201) {
-          Alert.alert(
-            'Booking Confirmed!',
-            `Your ${selectedService.name} appointment has been booked successfully.\n\nLaboratory: ${laboratory?.laboratoryName}\nDate: ${selectedDay}\nTime: ${selectedSlot}\nCollection Type: ${selectedCollectionType === 'lab' ? 'Lab Visit' : 'Home Collection'}\nPrice: ₹${selectedService.price}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
-            [
-              {
-                text: 'OK',
-                onPress: () => router.push('/(tabs)/laboratories')
-              }
-            ]
-          );
+          const appointmentId = response.data._id;
+          setBookedAppointmentId(appointmentId);
+          
+          // Show payment modal
+          setShowPaymentModal(true);
         }
       } catch (error: any) {
         console.error('Booking error:', error);
@@ -207,6 +205,19 @@ export default function LaboratoryServiceDetails() {
 
   const handleGoBack = () => {
     router.push('/(tabs)/laboratories');
+  };
+
+  const handlePaymentSuccess = () => {
+    Alert.alert(
+      'Booking Confirmed!',
+      `Your ${selectedService?.name} appointment has been booked successfully.\n\nLaboratory: ${laboratory?.laboratoryName}\nDate: ${selectedDay}\nTime: ${selectedSlot}\nCollection Type: ${selectedCollectionType === 'lab' ? 'Lab Visit' : 'Home Collection'}\nPrice: ₹${selectedService?.price}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
+      [
+        {
+          text: 'OK',
+          onPress: () => router.push('/(tabs)/laboratories')
+        }
+      ]
+    );
   };
 
   // Check if all selections are made for button enabling
@@ -374,6 +385,24 @@ export default function LaboratoryServiceDetails() {
           {isBookingEnabled ? `Book ${selectedService.name} - ₹${selectedService.price}` : 'Complete All Selections'}
         </Text>
       </Pressable>
+      
+      {/* Payment Modal */}
+      {showPaymentModal && bookedAppointmentId && selectedService && (
+        <PaymentModal
+          visible={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          appointmentData={{
+            appointmentId: bookedAppointmentId,
+            appointmentType: 'lab',
+            amount: selectedService.price || 500,
+            collectionType: selectedCollectionType || '',
+            serviceName: selectedService.name,
+            laboratoryName: laboratory?.laboratoryName || 'Laboratory'
+          }}
+          isOnlineRequired={false} // Lab appointments are never required to pay online
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
     </View>
   );
 }
