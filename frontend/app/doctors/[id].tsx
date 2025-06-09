@@ -1,10 +1,11 @@
-import { View, Text, Image, ScrollView, Pressable, SafeAreaView, Alert } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { useEffect, useState } from 'react';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDoctorStore } from '@/store/doctorStore';
 import DoctorInfo from '@/components/doctor/DoctorInfo';
 import Addresses from '@/components/doctor/Addresses';
 import PaymentModal from '@/components/PaymentModal';
+import { useCustomAlert } from '@/components/CustomAlert';
 // @ts-ignore
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import apiClient from '@/api/client';
@@ -173,6 +174,7 @@ export default function DoctorDetails() {
   const [selectedConsultationType, setSelectedConsultationType] = useState<'in-person' | 'online' | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
+  const { showAlert, AlertComponent } = useCustomAlert();
   
   // Get doctors from the Zustand store
   const { doctors } = useDoctorStore();
@@ -256,11 +258,11 @@ export default function DoctorDetails() {
         }
       } catch (error: any) {
         console.error('Booking error:', error);
-        Alert.alert(
-          'Booking Failed',
-          error.response?.data?.message || 'Failed to book appointment. Please try again.',
-          [{ text: 'OK' }]
-        );
+        showAlert({
+          title: 'Booking Failed',
+          message: error.response?.data?.message || 'Failed to book appointment. Please try again.',
+          type: 'error'
+        });
       } finally {
         setLoading(false);
       }
@@ -271,7 +273,11 @@ export default function DoctorDetails() {
       if (!selectedSlot) missing.push('time slot');
       if (clinicRequired) missing.push('clinic (required for in-person consultation)');
       
-      Alert.alert('Missing Information', `Please select: ${missing.join(', ')}`);
+      showAlert({
+        title: 'Missing Information',
+        message: `Please select: ${missing.join(', ')}`,
+        type: 'warning'
+      });
     }
   };
 
@@ -280,16 +286,18 @@ export default function DoctorDetails() {
   };
 
   const handlePaymentSuccess = () => {
-    Alert.alert(
-      'Appointment Confirmed!',
-      `Your appointment with Dr. ${doctor?.user?.name} has been booked and paid successfully.\n\nDate: ${selectedDay}\nTime: ${selectedSlot}\nType: ${selectedConsultationType === 'in-person' ? 'In-Person' : 'Online'}${selectedConsultationType === 'in-person' && selectedClinic ? `\nClinic: ${selectedClinic.clinicName}` : ''}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
-      [
+    showAlert({
+      title: 'Appointment Confirmed!',
+      message: `Your appointment with Dr. ${doctor?.user?.name} has been booked and paid successfully.\n\nDate: ${selectedDay}\nTime: ${selectedSlot}\nType: ${selectedConsultationType === 'in-person' ? 'In-Person' : 'Online'}${selectedConsultationType === 'in-person' && selectedClinic ? `\nClinic: ${selectedClinic.clinicName}` : ''}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
+      type: 'success',
+      buttons: [
         {
           text: 'OK',
-          onPress: () => router.navigate('/doctors')
+          style: 'primary',
+          onPress: () => router.push('/')
         }
       ]
-    );
+    });
   };
 
   // Check if all selections are made for button enabling
@@ -479,6 +487,9 @@ export default function DoctorDetails() {
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}
+      
+      {/* Custom Alert Component */}
+      <AlertComponent />
     </View>
   );
 } 

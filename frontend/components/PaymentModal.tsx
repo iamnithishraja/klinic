@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, Pressable, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import apiClient from '@/api/client';
 import { useUserStore } from '@/store/userStore';
+import { useCustomAlert } from './CustomAlert';
+// @ts-ignore
+import { useRouter } from 'expo-router';
 
 // Import Razorpay
 let RazorpayCheckout: any = null;
@@ -40,6 +43,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const user = useUserStore(state => state.user);
+  const { showAlert, AlertComponent } = useCustomAlert();
+  const router = useRouter();
 
   const handlePaymentSuccess = async (response: any) => {
     try {
@@ -53,15 +58,26 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         appointmentType: appointmentData.appointmentType
       });
 
-      Alert.alert(
-        'Payment Successful!',
-        'Your payment has been processed successfully.',
-        [{ text: 'OK', onPress: onPaymentSuccess }]
-      );
-      onClose();
+      showAlert({
+        title: 'Payment Successful!',
+        message: 'Your payment has been processed successfully.',
+        type: 'success',
+        buttons: [{ 
+          text: 'OK', 
+          style: 'primary', 
+          onPress: () => {
+            onClose();
+            router.push('/');
+          }
+        }]
+      });
     } catch (error) {
       console.error('Payment verification failed:', error);
-      Alert.alert('Payment Verification Failed', 'Please contact support.');
+      showAlert({
+        title: 'Payment Verification Failed',
+        message: 'Please contact support.',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -132,40 +148,58 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             .catch((error: any) => {
               console.error('Payment failed:', error);
               if (error.code === 'PAYMENT_CANCELLED') {
-                Alert.alert('Payment Cancelled', 'You cancelled the payment.');
+                showAlert({
+                  title: 'Payment Cancelled',
+                  message: 'You cancelled the payment.',
+                  type: 'warning'
+                });
               } else {
-                Alert.alert('Payment Failed', error.description || 'Payment failed. Please try again.');
+                showAlert({
+                  title: 'Payment Failed',
+                  message: error.description || 'Payment failed. Please try again.',
+                  type: 'error'
+                });
               }
               setLoading(false);
             });
         } else {
-          Alert.alert('Error', 'Payment service not available on this platform.');
+          showAlert({
+            title: 'Error',
+            message: 'Payment service not available on this platform.',
+            type: 'error'
+          });
           setLoading(false);
         }
       }
 
     } catch (error) {
       console.error('Payment initiation failed:', error);
-      Alert.alert('Payment Failed', 'Failed to initiate payment. Please try again.');
+      showAlert({
+        title: 'Payment Failed',
+        message: 'Failed to initiate payment. Please try again.',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handlePayLater = () => {
-    Alert.alert(
-      'Appointment Confirmed',
-      'Your appointment has been booked. You can pay during the consultation.',
-      [
+    showAlert({
+      title: 'Appointment Confirmed',
+      message: 'Your appointment has been booked. You can pay during the consultation.',
+      type: 'success',
+      buttons: [
         {
           text: 'OK',
+          style: 'primary',
           onPress: () => {
-            onPaymentSuccess();
             onClose();
+            router.push('/');
           }
         }
       ]
-    );
+    });
   };
 
   return (
@@ -269,6 +303,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           )}
         </View>
       </View>
+      
+      {/* Custom Alert Component */}
+      <AlertComponent />
     </Modal>
   );
 };

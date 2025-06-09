@@ -1,10 +1,11 @@
-import { View, Text, Image, ScrollView, Pressable, SafeAreaView, Alert } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { useEffect, useState } from 'react';
 import { FontAwesome } from '@expo/vector-icons';
 import { useLaboratoryStore } from '@/store/laboratoryStore';
 // @ts-ignore
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import apiClient from '@/api/client';
+import { useCustomAlert } from '@/components/CustomAlert';
 
 // Import separated components
 import ServiceInfo from '@/components/laboratory/ServiceInfo';
@@ -23,6 +24,7 @@ export default function LaboratoryServiceDetails() {
   const [selectedCollectionType, setSelectedCollectionType] = useState<'lab' | 'home' | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
+  const { showAlert, AlertComponent } = useCustomAlert();
   
   // Get laboratories from the Zustand store
   const { laboratories, searchLaboratories } = useLaboratoryStore();
@@ -185,11 +187,11 @@ export default function LaboratoryServiceDetails() {
         }
       } catch (error: any) {
         console.error('Booking error:', error);
-        Alert.alert(
-          'Booking Failed',
-          error.response?.data?.message || 'Failed to book appointment. Please try again.',
-          [{ text: 'OK' }]
-        );
+        showAlert({
+          title: 'Booking Failed',
+          message: error.response?.data?.message || 'Failed to book appointment. Please try again.',
+          type: 'error'
+        });
       } finally {
         setLoading(false);
       }
@@ -199,7 +201,11 @@ export default function LaboratoryServiceDetails() {
       if (!selectedDay) missing.push('day');
       if (!selectedSlot) missing.push('time slot');
       
-      Alert.alert('Missing Information', `Please select: ${missing.join(', ')}`);
+      showAlert({
+        title: 'Missing Information',
+        message: `Please select: ${missing.join(', ')}`,
+        type: 'warning'
+      });
     }
   };
 
@@ -208,16 +214,18 @@ export default function LaboratoryServiceDetails() {
   };
 
   const handlePaymentSuccess = () => {
-    Alert.alert(
-      'Booking Confirmed!',
-      `Your ${selectedService?.name} appointment has been booked successfully.\n\nLaboratory: ${laboratory?.laboratoryName}\nDate: ${selectedDay}\nTime: ${selectedSlot}\nCollection Type: ${selectedCollectionType === 'lab' ? 'Lab Visit' : 'Home Collection'}\nPrice: ₹${selectedService?.price}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
-      [
+    showAlert({
+      title: 'Booking Confirmed!',
+      message: `Your ${selectedService?.name} appointment has been booked successfully.\n\nLaboratory: ${laboratory?.laboratoryName}\nDate: ${selectedDay}\nTime: ${selectedSlot}\nCollection Type: ${selectedCollectionType === 'lab' ? 'Lab Visit' : 'Home Collection'}\nPrice: ₹${selectedService?.price}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
+      type: 'success',
+      buttons: [
         {
           text: 'OK',
-          onPress: () => router.push('/(tabs)/laboratories')
+          style: 'primary',
+          onPress: () => router.push('/')
         }
       ]
-    );
+    });
   };
 
   // Check if all selections are made for button enabling
@@ -403,6 +411,9 @@ export default function LaboratoryServiceDetails() {
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}
+      
+      {/* Custom Alert Component */}
+      <AlertComponent />
     </View>
   );
 }
