@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+// @ts-ignore
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';

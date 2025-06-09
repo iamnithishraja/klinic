@@ -1,4 +1,5 @@
 import { View, Text, Image, Pressable } from 'react-native';
+// @ts-ignore
 import { useRouter } from 'expo-router';
 import { Laboratory } from '../services/laboratoryService';
 import { FontAwesome } from '@expo/vector-icons';

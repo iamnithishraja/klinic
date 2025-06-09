@@ -1,10 +1,12 @@
-import { View, Text, Image, ScrollView, Pressable, SafeAreaView } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, SafeAreaView, Alert } from 'react-native';
 import { useEffect, useState } from 'react';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDoctorStore } from '@/store/doctorStore';
 import DoctorInfo from '@/components/doctor/DoctorInfo';
 import Addresses from '@/components/doctor/Addresses';
+// @ts-ignore
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import apiClient from '@/api/client';
 
 
 // Updated Slots component for day selection
@@ -220,17 +222,50 @@ export default function DoctorDetails() {
     }
   };
 
-  const handleBookAppointment = () => {
+  const handleBookAppointment = async () => {
     const isInPerson = selectedConsultationType === 'in-person';
     const clinicRequired = isInPerson && !selectedClinic;
     
     if (selectedSlot && selectedDay && selectedConsultationType && !clinicRequired) {
-      const bookingDetails = `Booking appointment with Dr. ${doctor?.user?.name}
-Date: ${selectedDay}
-Time: ${selectedSlot}
-Type: ${selectedConsultationType === 'in-person' ? 'In-Person' : 'Online'}${isInPerson && selectedClinic ? `\nClinic: ${selectedClinic.clinicName}` : ''}`;
-      
-      alert(bookingDetails);
+      try {
+        setLoading(true);
+        
+        // Format time slot - handle both formats: "09:30" or "2:00 PM-3:00 PM"
+        const formattedTimeSlot = `${selectedDay} ${selectedSlot}`;
+        
+        const bookingData = {
+          doctorId: doctor?._id,
+          timeSlot: formattedTimeSlot,
+          consultationType: selectedConsultationType,
+          ...(isInPerson && selectedClinic && {
+            clinicIndex: doctor?.clinics?.findIndex((clinic: any) => clinic._id === selectedClinic._id) || 0
+          })
+        };
+
+        const response = await apiClient.post('/api/v1/book-appointment-doctor', bookingData);
+        
+        if (response.status === 201) {
+          Alert.alert(
+            'Appointment Booked!',
+            `Your appointment with Dr. ${doctor?.user?.name} has been booked successfully.\n\nDate: ${selectedDay}\nTime: ${selectedSlot}\nType: ${selectedConsultationType === 'in-person' ? 'In-Person' : 'Online'}${isInPerson && selectedClinic ? `\nClinic: ${selectedClinic.clinicName}` : ''}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
+            [
+              {
+                text: 'OK',
+                onPress: () => router.navigate('/doctors')
+              }
+            ]
+          );
+        }
+      } catch (error: any) {
+        console.error('Booking error:', error);
+        Alert.alert(
+          'Booking Failed',
+          error.response?.data?.message || 'Failed to book appointment. Please try again.',
+          [{ text: 'OK' }]
+        );
+      } finally {
+        setLoading(false);
+      }
     } else {
       const missing = [];
       if (!selectedConsultationType) missing.push('consultation type');
@@ -238,7 +273,7 @@ Type: ${selectedConsultationType === 'in-person' ? 'In-Person' : 'Online'}${isIn
       if (!selectedSlot) missing.push('time slot');
       if (clinicRequired) missing.push('clinic (required for in-person consultation)');
       
-      alert(`Please select: ${missing.join(', ')}`);
+      Alert.alert('Missing Information', `Please select: ${missing.join(', ')}`);
     }
   };
 

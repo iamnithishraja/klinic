@@ -9,12 +9,9 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     },
-    time: {
+    timeSlot: {
         type: String,
         required: true,
-    },
-    date: {
-        type: Date,
     },
     consultationType: {
         type: String,
@@ -29,6 +26,14 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         type: String,
         enum: ['upcoming', 'completed'],
         default: 'upcoming',
+    },
+    isPaid: {
+        type: Boolean,
+        default: false,
+    },
+    clinicIndex: {
+        type: Number,
+        default: 0,
     },
     notes: {
         type: String,

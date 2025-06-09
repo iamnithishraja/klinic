@@ -9,22 +9,31 @@ const labAppointmentsSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     },
-    time: {
+    timeSlot: {
         type: String,
         required: true,
     },
-    date: {
-        type: Date,
-    },
     collectionType: {
         type: String,
-        enum: ['in-person', 'online', 'both'],
+        enum: ['lab', 'home'],
         default: null,
     },
     status: {
         type: String,
-        enum: ['upcoming', 'completed'],
+        enum: ['upcoming', 'collected', 'completed'],
         default: 'upcoming',
+    },
+    isPaid: {
+        type: Boolean,
+        default: false,
+    },
+    serviceIndex: {
+        type: Number,
+        default: 0,
+    },
+    reportResult: {
+        type: String,
+        default: null,
     },
     createdAt: {
         type: Date,
@@ -37,3 +46,5 @@ const labAppointmentsSchema = new mongoose.Schema({
 });
 
 const LabAppointments = mongoose.model('LabAppointments', labAppointmentsSchema);
+
+export default LabAppointments;

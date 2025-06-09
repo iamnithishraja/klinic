@@ -1,8 +1,10 @@
-import { View, Text, Image, ScrollView, Pressable, SafeAreaView } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, SafeAreaView, Alert } from 'react-native';
 import { useEffect, useState } from 'react';
 import { FontAwesome } from '@expo/vector-icons';
 import { useLaboratoryStore } from '@/store/laboratoryStore';
+// @ts-ignore
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import apiClient from '@/api/client';
 
 // Import separated components
 import ServiceInfo from '@/components/laboratory/ServiceInfo';
@@ -154,23 +156,52 @@ export default function LaboratoryServiceDetails() {
     setSelectedCollectionType(type);
   };
 
-  const handleBookTest = () => {
+  const handleBookTest = async () => {
     if (selectedSlot && selectedDay && selectedCollectionType && selectedService) {
-      const bookingDetails = `Booking: ${selectedService.name}
-Laboratory: ${laboratory?.laboratoryName}
-Date: ${selectedDay}
-Time: ${selectedSlot}
-Collection Type: ${selectedCollectionType === 'lab' ? 'Lab Visit' : 'Home Collection'}
-Price: ₹${selectedService.price}`;
-      
-      alert(bookingDetails);
+      try {
+        setLoading(true);
+        
+        // Format time slot - handle both formats: "09:30" or "2:00 PM-3:00 PM"
+        const formattedTimeSlot = `${selectedDay} ${selectedSlot}`;
+        
+        const bookingData = {
+          labId: laboratory._id,
+          timeSlot: formattedTimeSlot,
+          collectionType: selectedCollectionType,
+          serviceIndex: parseInt(serviceIndex as string)
+        };
+
+        const response = await apiClient.post('/api/v1/book-appointment-lab', bookingData);
+        
+        if (response.status === 201) {
+          Alert.alert(
+            'Booking Confirmed!',
+            `Your ${selectedService.name} appointment has been booked successfully.\n\nLaboratory: ${laboratory?.laboratoryName}\nDate: ${selectedDay}\nTime: ${selectedSlot}\nCollection Type: ${selectedCollectionType === 'lab' ? 'Lab Visit' : 'Home Collection'}\nPrice: ₹${selectedService.price}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
+            [
+              {
+                text: 'OK',
+                onPress: () => router.push('/(tabs)/laboratories')
+              }
+            ]
+          );
+        }
+      } catch (error: any) {
+        console.error('Booking error:', error);
+        Alert.alert(
+          'Booking Failed',
+          error.response?.data?.message || 'Failed to book appointment. Please try again.',
+          [{ text: 'OK' }]
+        );
+      } finally {
+        setLoading(false);
+      }
     } else {
       const missing = [];
       if (!selectedCollectionType) missing.push('collection type');
       if (!selectedDay) missing.push('day');
       if (!selectedSlot) missing.push('time slot');
       
-      alert(`Please select: ${missing.join(', ')}`);
+      Alert.alert('Missing Information', `Please select: ${missing.join(', ')}`);
     }
   };
 

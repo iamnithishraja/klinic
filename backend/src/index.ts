@@ -6,6 +6,7 @@ import bodyParser from "body-parser";
 import searchRouter from "./routes/searchRoutes";
 import cors from "cors";
 import dotenv from "dotenv";
+import appointmentRouter from "./routes/appoitmentRoutes";
 dotenv.config();
 const app = express();
 
@@ -21,6 +22,7 @@ app.use(bodyParser.json({ limit: "35mb" }));
 app.use('/api/v1/', userRouter);
 app.use('/api/v1/', profileRouter);
 app.use('/api/v1/', searchRouter);
+app.use('/api/v1/', appointmentRouter);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server is running on port ${process.env.PORT || 3000}`);
