@@ -8,6 +8,7 @@ interface TestFormModalProps {
   onSubmit: (test: {
     name: string;
     description: string;
+    price: number;
   }) => void;
 }
 
@@ -18,6 +19,7 @@ const TestFormModal: React.FC<TestFormModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
 
   const handleSubmit = () => {
     if (!name.trim()) {
@@ -25,14 +27,22 @@ const TestFormModal: React.FC<TestFormModalProps> = ({
       return;
     }
     
+    const priceValue = parseFloat(price);
+    if (!price.trim() || isNaN(priceValue) || priceValue <= 0) {
+      alert('Please enter a valid price');
+      return;
+    }
+    
     onSubmit({
       name: name.trim(),
-      description: description.trim()
+      description: description.trim(),
+      price: priceValue
     });
     
     // Reset form
     setName('');
     setDescription('');
+    setPrice('');
   };
   
   return (
@@ -69,7 +79,7 @@ const TestFormModal: React.FC<TestFormModalProps> = ({
               </View>
               
               {/* Description */}
-              <View className="mb-6">
+              <View className="mb-4">
                 <Text className="text-gray-700 font-medium mb-2">
                   Test Description (Optional)
                 </Text>
@@ -81,6 +91,20 @@ const TestFormModal: React.FC<TestFormModalProps> = ({
                   numberOfLines={3}
                   className="border border-gray-300 rounded-xl p-3 text-gray-800"
                   style={{ textAlignVertical: 'top' }}
+                />
+              </View>
+              
+              {/* Price */}
+              <View className="mb-6">
+                <Text className="text-gray-700 font-medium mb-2">
+                  Test Price <Text className="text-red-500">*</Text>
+                </Text>
+                <TextInput
+                  value={price}
+                  onChangeText={setPrice}
+                  placeholder="Enter price in ₹ (e.g., 150)"
+                  keyboardType="numeric"
+                  className="border border-gray-300 rounded-xl p-3 text-gray-800"
                 />
               </View>
               

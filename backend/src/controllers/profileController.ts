@@ -326,14 +326,31 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
                 if (service.tests && Array.isArray(service.tests) && service.tests.length > 0) {
                     serviceData.tests = service.tests.map((test: any) => {
                         const testData: any = {};
+                        // Always include name if it exists
                         if (test.name !== undefined && test.name !== '') {
                             testData.name = test.name;
                         }
-                        if (test.description !== undefined && test.description !== '') {
+                        // Include description even if empty
+                        if (test.description !== undefined) {
                             testData.description = test.description;
                         }
+                        // Include price even if 0
+                        if (test.price !== undefined && test.price !== null && !isNaN(test.price)) {
+                            testData.price = Number(test.price);
+                        }
                         return testData;
-                    }).filter((test: any) => Object.keys(test).length > 0); // Only include tests with at least one field
+                    }).filter((test: any) => test.name && test.name.trim() !== ''); // Only filter out tests without names
+                    // Calculate service price as sum of all test prices if tests have prices
+                    if (serviceData.tests.length > 0) {
+                        const calculatedPrice = serviceData.tests.reduce((sum: number, test: any) => {
+                            return sum + (test.price || 0);
+                        }, 0);
+                        
+                        // Use calculated price if no explicit service price is provided and tests have prices
+                        if ((service.price === undefined || service.price === null || service.price === 0) && calculatedPrice > 0) {
+                            serviceData.price = calculatedPrice;
+                        }
+                    }
                 }
                 
                 return serviceData;

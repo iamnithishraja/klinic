@@ -264,6 +264,10 @@ const laboratoryProfileSchema = new mongoose.Schema({
                 type: String,
                 default: null,
             },
+            price: {
+                type: Number,
+                default: null,
+            },
         }],
     }],
     coverImage: {

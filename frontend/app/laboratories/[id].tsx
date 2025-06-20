@@ -15,7 +15,7 @@ import LaboratoryAddress from '@/components/laboratory/LaboratoryAddress';
 import PaymentModal from '@/components/PaymentModal';
 
 export default function LaboratoryServiceDetails() {
-  const { id, serviceIndex } = useLocalSearchParams();
+  const { id, serviceIndex, selectedTests: selectedTestsParam } = useLocalSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [laboratory, setLaboratory] = useState<any>(null);
@@ -24,6 +24,7 @@ export default function LaboratoryServiceDetails() {
   const [selectedCollectionType, setSelectedCollectionType] = useState<'lab' | 'home' | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
+  const [selectedTests, setSelectedTests] = useState<{ [testIndex: number]: boolean }>({});
   const { showAlert, AlertComponent } = useCustomAlert();
   
   // Get laboratories from the Zustand store
@@ -35,6 +36,46 @@ export default function LaboratoryServiceDetails() {
   // Mock scheduling data (in real app, this would come from API)
   const availableDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const availableSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'];
+
+  // Initialize selected tests from URL parameter
+  useEffect(() => {
+    if (selectedService?.tests) {
+      const initialSelection: { [testIndex: number]: boolean } = {};
+      
+      if (hasIndividualTestPricing()) {
+        // Only allow selection if individual pricing is available
+        if (selectedTestsParam) {
+          const testIndices = (selectedTestsParam as string).split(',').map(index => parseInt(index)).filter(index => !isNaN(index));
+          
+          if (testIndices.length > 0) {
+            // If specific tests are selected from URL, use only those
+            testIndices.forEach(index => {
+              if (index >= 0 && index < selectedService.tests.length) {
+                initialSelection[index] = true;
+              }
+            });
+          } else {
+            // Default to all tests selected
+            selectedService.tests.forEach((_, index) => {
+              initialSelection[index] = true;
+            });
+          }
+        } else {
+          // Default to all tests selected
+          selectedService.tests.forEach((_, index) => {
+            initialSelection[index] = true;
+          });
+        }
+      } else {
+        // For package pricing, all tests are always selected
+        selectedService.tests.forEach((_, index) => {
+          initialSelection[index] = true;
+        });
+      }
+      
+      setSelectedTests(initialSelection);
+    }
+  }, [selectedTestsParam, selectedService]);
 
   useEffect(() => {
     const loadLaboratory = async () => {
@@ -82,10 +123,10 @@ export default function LaboratoryServiceDetails() {
                 rating: 4.8,
                 description: "Complete blood count test to check overall health and detect various disorders",
                 tests: [
-                  { name: "White Blood Cell Count", description: "Measures the number of white blood cells" },
-                  { name: "Red Blood Cell Count", description: "Measures the number of red blood cells" },
-                  { name: "Hemoglobin Level", description: "Measures the amount of hemoglobin" },
-                  { name: "Platelet Count", description: "Measures the number of platelets" }
+                  { name: "White Blood Cell Count", description: "Measures the number of white blood cells", price: 150 },
+                  { name: "Red Blood Cell Count", description: "Measures the number of red blood cells", price: 120 },
+                  { name: "Hemoglobin Level", description: "Measures the amount of hemoglobin", price: 100 },
+                  { name: "Platelet Count", description: "Measures the number of platelets", price: 130 }
                 ]
               },
               {
@@ -96,10 +137,10 @@ export default function LaboratoryServiceDetails() {
                 rating: 4.6,
                 description: "Comprehensive cholesterol and lipid analysis",
                 tests: [
-                  { name: "Total Cholesterol", description: "Measures total cholesterol levels" },
-                  { name: "HDL Cholesterol", description: "Good cholesterol measurement" },
-                  { name: "LDL Cholesterol", description: "Bad cholesterol measurement" },
-                  { name: "Triglycerides", description: "Measures triglyceride levels" }
+                  { name: "Total Cholesterol", description: "Measures total cholesterol levels", price: 200 },
+                  { name: "HDL Cholesterol", description: "Good cholesterol measurement", price: 180 },
+                  { name: "LDL Cholesterol", description: "Bad cholesterol measurement", price: 180 },
+                  { name: "Triglycerides", description: "Measures triglyceride levels", price: 240 }
                 ]
               },
               {
@@ -110,9 +151,9 @@ export default function LaboratoryServiceDetails() {
                 rating: 4.7,
                 description: "Complete thyroid hormone analysis",
                 tests: [
-                  { name: "TSH", description: "Thyroid Stimulating Hormone" },
-                  { name: "T3", description: "Triiodothyronine hormone" },
-                  { name: "T4", description: "Thyroxine hormone" }
+                  { name: "TSH", description: "Thyroid Stimulating Hormone", price: 300 },
+                  { name: "T3", description: "Triiodothyronine hormone", price: 400 },
+                  { name: "T4", description: "Thyroxine hormone", price: 500 }
                 ]
               },
               {
@@ -123,9 +164,9 @@ export default function LaboratoryServiceDetails() {
                 rating: 4.5,
                 description: "Complete urine analysis for various health indicators",
                 tests: [
-                  { name: "Protein Level", description: "Checks protein in urine" },
-                  { name: "Glucose Level", description: "Checks glucose in urine" },
-                  { name: "Blood Cells", description: "Checks for blood cells in urine" }
+                  { name: "Protein Level", description: "Checks protein in urine", price: 80 },
+                  { name: "Glucose Level", description: "Checks glucose in urine", price: 70 },
+                  { name: "Blood Cells", description: "Checks for blood cells in urine", price: 150 }
                 ]
               }
             ]
@@ -161,6 +202,40 @@ export default function LaboratoryServiceDetails() {
     setSelectedCollectionType(type);
   };
 
+  const toggleTestSelection = (testIndex: number) => {
+    setSelectedTests(prev => ({
+      ...prev,
+      [testIndex]: !prev[testIndex]
+    }));
+  };
+
+  const calculateTotalPrice = () => {
+    if (!selectedService?.tests || selectedService.tests.length === 0) {
+      return selectedService?.price || 0;
+    }
+    
+    // Check if all tests have individual prices
+    const hasIndividualPricing = selectedService.tests.every((test: any) => test.price && test.price > 0);
+    
+    if (!hasIndividualPricing) {
+      // If no individual pricing, return service price (package price)
+      return selectedService?.price || 0;
+    }
+    
+    return selectedService.tests.reduce((sum: number, test: any, index: number) => {
+      return selectedTests[index] ? sum + (test.price || 0) : sum;
+    }, 0);
+  };
+
+  const hasIndividualTestPricing = () => {
+    return selectedService?.tests && selectedService.tests.length > 0 && 
+           selectedService.tests.every((test: any) => test.price && test.price > 0);
+  };
+
+  const getSelectedTestsCount = () => {
+    return Object.values(selectedTests).filter(selected => selected).length;
+  };
+
   const handleBookTest = async () => {
     if (selectedSlot && selectedDay && selectedCollectionType && selectedService) {
       try {
@@ -169,11 +244,16 @@ export default function LaboratoryServiceDetails() {
         // Format time slot - handle both formats: "09:30" or "2:00 PM-3:00 PM"
         const formattedTimeSlot = `${selectedDay} ${selectedSlot}`;
         
+        const selectedTestIndices = Object.keys(selectedTests)
+          .filter(testIndex => selectedTests[parseInt(testIndex)])
+          .map(testIndex => parseInt(testIndex));
+
         const bookingData = {
           labId: laboratory._id,
           timeSlot: formattedTimeSlot,
           collectionType: selectedCollectionType,
-          serviceIndex: parseInt(serviceIndex as string)
+          serviceIndex: parseInt(serviceIndex as string),
+          selectedTests: selectedTestIndices
         };
 
         const response = await apiClient.post('/api/v1/book-appointment-lab', bookingData);
@@ -216,7 +296,7 @@ export default function LaboratoryServiceDetails() {
   const handlePaymentSuccess = () => {
     showAlert({
       title: 'Booking Confirmed!',
-      message: `Your ${selectedService?.name} appointment has been booked successfully.\n\nLaboratory: ${laboratory?.laboratoryName}\nDate: ${selectedDay}\nTime: ${selectedSlot}\nCollection Type: ${selectedCollectionType === 'lab' ? 'Lab Visit' : 'Home Collection'}\nPrice: ₹${selectedService?.price}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
+      message: `Your ${selectedService?.name} appointment has been booked successfully.\n\nLaboratory: ${laboratory?.laboratoryName}\nDate: ${selectedDay}\nTime: ${selectedSlot}\nCollection Type: ${selectedCollectionType === 'lab' ? 'Lab Visit' : 'Home Collection'}\nSelected Tests: ${getSelectedTestsCount()}/${selectedService?.tests?.length || 0}\nTotal Price: ₹${calculateTotalPrice()}\n\nYou will receive reminders 24 hours and 1 hour before your appointment.`,
       type: 'success',
       buttons: [
         {
@@ -300,6 +380,79 @@ export default function LaboratoryServiceDetails() {
               />
             </View>
             
+            {/* Test Selection Section */}
+            {selectedService?.tests && selectedService.tests.length > 0 && (
+              <View className="mt-6">
+                <Text className="text-lg font-bold mb-3">
+                  {hasIndividualTestPricing() ? 'Select Tests' : 'Included Tests'}
+                </Text>
+                <Text className="text-gray-600 mb-3">
+                  {hasIndividualTestPricing() 
+                    ? 'Choose which tests to include in your package:'
+                    : 'All tests included in package price:'
+                  }
+                </Text>
+                {selectedService.tests.map((test, testIndex) => {
+                  const isSelected = selectedTests[testIndex];
+                  const TestComponent = hasIndividualTestPricing() ? Pressable : View;
+                  
+                  return (
+                    <TestComponent 
+                      key={testIndex} 
+                      onPress={hasIndividualTestPricing() ? () => toggleTestSelection(testIndex) : undefined}
+                      className={`mb-3 p-4 rounded-xl border ${
+                        isSelected 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <View className="flex-row items-start justify-between">
+                        <View className="flex-1">
+                          <View className="flex-row items-center">
+                            <FontAwesome 
+                              name={isSelected ? "check-circle" : "circle-o"} 
+                              size={18} 
+                              color={isSelected ? "#059669" : "#9CA3AF"} 
+                            />
+                            <Text className={`ml-3 text-base font-medium ${
+                              isSelected ? 'text-gray-800' : 'text-gray-500'
+                            }`}>
+                              {test.name}
+                            </Text>
+                          </View>
+                          {test.description && (
+                            <Text className={`text-sm mt-2 ml-7 ${
+                              isSelected ? 'text-gray-600' : 'text-gray-400'
+                            }`}>
+                              {test.description}
+                            </Text>
+                          )}
+                        </View>
+                        {hasIndividualTestPricing() && (
+                          <Text className={`text-base font-bold ${
+                            isSelected ? 'text-green-700' : 'text-gray-400'
+                          }`}>
+                            ₹{test.price || 0}
+                          </Text>
+                        )}
+                      </View>
+                    </TestComponent>
+                  );
+                })}
+                
+                {!hasIndividualTestPricing() && (
+                  <View className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <Text className="text-blue-800 font-medium text-center">
+                      Package Price: ₹{selectedService?.price || 0}
+                    </Text>
+                    <Text className="text-blue-600 text-sm text-center mt-1">
+                      All {selectedService.tests.length} tests included
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Available Slots Section */}
             <View className="mt-6">
               <Text className="text-lg font-bold mb-3">Available Slots</Text>
@@ -334,6 +487,21 @@ export default function LaboratoryServiceDetails() {
                     Service: {selectedService.name}
                   </Text>
                 </View>
+                
+                {/* Selected Tests */}
+                {selectedService?.tests && selectedService.tests.length > 0 && (
+                  <View className="flex-row items-center">
+                    <FontAwesome 
+                      name={getSelectedTestsCount() > 0 ? "check-circle" : "circle-o"} 
+                      size={16} 
+                      color={getSelectedTestsCount() > 0 ? "#059669" : "#9CA3AF"} 
+                    />
+                    <Text className={`ml-2 ${getSelectedTestsCount() > 0 ? 'text-green-700' : 'text-gray-500'}`}>
+                      Tests Selected: {getSelectedTestsCount()}/{selectedService.tests.length}
+                    </Text>
+                  </View>
+                )}
+                
                 <View className="flex-row items-center">
                   <FontAwesome 
                     name={selectedCollectionType ? "check-circle" : "circle-o"} 
@@ -369,7 +537,7 @@ export default function LaboratoryServiceDetails() {
                 <View className="border-t border-green-200 mt-3 pt-3">
                   <View className="flex-row justify-between items-center">
                     <Text className="text-green-900 font-bold text-lg">Total Amount:</Text>
-                    <Text className="text-green-900 font-bold text-xl">₹{selectedService.price}</Text>
+                    <Text className="text-green-900 font-bold text-xl">₹{calculateTotalPrice()}</Text>
                   </View>
                 </View>
               </View>
@@ -384,13 +552,17 @@ export default function LaboratoryServiceDetails() {
       {/* Floating Book Test Button */}
       <Pressable 
         onPress={handleBookTest}
-        disabled={!isBookingEnabled}
+        disabled={!isBookingEnabled || (hasIndividualTestPricing() && getSelectedTestsCount() === 0)}
         className={`py-4 rounded-lg absolute bottom-6 left-6 right-6 shadow-lg ${
-          isBookingEnabled ? 'bg-primary' : 'bg-gray-400'
+          isBookingEnabled && (!hasIndividualTestPricing() || getSelectedTestsCount() > 0) ? 'bg-primary' : 'bg-gray-400'
         }`}
       >
         <Text className="text-white text-center font-bold text-lg">
-          {isBookingEnabled ? `Book ${selectedService.name} - ₹${selectedService.price}` : 'Complete All Selections'}
+          {hasIndividualTestPricing() && getSelectedTestsCount() === 0 
+            ? 'Select at least one test' 
+            : isBookingEnabled 
+              ? `Book ${selectedService.name} - ₹${calculateTotalPrice()}` 
+              : 'Complete All Selections'}
         </Text>
       </Pressable>
       
@@ -402,7 +574,7 @@ export default function LaboratoryServiceDetails() {
           appointmentData={{
             appointmentId: bookedAppointmentId,
             appointmentType: 'lab',
-            amount: selectedService.price || 500,
+            amount: calculateTotalPrice(),
             collectionType: selectedCollectionType || '',
             serviceName: selectedService.name,
             laboratoryName: laboratory?.laboratoryName || 'Laboratory'

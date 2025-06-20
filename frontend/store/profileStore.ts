@@ -496,6 +496,7 @@ interface LaboratoryTest {
   id: string;
   name: string;
   description: string;
+  price: number;
 }
 
 interface LaboratoryService {
@@ -662,10 +663,18 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
   
   // Laboratory service actions
   addLaboratoryService: (service) => set((state) => {
+    // Convert tests if they exist in the service
+    const tests = (service as any).tests ? (service as any).tests.map((test: any) => ({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: test.name || '',
+      description: test.description || '',
+      price: test.price || 0
+    })) : [];
+    
     const newService: LaboratoryService = {
       ...service,
       id: Date.now().toString(),
-      tests: []
+      tests
     };
     return { 
       laboratoryServices: [...state.laboratoryServices, newService]
@@ -747,7 +756,8 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
             ? service.tests.map((test: any) => ({
                 id: test._id || Date.now().toString(),
                 name: test.name || '',
-                description: test.description || ''
+                description: test.description || '',
+                price: test.price || 0
               }))
             : []
         }));
@@ -825,7 +835,8 @@ export const useLaboratoryProfileStore = create<LaboratoryProfileState>((set, ge
       category: service.category,
       tests: service.tests.map(test => ({
         name: test.name,
-        description: test.description
+        description: test.description,
+        price: test.price || 0
       }))
     }));
     

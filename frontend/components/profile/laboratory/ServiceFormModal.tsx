@@ -5,6 +5,7 @@ import { MaterialIcons, FontAwesome, MaterialCommunityIcons, Ionicons } from '@e
 interface TestInput {
   name: string;
   description: string;
+  price: number;
 }
 
 interface ServiceFormModalProps {
@@ -38,6 +39,7 @@ const ServiceFormModal = forwardRef<{}, ServiceFormModalProps>(({
   const [tests, setTests] = useState<TestInput[]>([]);
   const [currentTestName, setCurrentTestName] = useState('');
   const [currentTestDescription, setCurrentTestDescription] = useState('');
+  const [currentTestPrice, setCurrentTestPrice] = useState('');
   
   const handleAddTest = () => {
     if (!currentTestName.trim()) {
@@ -45,18 +47,33 @@ const ServiceFormModal = forwardRef<{}, ServiceFormModalProps>(({
       return;
     }
     
+    const priceValue = parseFloat(currentTestPrice);
+    if (!currentTestPrice.trim() || isNaN(priceValue) || priceValue <= 0) {
+      alert('Please enter a valid test price');
+      return;
+    }
+    
     setTests([
       ...tests, 
-      { name: currentTestName.trim(), description: currentTestDescription.trim() }
+      { 
+        name: currentTestName.trim(), 
+        description: currentTestDescription.trim(),
+        price: priceValue
+      }
     ]);
     
     // Reset test input fields
     setCurrentTestName('');
     setCurrentTestDescription('');
+    setCurrentTestPrice('');
   };
   
   const handleRemoveTest = (index: number) => {
     setTests(tests.filter((_, i) => i !== index));
+  };
+
+  const calculateTestsTotal = () => {
+    return tests.reduce((sum, test) => sum + test.price, 0);
   };
   
   const handleSubmit = () => {
@@ -81,6 +98,9 @@ const ServiceFormModal = forwardRef<{}, ServiceFormModalProps>(({
     setCollectionType('both');
     setCategory('');
     setTests([]);
+    setCurrentTestName('');
+    setCurrentTestDescription('');
+    setCurrentTestPrice('');
   };
   
   return (
@@ -107,6 +127,9 @@ const ServiceFormModal = forwardRef<{}, ServiceFormModalProps>(({
                   setCollectionType('both');
                   setCategory('');
                   setTests([]);
+                  setCurrentTestName('');
+                  setCurrentTestDescription('');
+                  setCurrentTestPrice('');
                   onClose();
                 }}
               >
@@ -193,18 +216,23 @@ const ServiceFormModal = forwardRef<{}, ServiceFormModalProps>(({
               {/* Price */}
               <View className="mb-4">
                 <Text className="text-gray-700 font-medium mb-2">
-                  Price (₹)
+                  Package Price (₹)
                 </Text>
                 <View className="flex-row items-center border border-gray-300 rounded-xl px-3">
                   <FontAwesome name="rupee" size={16} color="#6B7280" />
                   <TextInput
                     value={price}
                     onChangeText={setPrice}
-                    placeholder="Enter price"
+                    placeholder={tests.length > 0 ? `Auto-calculated: ${calculateTestsTotal()}` : "Enter package price"}
                     keyboardType="number-pad"
                     className="flex-1 p-3 text-gray-800"
                   />
                 </View>
+                {tests.length > 0 && (
+                  <Text className="text-xs text-gray-500 mt-1">
+                    Individual tests total: ₹{calculateTestsTotal()}. Leave blank to use auto-calculated price.
+                  </Text>
+                )}
               </View>
               
               {/* Collection Type */}
@@ -271,6 +299,18 @@ const ServiceFormModal = forwardRef<{}, ServiceFormModalProps>(({
                     style={{ textAlignVertical: 'top' }}
                   />
                   
+                  <Text className="text-gray-700 font-medium mb-1">Test Price (₹) <Text className="text-red-500">*</Text></Text>
+                  <View className="flex-row items-center border border-gray-300 rounded-lg px-2 mb-2 bg-white">
+                    <FontAwesome name="rupee" size={14} color="#6B7280" />
+                    <TextInput
+                      value={currentTestPrice}
+                      onChangeText={setCurrentTestPrice}
+                      placeholder="Enter test price"
+                      keyboardType="numeric"
+                      className="flex-1 p-2 text-gray-800"
+                    />
+                  </View>
+                  
                   <TouchableOpacity
                     className="bg-indigo-500 py-2 rounded-lg items-center"
                     onPress={handleAddTest}
@@ -293,6 +333,7 @@ const ServiceFormModal = forwardRef<{}, ServiceFormModalProps>(({
                             {test.description ? (
                               <Text className="text-gray-600 text-sm mt-1">{test.description}</Text>
                             ) : null}
+                            <Text className="text-indigo-600 font-semibold text-sm mt-1">₹{test.price}</Text>
                           </View>
                           <TouchableOpacity
                             className="p-1"
@@ -309,6 +350,28 @@ const ServiceFormModal = forwardRef<{}, ServiceFormModalProps>(({
                     <Text className="text-gray-500 text-center">
                       No tests added yet. Add tests above.
                     </Text>
+                  </View>
+                )}
+                
+                {/* Pricing Summary */}
+                {tests.length > 0 && (
+                  <View className="bg-blue-50 rounded-lg p-3 border border-blue-200 mb-4">
+                    <Text className="text-blue-800 font-medium mb-2">Pricing Summary</Text>
+                    <View className="flex-row justify-between items-center mb-1">
+                      <Text className="text-blue-700">Individual tests total:</Text>
+                      <Text className="text-blue-700 font-semibold">₹{calculateTestsTotal()}</Text>
+                    </View>
+                    <View className="flex-row justify-between items-center">
+                      <Text className="text-blue-700">Package price:</Text>
+                      <Text className="text-blue-700 font-semibold">
+                        ₹{price || calculateTestsTotal()}
+                      </Text>
+                    </View>
+                    {!price && (
+                      <Text className="text-xs text-blue-600 mt-1">
+                        Using auto-calculated price
+                      </Text>
+                    )}
                   </View>
                 )}
               </View>

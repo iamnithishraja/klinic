@@ -13,9 +13,15 @@ const TestItem: React.FC<TestItemProps> = ({ test, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(test.name);
   const [description, setDescription] = useState(test.description);
+  const [price, setPrice] = useState(test.price?.toString() || '');
 
   const handleSaveChanges = () => {
-    onUpdate({ name, description });
+    const priceValue = parseFloat(price);
+    if (!price.trim() || isNaN(priceValue) || priceValue <= 0) {
+      alert('Please enter a valid price');
+      return;
+    }
+    onUpdate({ name, description, price: priceValue });
     setIsEditing(false);
   };
 
@@ -29,6 +35,7 @@ const TestItem: React.FC<TestItemProps> = ({ test, onUpdate, onDelete }) => {
               {test.description ? (
                 <Text className="text-gray-600 text-sm mt-1">{test.description}</Text>
               ) : null}
+              <Text className="text-indigo-600 font-semibold text-sm mt-1">₹{test.price}</Text>
             </View>
             
             <View className="flex-row">
@@ -57,7 +64,7 @@ const TestItem: React.FC<TestItemProps> = ({ test, onUpdate, onDelete }) => {
             />
           </View>
           
-          <View className="mb-3">
+          <View className="mb-2">
             <Text className="text-xs text-gray-500 mb-1">Description (Optional)</Text>
             <TextInput
               value={description}
@@ -69,12 +76,24 @@ const TestItem: React.FC<TestItemProps> = ({ test, onUpdate, onDelete }) => {
             />
           </View>
           
+          <View className="mb-3">
+            <Text className="text-xs text-gray-500 mb-1">Price (₹)</Text>
+            <TextInput
+              value={price}
+              onChangeText={setPrice}
+              keyboardType="numeric"
+              placeholder="Enter price"
+              className="border border-gray-300 rounded-md p-2 text-gray-800 text-sm"
+            />
+          </View>
+          
           <View className="flex-row justify-end">
             <TouchableOpacity 
               className="mr-2 py-1 px-3 rounded-md bg-gray-200"
               onPress={() => {
                 setName(test.name);
                 setDescription(test.description);
+                setPrice(test.price?.toString() || '');
                 setIsEditing(false);
               }}
             >

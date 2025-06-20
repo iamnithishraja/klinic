@@ -4,6 +4,7 @@ export interface LaboratoryTest {
   id: string;
   name: string;
   description: string;
+  price: number;
 }
 
 export interface LaboratoryService {

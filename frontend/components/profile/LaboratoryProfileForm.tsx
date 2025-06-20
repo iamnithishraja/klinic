@@ -209,7 +209,7 @@ const LaboratoryProfileForm = ({
     collectionType: 'home' | 'lab' | 'both';
     price: string;
     category?: string;
-    tests?: { name: string; description: string }[];
+    tests?: { name: string; description: string; price: number }[];
   }) => {
     try {
       // Create service object with empty coverImage

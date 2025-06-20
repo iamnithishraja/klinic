@@ -27,6 +27,7 @@ export interface Laboratory {
     tests?: Array<{
       name: string;
       description: string;
+      price: number;
     }>;
   }>;
   rating: number;
