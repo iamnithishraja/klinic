@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import type { CustomRequest } from '../types/userTypes';
 import { UserProfile, DoctorProfile, LaboratoryProfile, DeliveryBoyProfile } from '../models/profileModel';
+import Clinic from '../models/clinicModel';
+import LaboratoryService from '../models/laboratoryServiceModel';
 import mongoose from 'mongoose';
 import { generateUploadUrlProfile, deleteFileFromR2 } from '../utils/fileUpload';
 import { getCategoriesTestType, getCities, getQualifications, getSpecializations } from '../utils/selectors';
@@ -95,16 +97,44 @@ const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
             res.status(404).json({ message: 'Profile not found' });
             return;
         }
-        const availableCities = getCities();
-        const availableSpecializations = getSpecializations();
-        const availableQualifications = getQualifications();
-        const availableLabServiceCategories = getCategoriesTestType();
+
+        // Fetch related data for doctor and laboratory profiles
         if (role === 'doctor') {
-            res.status(200).json({ profile, availableCities, availableSpecializations, availableQualifications });
+            // Fetch clinics for doctor profile to maintain API compatibility
+            const clinics = await Clinic.find({ doctor: userId, isActive: true });
+            const profileWithClinics = {
+                ...profile.toObject(),
+                clinics: clinics
+            };
+            
+            const availableCities = getCities();
+            const availableSpecializations = getSpecializations();
+            const availableQualifications = getQualifications();
+            
+            res.status(200).json({ 
+                profile: profileWithClinics, 
+                availableCities, 
+                availableSpecializations, 
+                availableQualifications 
+            });
         } else if (role === 'laboratory') {
-            res.status(200).json({ profile, availableCities, availableLabServiceCategories });
-        }
-        else {
+            // Fetch laboratory services for laboratory profile to maintain API compatibility
+            const laboratoryServices = await LaboratoryService.find({ laboratory: userId, isActive: true });
+            const profileWithServices = {
+                ...profile.toObject(),
+                laboratoryServices: laboratoryServices
+            };
+            
+            const availableCities = getCities();
+            const availableLabServiceCategories = getCategoriesTestType();
+            
+            res.status(200).json({ 
+                profile: profileWithServices, 
+                availableCities, 
+                availableLabServiceCategories 
+            });
+        } else {
+            const availableCities = getCities();
             res.status(200).json({ profile, availableCities });
         }
     } catch (error) {
@@ -145,8 +175,12 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
         if (coverImage !== undefined && coverImage !== '') profileData.coverImage = coverImage;
         if (city !== undefined && city !== '') profileData.city = city;
 
-        // Handle clinics array
+        // Handle clinics array - now stored in separate collection
         if (clinics !== undefined && Array.isArray(clinics) && clinics.length > 0) {
+            // Remove existing clinics for this doctor
+            await Clinic.deleteMany({ doctor: userId });
+
+            // Create new clinics
             const validClinics = clinics.filter(clinic => {
                 // Check if clinic has at least one meaningful field
                 return clinic && (
@@ -163,7 +197,10 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
                     ))
                 );
             }).map(clinic => {
-                const clinicData: any = {};
+                const clinicData: any = {
+                    doctor: userId,
+                    updatedAt: new Date()
+                };
 
                 // Add clinic fields only if they are defined and not empty
                 if (clinic.clinicName !== undefined && clinic.clinicName !== '') {
@@ -209,8 +246,11 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
             });
 
             if (validClinics.length > 0) {
-                profileData.clinics = validClinics;
+                await Clinic.insertMany(validClinics);
             }
+        } else if (clinics !== undefined && Array.isArray(clinics) && clinics.length === 0) {
+            // If empty array is sent, remove all clinics
+            await Clinic.deleteMany({ doctor: userId });
         }
 
         // Check if profile already exists for this user
@@ -225,7 +265,14 @@ const createUpdateDoctorProfile = async (req: CustomRequest, res: Response): Pro
             doctorProfile = await DoctorProfile.create(profileData);
         }
 
-        res.status(200).json(doctorProfile);
+        // Fetch clinics to include in response for API compatibility
+        const updatedClinics = await Clinic.find({ doctor: userId, isActive: true });
+        const profileWithClinics = {
+            ...doctorProfile!.toObject(),
+            clinics: updatedClinics
+        };
+
+        res.status(200).json(profileWithClinics);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -297,10 +344,17 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
             }
         }
         
-        // Handle laboratory services
+        // Handle laboratory services - now stored in separate collection
         if (laboratoryServices !== undefined && Array.isArray(laboratoryServices) && laboratoryServices.length > 0) {
-            profileData.laboratoryServices = laboratoryServices.map(service => {
-                const serviceData: any = {};
+            // Remove existing services for this laboratory
+            await LaboratoryService.deleteMany({ laboratory: userId });
+
+            // Create new services
+            const validServices = laboratoryServices.map(service => {
+                const serviceData: any = {
+                    laboratory: userId,
+                    updatedAt: new Date()
+                };
                 
                 // Only add fields if they have values
                 if (service.name !== undefined && service.name !== '') {
@@ -354,7 +408,14 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
                 }
                 
                 return serviceData;
-            }).filter(service => Object.keys(service).length > 0); // Only include services with at least one field
+            }).filter(service => Object.keys(service).length > 1 && service.name); // Only include services with at least name
+
+            if (validServices.length > 0) {
+                await LaboratoryService.insertMany(validServices);
+            }
+        } else if (laboratoryServices !== undefined && Array.isArray(laboratoryServices) && laboratoryServices.length === 0) {
+            // If empty array is sent, remove all services
+            await LaboratoryService.deleteMany({ laboratory: userId });
         }
 
         // Check if profile already exists for this user
@@ -369,7 +430,14 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
             laboratoryProfile = await LaboratoryProfile.create(profileData);
         }
 
-        res.status(200).json(laboratoryProfile);
+        // Fetch laboratory services to include in response for API compatibility
+        const updatedServices = await LaboratoryService.find({ laboratory: userId, isActive: true });
+        const profileWithServices = {
+            ...laboratoryProfile!.toObject(),
+            laboratoryServices: updatedServices
+        };
+
+        res.status(200).json(profileWithServices);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });

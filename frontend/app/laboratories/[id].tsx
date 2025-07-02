@@ -15,10 +15,11 @@ import LaboratoryAddress from '@/components/laboratory/LaboratoryAddress';
 import PaymentModal from '@/components/PaymentModal';
 
 export default function LaboratoryServiceDetails() {
-  const { id, serviceIndex, selectedTests: selectedTestsParam } = useLocalSearchParams();
+  const { id, serviceIndex, serviceId, selectedTests: selectedTestsParam } = useLocalSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [laboratory, setLaboratory] = useState<any>(null);
+  const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedCollectionType, setSelectedCollectionType] = useState<'lab' | 'home' | null>(null);
@@ -29,9 +30,6 @@ export default function LaboratoryServiceDetails() {
   
   // Get laboratories from the Zustand store
   const { laboratories, searchLaboratories } = useLaboratoryStore();
-  
-  // Get the specific service by index
-  const selectedService = laboratory?.laboratoryServices?.[parseInt(serviceIndex as string)] || null;
 
   // Mock scheduling data (in real app, this would come from API)
   const availableDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -174,8 +172,24 @@ export default function LaboratoryServiceDetails() {
         }
         
         setLaboratory(foundLab);
+        
+        // Set selected service based on serviceId or serviceIndex
+        if (serviceId) {
+          // New approach: find service by ID
+          const service = foundLab?.laboratoryServices?.find((s: any) => s._id === serviceId);
+          setSelectedService(service || null);
+        } else if (serviceIndex !== undefined) {
+          // Legacy approach: find service by index for backward compatibility
+          const service = foundLab?.laboratoryServices?.[parseInt(serviceIndex as string)];
+          setSelectedService(service || null);
+        }
       } catch (error) {
         console.error('Error loading laboratory:', error);
+        showAlert({
+          title: 'Error',
+          message: 'Failed to load laboratory details. Please try again.',
+          type: 'error'
+        });
       } finally {
         setLoading(false);
       }
@@ -252,7 +266,7 @@ export default function LaboratoryServiceDetails() {
           labId: laboratory._id,
           timeSlot: formattedTimeSlot,
           collectionType: selectedCollectionType,
-          serviceIndex: parseInt(serviceIndex as string),
+          serviceId: serviceId || selectedService._id,
           selectedTests: selectedTestIndices
         };
 
@@ -392,7 +406,7 @@ export default function LaboratoryServiceDetails() {
                     : 'All tests included in package price:'
                   }
                 </Text>
-                {selectedService.tests.map((test, testIndex) => {
+                {(selectedService?.tests || []).map((test, testIndex) => {
                   const isSelected = selectedTests[testIndex];
                   const TestComponent = hasIndividualTestPricing() ? Pressable : View;
                   

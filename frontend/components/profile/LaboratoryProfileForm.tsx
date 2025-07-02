@@ -771,7 +771,7 @@ const LaboratoryProfileForm = ({
             </View>
 
             {/* Service List */}
-            {laboratoryServices.length === 0 ? (
+            {(!laboratoryServices || laboratoryServices.length === 0) ? (
               <View className="bg-gray-50 rounded-xl p-6 items-center justify-center border border-gray-200">
                 <MaterialIcons name="medical-services" size={40} color="#9CA3AF" />
                 <Text className="text-gray-500 mt-2 text-center">
@@ -783,7 +783,7 @@ const LaboratoryProfileForm = ({
               </View>
             ) : (
               <View>
-                {laboratoryServices.map((service) => (
+                {(laboratoryServices || []).map((service) => (
                   <ServiceCard 
                     key={service.id}
                     service={service}

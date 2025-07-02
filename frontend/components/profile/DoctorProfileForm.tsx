@@ -989,7 +989,7 @@ const DoctorProfileForm = ({
             </TouchableOpacity>
           </View>
 
-          {clinics.map((clinic, index) => (
+          {(clinics || []).map((clinic, index) => (
             <View key={index} className="mb-6 p-4 border border-gray-200 rounded-xl">
               <View className="flex-row justify-between items-center mb-4">
                 <Text className="text-gray-700 font-medium text-base">Clinic {index + 1}</Text>
@@ -1197,7 +1197,7 @@ const DoctorProfileForm = ({
             </View>
           ))}
 
-          {clinics.length === 0 && (
+          {(!clinics || clinics.length === 0) && (
             <View className="p-4 border border-gray-200 rounded-xl bg-gray-50">
               <Text className="text-gray-500 text-center">
                 No clinics added yet. Click "Add Clinic" to add your first clinic.

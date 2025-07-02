@@ -16,7 +16,7 @@ export interface Laboratory {
     country: string;
     address: string;
   };
-  laboratoryServices: Array<{
+  laboratoryServices?: Array<{
     name: string;
     category: string;
     price: number;

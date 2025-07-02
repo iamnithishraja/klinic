@@ -15,13 +15,18 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
   // State to track selected tests for each service
   const [selectedTests, setSelectedTests] = useState<{ [serviceIndex: number]: { [testIndex: number]: boolean } }>({});
 
-  const handleViewDetails = (serviceIndex: number) => {
+  const handleViewDetails = (serviceIndex: number, service: any) => {
     const selectedTestsForService = selectedTests[serviceIndex] || {};
     const selectedTestIndices = Object.keys(selectedTestsForService)
       .filter(testIndex => selectedTestsForService[parseInt(testIndex)])
       .map(testIndex => parseInt(testIndex));
     
-    router.push(`/laboratories/${laboratory._id}?serviceIndex=${serviceIndex}&selectedTests=${selectedTestIndices.join(',')}`);
+    // Use serviceId if available (new approach), otherwise fall back to serviceIndex for backward compatibility
+    const navigationParams = service._id 
+      ? `serviceId=${service._id}` 
+      : `serviceIndex=${serviceIndex}`;
+    
+    router.push(`/laboratories/${laboratory._id}?${navigationParams}&selectedTests=${selectedTestIndices.join(',')}`);
   };
 
   const toggleTestSelection = (serviceIndex: number, testIndex: number) => {
@@ -66,13 +71,35 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
            service.tests.every((test: any) => test.price && test.price > 0);
   };
 
+  // Handle case where laboratoryServices is undefined or empty
+  if (!laboratory?.laboratoryServices || laboratory.laboratoryServices.length === 0) {
+    return (
+      <View className="mb-4 mx-4 mt-4">
+        <View className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+          <View className="items-center">
+            <FontAwesome name="flask" size={48} color="#9CA3AF" />
+            <Text className="text-lg font-bold text-gray-900 mt-4">{laboratory?.laboratoryName || 'Laboratory'}</Text>
+            <Text className="text-gray-600 text-center mt-2">
+              No services available at this time
+            </Text>
+            <View className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <Text className="text-blue-800 text-sm text-center">
+                This laboratory is currently updating their service offerings. Please check back later.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View className="mb-4 mx-4 mt-4">
       {/* Services Cards */}
       {laboratory.laboratoryServices.map((service, index) => (
         <Pressable
           key={index}
-          onPress={() => handleViewDetails(index)}
+          onPress={() => handleViewDetails(index, service)}
           className="bg-white rounded-xl overflow-hidden shadow-lg mb-6 border border-gray-100"
         >
           {/* Service Cover Image */}
@@ -100,7 +127,7 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
                 <View className="flex-row items-center">
                   <FontAwesome name="map-marker" size={14} color="#4B5563" />
                   <Text className="text-gray-600 text-sm ml-2">
-                    {laboratory.laboratoryAddress.address}, {laboratory.laboratoryAddress.pinCode}
+                    {laboratory.laboratoryAddress?.address || 'Address not available'}, {laboratory.laboratoryAddress?.pinCode || 'N/A'}
                   </Text>
                 </View>
               </View>
@@ -241,7 +268,7 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
             {/* Book Now Button */}
             <View className="mt-4 flex-row justify-end">
               <Pressable 
-                onPress={() => handleViewDetails(index)}
+                onPress={() => handleViewDetails(index, service)}
                 className="bg-primary px-4 py-2.5 rounded-lg flex-row items-center"
               >
                 <Text className="text-white font-semibold mr-2">

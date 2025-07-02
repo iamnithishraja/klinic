@@ -1,7 +1,7 @@
 import { store } from "@/utils";
 import axios from "axios";
 
-export const baseUrl = process.env.EXPO_PUBLIC_ENV == "dev" ? process.env.EXPO_PUBLIC_TEST_BE_URL! : process.env.EXPO_PUBLIC_BE_URL!;
+export const baseUrl = process.env.EXPO_PUBLIC_BE_URL;
 const apiClient = axios.create({
     baseURL: baseUrl,
 });

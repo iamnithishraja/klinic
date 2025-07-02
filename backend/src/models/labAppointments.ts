@@ -9,6 +9,15 @@ const labAppointmentsSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     },
+    laboratoryService: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'LaboratoryService',
+        required: true,
+    },
+    selectedTests: [{
+        type: Number,
+        default: [],
+    }],
     timeSlot: {
         type: String,
         required: true,
@@ -39,10 +48,6 @@ const labAppointmentsSchema = new mongoose.Schema({
         type: String,
         enum: ['pending', 'captured', 'failed'],
         default: 'pending',
-    },
-    serviceIndex: {
-        type: Number,
-        default: 0,
     },
     reportResult: {
         type: String,

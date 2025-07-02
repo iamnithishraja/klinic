@@ -243,7 +243,7 @@ export default function DoctorDetails() {
           timeSlot: formattedTimeSlot,
           consultationType: selectedConsultationType,
           ...(isInPerson && selectedClinic && {
-            clinicIndex: doctor?.clinics?.findIndex((clinic: any) => clinic._id === selectedClinic._id) || 0
+            clinicId: selectedClinic._id
           })
         };
 

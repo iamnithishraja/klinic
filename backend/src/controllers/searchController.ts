@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import type { CustomRequest } from '../types/userTypes';
 import { DoctorProfile, LaboratoryProfile } from '../models/profileModel';
+import Clinic from '../models/clinicModel';
+import LaboratoryService from '../models/laboratoryServiceModel';
 import { getCategoriesTestType, getSpecializations, getCities } from '../utils/selectors';
 import { getUserCity } from '../utils/userUtils';
 
@@ -271,26 +273,10 @@ const searchLaboratories = async (req: CustomRequest, res: Response): Promise<vo
         
         const skip = (Number(page) - 1) * Number(limit);
 
-        // Build base filter query for laboratories (not services)
+        // Build base filter query for laboratories
         const baseFilterQuery: any = {
             isAvailable: true
         };
-
-        // Debug: Check total laboratories without any filters
-        const totalLabsCount = await LaboratoryProfile.countDocuments({});
-        const availableLabsCount = await LaboratoryProfile.countDocuments({ isAvailable: true });
-        console.log(`Total laboratories in DB: ${totalLabsCount}`);
-        console.log(`Available laboratories in DB: ${availableLabsCount}`);
-
-        // Search filter (laboratory name, service name)
-        if (search && search !== '') {
-            const searchRegex = new RegExp(search as string, 'i');
-            baseFilterQuery.$or = [
-                { laboratoryName: searchRegex },
-                { 'laboratoryServices.name': searchRegex },
-                { 'laboratoryServices.tests.name': searchRegex }
-            ];
-        }
 
         // Date availability filter
         if (date) {
@@ -300,34 +286,37 @@ const searchLaboratories = async (req: CustomRequest, res: Response): Promise<vo
             console.log('Date filter applied:', dayName);
         }
 
-        // Build service filter conditions for $filter in aggregation
-        const serviceFilterConditions: any[] = [];
+        // Build service filter conditions for matching services
+        const serviceFilterQuery: any = {
+            isActive: true
+        };
         
         if (category && category !== '') {
-            serviceFilterConditions.push({ $eq: ['$$service.category', category] });
+            serviceFilterQuery.category = category;
         }
         
         if (collectionType && collectionType !== '') {
-            serviceFilterConditions.push({
-                $or: [
-                    { $eq: ['$$service.collectionType', collectionType] },
-                    { $eq: ['$$service.collectionType', 'both'] }
-                ]
-            });
+            serviceFilterQuery.collectionType = { $in: [collectionType, 'both'] };
         }
         
         if (minPrice || maxPrice) {
-            const priceConditions: any[] = [];
-            if (minPrice) priceConditions.push({ $gte: ['$$service.price', Number(minPrice)] });
-            if (maxPrice) priceConditions.push({ $lte: ['$$service.price', Number(maxPrice)] });
-            serviceFilterConditions.push(...priceConditions);
+            serviceFilterQuery.price = {};
+            if (minPrice) serviceFilterQuery.price.$gte = Number(minPrice);
+            if (maxPrice) serviceFilterQuery.price.$lte = Number(maxPrice);
         }
         
         if (minRating) {
-            serviceFilterConditions.push({ $gte: ['$$service.rating', Number(minRating)] });
+            serviceFilterQuery.rating = { $gte: Number(minRating) };
         }
 
-        console.log('Service filter conditions:', serviceFilterConditions);
+        // Handle search across laboratory names and service names
+        if (search && search !== '') {
+            const searchRegex = new RegExp(search as string, 'i');
+            // We'll handle this in the aggregation pipeline
+        }
+
+        console.log('Laboratory filter:', baseFilterQuery);
+        console.log('Service filter:', serviceFilterQuery);
 
         // Build aggregation pipeline
         const aggregationPipeline: any[] = [];
@@ -347,25 +336,40 @@ const searchLaboratories = async (req: CustomRequest, res: Response): Promise<vo
         
         aggregationPipeline.push({ $match: locationMatch });
 
-        // Filter laboratory services if any service filters are applied
-        if (serviceFilterConditions.length > 0) {
-            const filterCondition = serviceFilterConditions.length === 1 
-                ? serviceFilterConditions[0]
-                : { $and: serviceFilterConditions };
-
-            aggregationPipeline.push({
-                $addFields: {
-                    laboratoryServices: {
-                        $filter: {
-                            input: '$laboratoryServices',
-                            as: 'service',
-                            cond: filterCondition
+        // Lookup laboratory services from separate collection
+        aggregationPipeline.push({
+            $lookup: {
+                from: 'laboratoryservices',
+                let: { labId: '$user' },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: { $eq: ['$laboratory', '$$labId'] },
+                            ...serviceFilterQuery
                         }
                     }
+                ],
+                as: 'laboratoryServices'
+            }
+        });
+
+        // Handle search filter after services are populated
+        if (search && search !== '') {
+            const searchRegex = new RegExp(search as string, 'i');
+            aggregationPipeline.push({
+                $match: {
+                    $or: [
+                        { laboratoryName: searchRegex },
+                        { 'laboratoryServices.name': searchRegex },
+                        { 'laboratoryServices.tests.name': searchRegex }
+                    ]
                 }
             });
+        }
 
-            // Remove laboratories with no matching services
+        // Remove laboratories with no matching services if service filters were applied
+        const hasServiceFilters = Object.keys(serviceFilterQuery).length > 1; // > 1 because isActive is always there
+        if (hasServiceFilters) {
             aggregationPipeline.push({
                 $match: {
                     'laboratoryServices.0': { $exists: true }

@@ -9,6 +9,11 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     },
+    clinic: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Clinic',
+        default: null,
+    },
     timeSlot: {
         type: String,
         required: true,
@@ -43,10 +48,6 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         type: String,
         enum: ['pending', 'captured', 'failed'],
         default: 'pending',
-    },
-    clinicIndex: {
-        type: Number,
-        default: 0,
     },
     notes: {
         type: String,

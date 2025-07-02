@@ -125,48 +125,7 @@ const doctorProfileSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
-    clinics: [
-        {
-            clinicName: {
-                type: String,
-                default: null,
-            },
-            clinicPhone: {
-                type: String,
-                default: null,
-            },
-            clinicEmail: {
-                type: String,
-                default: null,
-            },
-            clinicWebsite: {
-                type: String,
-                default: null,
-            },
-            clinicAddress: {
-                latitude: {
-                    type: Number,
-                    default: null,
-                },
-                longitude: {
-                    type: Number,
-                    default: null,
-                },
-                address: {
-                    type: String,
-                    default: null,
-                },
-                pinCode: {
-                    type: String,
-                    default: null,
-                },
-                googleMapsLink: {
-                    type: String,
-                    default: null,
-                },
-            }
-        }
-    ],
+    // Clinics are now stored in separate Clinic collection
     city: {
         type: String,
         default: null,
@@ -225,51 +184,7 @@ const laboratoryProfileSchema = new mongoose.Schema({
             default: null,
         },
     },
-    laboratoryServices: [{
-        name: {
-            type: String,
-            required: true,
-        },
-        description: {
-            type: String,
-            default: null,
-        },
-        rating: {
-            type: Number,
-            default: 0,
-        },
-        coverImage: {
-            type: String,
-            default: null,
-        },
-        collectionType: {
-            type: String,
-            enum: ['home', 'lab', 'both'],
-            default: 'both',
-        },
-        price: {
-            type: Number,
-            default: null,
-        },
-        category: {
-            type: String,
-            default: null,
-        },
-        tests: [{
-            name: {
-                type: String,
-                required: true,
-            },
-            description: {
-                type: String,
-                default: null,
-            },
-            price: {
-                type: Number,
-                default: null,
-            },
-        }],
-    }],
+    // Laboratory services are now stored in separate LaboratoryService collection
     coverImage: {
         type: String,
         default: null,
