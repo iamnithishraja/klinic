@@ -9,12 +9,16 @@ import dotenv from "dotenv";
 import appointmentRouter from "./routes/appoitmentRoutes";
 import paymentRouter from "./routes/paymentRoutes";
 import Razorpay from "razorpay";
+import adminRouter from "./routes/adminRoutes";
 dotenv.config();
 const app = express();
 
 connectDatabse();
 
-app.use(cors({ origin: "*" }));
+app.use(cors({
+  origin: "http://localhost:5173", // or your React port
+  credentials: true
+  }));
 app.use(bodyParser.json({ limit: "35mb" }));
 
 export const razorpayInstance = new Razorpay({
@@ -33,6 +37,7 @@ app.use('/api/v1/', profileRouter);
 app.use('/api/v1/', searchRouter);
 app.use('/api/v1/', appointmentRouter);
 app.use('/api/v1/', paymentRouter);
+app.use('/api/v1/admin', adminRouter);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server is running on port ${process.env.PORT || 3000}`);

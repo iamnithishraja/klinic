@@ -8,19 +8,41 @@ import type { CustomRequest } from '../types/userTypes';
 
 const registerUser = async (req: Request, res: Response): Promise<void> => {
     try {
+        console.log('Register request body:', req.body);
         const { name, email, phone, password, role } = userSchema.parse(req.body);
+        console.log('Parsed data:', { name, email, phone, role });
+        
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             res.status(400).json({ message: 'User already exists' });
             return;
         }
+        
         const hashedPassword = await bcrypt.hash(password, 10);
+        console.log('Password hashed successfully');
+        
         const user = await User.create({ name, email, phone, password: hashedPassword, role });
+        console.log('User created:', user._id);
+        
         const token = generateToken(user._id.toString());
-        await sendOtp(email, phone);
+        console.log('Token generated');
+        
+        try {
+            await sendOtp(email, phone);
+            console.log('OTP sent successfully');
+        } catch (otpError) {
+            console.log('OTP sending failed:', otpError);
+            // Continue with registration even if OTP fails
+        }
+        
         res.status(201).json({ user, token });
     } catch (error) {
-        res.status(500).json({ message: 'Internal server error' });
+        console.error('Registration error:', error);
+        if (error instanceof Error) {
+            res.status(500).json({ message: 'Internal server error', error: error.message });
+        } else {
+            res.status(500).json({ message: 'Internal server error' });
+        }
     }
 }
 

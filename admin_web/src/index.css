@@ -1,3 +1,119 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-text: #11181C;
+  --color-background: #fff;
+  --color-tint: #2f95dc;
+  --color-icon: #687076;
+  --color-tabIconDefault: #687076;
+  --color-tabIconSelected: #2f95dc;
+}
+
+/* --- Professional Sidebar & UI/UX Styles --- */
+.sidebar {
+  width: 100%;
+  max-width: 16rem;
+  min-width: 4rem;
+  background: #f8fafc;
+  border-right: 1px solid #e5e7eb;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  transition: max-width 0.2s;
+}
+@media (max-width: 900px) {
+  .sidebar {
+    max-width: 4rem;
+    min-width: 4rem;
+  }
+  .sidebar .sidebar-label, .sidebar .sidebar-desc {
+    display: none;
+  }
+}
+.sidebar-nav {
+  flex: 1;
+  padding: 1.5rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  color: #334155;
+  font-weight: 500;
+  font-size: 1rem;
+  background: none;
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar-link:hover, .sidebar-link-active {
+  background: #e0e7ef;
+  color: #2563eb;
+}
+.sidebar-link-active {
+  font-weight: 600;
+  background: #dbeafe;
+}
+.sidebar-icon {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: #e5e7eb;
+  color: #2563eb;
+  font-size: 1.25rem;
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar-link:hover .sidebar-icon, .sidebar-link-active .sidebar-icon {
+  background: #2563eb;
+  color: #fff;
+}
+.sidebar-label {
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.sidebar-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.1rem;
+}
+
+body {
+  font-family: 'Inter', 'Open Sans', Arial, sans-serif;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+input, button, select, textarea {
+  border-radius: 0.375rem;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+input:focus, button:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-tint);
+  border-color: var(--color-tint);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
