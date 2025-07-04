@@ -4,7 +4,9 @@ import {
   getAllData,
   getProfileById,
   verifyProfileById,
-  getUserProfileByUserId
+  getUserProfileByUserId,
+  getAllDoctorAppointments,
+  getAllLabAppointments
 } from '../controllers/adminController';
 
 const adminRouter = Router();
@@ -18,5 +20,9 @@ adminRouter.put('/profiles/:id/verify', isAuthenticatedUser, isAdmin, verifyProf
 
 // Get user profile by user ID (for admin)
 adminRouter.get('/user-profile/by-user/:userId', isAuthenticatedUser, isAdmin, getUserProfileByUserId);
+
+// Appointments endpoints for admin
+adminRouter.get('/doctor-appointments', isAuthenticatedUser, isAdmin, getAllDoctorAppointments);
+adminRouter.get('/lab-appointments', isAuthenticatedUser, isAdmin, getAllLabAppointments);
 
 export default adminRouter; 

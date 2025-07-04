@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import { FaUser, FaEnvelope, FaLock, FaPhone, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const SignLog: React.FC = () => {
   // Login state
@@ -8,6 +9,8 @@ const SignLog: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const loginEmailRef = useRef<HTMLInputElement>(null);
 
   // Signup state
   const [signupName, setSignupName] = useState('');
@@ -18,9 +21,32 @@ const SignLog: React.FC = () => {
   const [signupError, setSignupError] = useState('');
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState('');
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const signupNameRef = useRef<HTMLInputElement>(null);
 
   // Toggle between login and signup
   const [isLogin, setIsLogin] = useState(true);
+
+  // Focus first input and clear errors/fields on tab switch
+  useEffect(() => {
+    if (isLogin) {
+      setLoginEmail('');
+      setLoginPassword('');
+      setLoginError('');
+      setLoginSuccess('');
+      setLoginLoading(false);
+      if (loginEmailRef.current) loginEmailRef.current.focus();
+    } else {
+      setSignupName('');
+      setSignupEmail('');
+      setSignupPhone('');
+      setSignupPassword('');
+      setSignupError('');
+      setSignupSuccess('');
+      setSignupLoading(false);
+      if (signupNameRef.current) signupNameRef.current.focus();
+    }
+  }, [isLogin]);
 
   // Login handler
   const handleLogin = async (e: React.FormEvent) => {
@@ -96,8 +122,8 @@ const SignLog: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100 w-96">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 px-2">
+      <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md transition-all duration-300 animate-fadein">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -132,6 +158,7 @@ const SignLog: React.FC = () => {
             Signup
           </button>
         </div>
+        <div className="transition-opacity duration-300" style={{ opacity: isLogin ? 1 : 1 }}>
         {isLogin ? (
           <form onSubmit={handleLogin}>
             <h2 className="text-xl font-bold mb-6 text-center text-gray-900">Admin Login</h2>
@@ -146,32 +173,48 @@ const SignLog: React.FC = () => {
               </div>
             )}
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <FaEnvelope />
+                </span>
                 <input
                   type="email"
                   value={loginEmail}
                   onChange={e => setLoginEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   placeholder="Enter your email"
                   required
+                  ref={loginEmailRef}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <FaLock />
+                </span>
                 <input
-                  type="password"
+                  type={showLoginPassword ? 'text' : 'password'}
                   value={loginPassword}
                   onChange={e => setLoginPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   placeholder="Enter your password"
                   required
                 />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-lg focus:outline-none"
+                  onClick={() => setShowLoginPassword(v => !v)}
+                >
+                  {showLoginPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
+            </div>
+            <div className="flex justify-end mt-2 mb-4">
+              <a href="#" className="text-xs text-blue-500 hover:underline">Forgot password?</a>
             </div>
             <button
               type="submit"
-              className="w-full mt-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loginLoading}
             >
               {loginLoading ? (
@@ -198,61 +241,68 @@ const SignLog: React.FC = () => {
               </div>
             )}
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <FaUser />
+                </span>
                 <input
                   type="text"
                   value={signupName}
                   onChange={e => setSignupName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="Enter your full name"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  placeholder="Enter your name"
                   required
+                  ref={signupNameRef}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <FaEnvelope />
+                </span>
                 <input
                   type="email"
                   value={signupEmail}
                   onChange={e => setSignupEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   placeholder="Enter your email"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <FaPhone />
+                </span>
                 <input
                   type="tel"
                   value={signupPhone}
                   onChange={e => setSignupPhone(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   placeholder="Enter your phone number"
                   required
-                  minLength={10}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <FaLock />
+                </span>
                 <input
-                  type="password"
+                  type={showSignupPassword ? 'text' : 'password'}
                   value={signupPassword}
                   onChange={e => setSignupPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="Enter your password (min 8 characters)"
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  placeholder="Create a password"
                   required
-                  minLength={8}
                 />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-lg focus:outline-none"
+                  onClick={() => setShowSignupPassword(v => !v)}
+                >
+                  {showSignupPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-                <input
-                  type="text"
-                  value="admin"
-                  disabled
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
-                />
-              </div>
+              <div className="text-xs text-gray-500 mt-1">Password must be at least 6 characters.</div>
             </div>
             <button
               type="submit"
@@ -270,9 +320,18 @@ const SignLog: React.FC = () => {
             </button>
           </form>
         )}
+        </div>
       </div>
     </div>
   );
 };
 
 export default SignLog;
+
+// Add fade-in animation
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes fadein { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+.animate-fadein { animation: fadein 0.5s; }
+`;
+document.head.appendChild(style);

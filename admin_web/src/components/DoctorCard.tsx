@@ -62,8 +62,6 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
     }
   };
 
-
-
   const renderVerificationStatus = () => {
     return (
       <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
@@ -97,8 +95,6 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
     );
   };
 
-
-
   return (
     <>
       <div
@@ -108,7 +104,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
       >
         {/* Header with Avatar and Basic Info */}
         <div className="flex items-center space-x-4 mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-tint to-tint/80 rounded-full flex items-center justify-center text-background font-bold text-xl shadow-lg">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-background font-bold text-xl shadow-lg">
             {doctor.user?.name?.charAt(0).toUpperCase() || 'D'}
           </div>
           <div className="flex-1">
@@ -198,14 +194,42 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
               <div className="text-center py-8 text-icon">Loading...</div>
             ) : fullDetails ? (
               <div className="space-y-6">
+                {/* Admin Verify Button */}
+                {fullDetails.isVerified !== true && (
+                  <div className="flex justify-center mb-4">
+                    <button
+                      className="px-6 py-3 rounded-xl bg-primary text-white font-semibold shadow hover:bg-green-600 transition"
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('admin_token');
+                          await axios.put(
+                            (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/profiles/${fullDetails._id}/verify`,
+                            { type: 'doctors' },
+                            { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                          );
+                          setFullDetails({ ...fullDetails, isVerified: true });
+                          alert('Doctor verified successfully!');
+                        } catch {
+                          alert('Verification failed.');
+                        }
+                      }}
+                    >
+                      Verify Doctor
+                    </button>
+                  </div>
+                )}
+
                 {/* Header */}
                 <div className="text-center border-b border-icon pb-8 bg-gradient-to-b from-tint/5 to-transparent rounded-lg p-6 mb-6">
-                  <div className="w-28 h-28 bg-gradient-to-br from-tint to-tint/80 rounded-full flex items-center justify-center text-background font-bold text-4xl mx-auto mb-6 shadow-lg">
+                  <div className="w-28 h-28 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-background font-bold text-4xl mx-auto mb-6 shadow-lg">
                     {fullDetails.user?.name?.charAt(0).toUpperCase() || 'D'}
                   </div>
                   <h2 className="text-3xl font-bold text-text mb-3">Dr. {fullDetails.user?.name || 'Unknown Doctor'}</h2>
                   <p className="text-icon text-lg mb-4">{fullDetails.specializations?.join(', ')}</p>
-                  
+                  {/* Debug: Show isVerified value */}
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold shadow mb-2 ${fullDetails.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    isVerified: {String(fullDetails.isVerified)}
+                  </span>
                   {/* Enhanced Professional Info Cards */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-background border border-icon/20 rounded-lg p-3 shadow-sm">

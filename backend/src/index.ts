@@ -17,9 +17,10 @@ const app = express();
 connectDatabse();
 
 app.use(cors({
-  origin: "http://localhost:5173", // or your React port
+  origin: "http://localhost:5173",
   credentials: true
-  }));
+}));
+
 app.use(bodyParser.json({ limit: "35mb" }));
 
 export const razorpayInstance = new Razorpay({

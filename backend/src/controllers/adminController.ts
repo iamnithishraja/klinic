@@ -247,3 +247,85 @@ export const getUserProfileByUserId = async (req: Request, res: Response): Promi
     res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
   }
 };
+
+// Fetch all doctor appointments for admin
+export const getAllDoctorAppointments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { doctorId } = req.query;
+    let filter: any = {};
+    
+    if (doctorId) {
+      filter.doctor = doctorId;
+    }
+    
+    console.log('Doctor appointments filter:', filter);
+    
+    const appointments = await DoctorAppointments.find(filter)
+      .populate({
+        path: 'doctor',
+        select: 'name email phone',
+        model: 'User'
+      })
+      .populate({
+        path: 'patient',
+        select: 'name email phone',
+        model: 'User'
+      })
+      .populate('clinic', 'clinicName clinicAddress');
+    
+    console.log('Found appointments:', appointments.length);
+    console.log('Sample appointment doctor data:', appointments[0]?.doctor);
+    console.log('Sample appointment patient data:', appointments[0]?.patient);
+    console.log('Sample appointment clinic data:', appointments[0]?.clinic);
+    
+    // Check for appointments without doctor data
+    const appointmentsWithoutDoctor = appointments.filter(apt => !apt.doctor);
+    console.log('Appointments without doctor data:', appointmentsWithoutDoctor.length);
+    
+    res.json({ appointments });
+  } catch (err) {
+    console.error('Error fetching doctor appointments:', err);
+    res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// Fetch all lab appointments for admin
+export const getAllLabAppointments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { labId } = req.query;
+    let filter: any = {};
+    
+    if (labId) {
+      filter.lab = labId;
+    }
+    
+    console.log('Lab appointments filter:', filter);
+    
+    const appointments = await LabAppointments.find(filter)
+      .populate({
+        path: 'lab',
+        select: 'name email phone',
+        model: 'User'
+      })
+      .populate({
+        path: 'patient',
+        select: 'name email phone',
+        model: 'User'
+      })
+      .populate('laboratoryService', 'name description price');
+    
+    console.log('Found lab appointments:', appointments.length);
+    console.log('Sample appointment lab data:', appointments[0]?.lab);
+    console.log('Sample appointment patient data:', appointments[0]?.patient);
+    console.log('Sample appointment service data:', appointments[0]?.laboratoryService);
+    
+    // Check for appointments without lab data
+    const appointmentsWithoutLab = appointments.filter(apt => !apt.lab);
+    console.log('Appointments without lab data:', appointmentsWithoutLab.length);
+    
+    res.json({ appointments });
+  } catch (err) {
+    console.error('Error fetching lab appointments:', err);
+    res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};

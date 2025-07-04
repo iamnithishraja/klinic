@@ -1,13 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Home from './Pages/Home';
 import UsersTab from './Pages/UsersTab';
 import DoctorsTab from './Pages/DoctorsTab';
 import LaboratoriesTab from './Pages/LaboratoriesTab';
 import SignLog from './Pages/signlog';
-import Navbar from './components/Navbar';
 import DeliveryPartnersTab from './Pages/DeliveryPartnersTab';
+import Settings from './Pages/Settings';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -108,7 +108,6 @@ function App() {
 
   return (
     <>
-      <Navbar />
       <Router>
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex">
           {/* Left Sidebar */}
@@ -155,6 +154,7 @@ function App() {
                     <DeliveryPartnersTab />
                   </ProtectedRoute>
                 } />
+                <Route path="/settings" element={<Settings />} />
                 
                 {/* Catch all route - redirect to appropriate page */}
                 <Route path="*" element={
