@@ -239,7 +239,7 @@ export default function DoctorDetails() {
         const formattedTimeSlot = `${selectedDay} ${selectedSlot}`;
         
         const bookingData = {
-          doctorId: doctor?._id,
+          doctorId: doctor?.user?._id,
           timeSlot: formattedTimeSlot,
           consultationType: selectedConsultationType,
           ...(isInPerson && selectedClinic && {

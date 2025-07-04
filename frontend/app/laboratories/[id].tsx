@@ -263,7 +263,7 @@ export default function LaboratoryServiceDetails() {
           .map(testIndex => parseInt(testIndex));
 
         const bookingData = {
-          labId: laboratory._id,
+          labId: laboratory.user._id,
           timeSlot: formattedTimeSlot,
           collectionType: selectedCollectionType,
           serviceId: serviceId || selectedService._id,

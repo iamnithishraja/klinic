@@ -72,11 +72,6 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
         // If city is specified in params, filter by that city only
         if (city && city !== '') {
             const filterQuery = { ...baseFilterQuery, city: city };
-            
-            // Add pinCode filter if provided
-            if (pinCode && pinCode !== '') {
-                filterQuery['clinics.clinicAddress.pinCode'] = pinCode;
-            }
 
             // Handle search with name/clinic matching
             if (search && search !== '') {
@@ -125,9 +120,6 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
         else if (userCity) {
             // First get doctors from user's city
             const userCityQuery = { ...baseFilterQuery, city: userCity };
-            if (pinCode && pinCode !== '') {
-                userCityQuery['clinics.clinicAddress.pinCode'] = pinCode;
-            }
 
             const userCityDoctors = await DoctorProfile.find(userCityQuery)
                 .populate('user')
@@ -139,8 +131,7 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             if (search && search !== '') {
                 const searchRegex = new RegExp(search as string, 'i');
                 filteredUserCityDoctors = userCityDoctors.filter(doctor => 
-                    (doctor.user as any)?.name?.match(searchRegex) ||
-                    doctor.clinics?.some(clinic => clinic.clinicName?.match(searchRegex))
+                    (doctor.user as any)?.name?.match(searchRegex)
                 );
             }
 
@@ -149,9 +140,6 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
                 ...baseFilterQuery, 
                 city: { $ne: userCity }
             };
-            if (pinCode && pinCode !== '') {
-                otherCitiesQuery['clinics.clinicAddress.pinCode'] = pinCode;
-            }
 
             const otherCityDoctors = await DoctorProfile.find(otherCitiesQuery)
                 .populate('user')
@@ -163,8 +151,7 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             if (search && search !== '') {
                 const searchRegex = new RegExp(search as string, 'i');
                 filteredOtherCityDoctors = otherCityDoctors.filter(doctor => 
-                    (doctor.user as any)?.name?.match(searchRegex) ||
-                    doctor.clinics?.some(clinic => clinic.clinicName?.match(searchRegex))
+                    (doctor.user as any)?.name?.match(searchRegex)
                 );
             }
 
@@ -176,9 +163,6 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
         // No city filter and no user city
         else {
             const filterQuery = { ...baseFilterQuery };
-            if (pinCode && pinCode !== '') {
-                filterQuery['clinics.clinicAddress.pinCode'] = pinCode;
-            }
             
             if (search && search !== '') {
                 const searchRegex = new RegExp(search as string, 'i');
@@ -223,12 +207,23 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             }
         }
 
+        // Fetch clinics for each doctor and attach them to the profile
+        const doctorProfilesWithClinics = await Promise.all(
+            doctorProfiles.map(async (doctor) => {
+                const clinics = await Clinic.find({ doctor: doctor.user._id, isActive: true });
+                return {
+                    ...doctor,
+                    clinics: clinics
+                };
+            })
+        );
+
         const totalPages = Math.ceil(totalCount / Number(limit));
         const availableSpecializations = getSpecializations();
         const availableCities = getCities();
 
         res.status(200).json({
-            doctors: doctorProfiles,
+            doctors: doctorProfilesWithClinics,
             pagination: {
                 currentPage: Number(page),
                 totalPages,

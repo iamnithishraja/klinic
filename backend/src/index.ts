@@ -10,6 +10,7 @@ import appointmentRouter from "./routes/appoitmentRoutes";
 import paymentRouter from "./routes/paymentRoutes";
 import Razorpay from "razorpay";
 import adminRouter from "./routes/adminRoutes";
+import dashboardRouter from "./routes/dashboardRoutes";
 dotenv.config();
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/v1/', searchRouter);
 app.use('/api/v1/', appointmentRouter);
 app.use('/api/v1/', paymentRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/user', dashboardRouter);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server is running on port ${process.env.PORT || 3000}`);
