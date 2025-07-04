@@ -7,7 +7,7 @@ import DoctorsTab from './Pages/DoctorsTab';
 import LaboratoriesTab from './Pages/LaboratoriesTab';
 import SignLog from './Pages/signlog';
 import DeliveryPartnersTab from './Pages/DeliveryPartnersTab';
-import Settings from './Pages/Settings';
+import RoleManagementTab from './Pages/RoleManagementTab';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -154,8 +154,12 @@ function App() {
                     <DeliveryPartnersTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/settings" element={<Settings />} />
-                
+                <Route path="/role-management" element={
+                  <ProtectedRoute>
+                    <RoleManagementTab />
+                  </ProtectedRoute>
+                } />
+                                
                 {/* Catch all route - redirect to appropriate page */}
                 <Route path="*" element={
                   isAuthenticated ? <Navigate to="/home" replace /> : <Navigate to="/" replace />

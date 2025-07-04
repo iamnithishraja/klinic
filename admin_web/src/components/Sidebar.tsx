@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaChartBar, FaUsers, FaUserMd, FaFlask, FaCog, FaSignInAlt, FaTruck } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaUserMd, FaFlask, FaSignInAlt, FaTruck, FaUserShield } from 'react-icons/fa';
 
 const Sidebar: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -65,19 +65,19 @@ const Sidebar: React.FC = () => {
       description: 'Delivery Staff'
     },
     { 
-      path: '/settings', 
-      label: 'Settings', 
-      icon: <FaCog className="text-lg" />,
-      description: 'System Configuration'
+      path: '/role-management', 
+      label: 'Role Management', 
+      icon: <FaUserShield className="text-lg" />,
+      description: 'Manage User Roles & Permissions'
     },
   ];
 
   const unauthenticatedNavItems = [
     { 
       path: '/', 
-      label: 'Login / Signup',
+      label: 'Login',
       icon: <FaSignInAlt className="text-lg" />,
-      description: 'Access or create your admin account'
+      description: 'Access your admin account'
     },
   ];
 

@@ -26,7 +26,6 @@ export const getAllData = async (req: Request, res: Response): Promise<void> => 
     switch (type) {
       case 'users':
         Model = User;
-        filter.role = role || 'user';
         if (search) {
           filter.$or = [
             { name: { $regex: search, $options: 'i' } },
@@ -229,6 +228,61 @@ export const verifyProfileById = async (req: Request, res: Response): Promise<vo
   }
 };
 
+export const unverifyProfileById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { type = 'doctors' } = req.body;
+
+    // Validate type parameter
+    const validTypes = ['doctors', 'laboratories', 'deliverypartners'];
+    if (!validTypes.includes(type)) {
+      res.status(400).json({
+        message: 'Invalid type. Use: doctors, laboratories, or deliverypartners',
+        validTypes
+      });
+      return;
+    }
+
+    let Model: any;
+    let populateOptions: any = null;
+
+    switch (type) {
+      case 'doctors':
+        Model = DoctorProfile;
+        populateOptions = { path: 'user', select: 'name email phone role' };
+        break;
+      case 'laboratories':
+        Model = LaboratoryProfile;
+        populateOptions = { path: 'user', select: 'name email phone role' };
+        break;
+      case 'deliverypartners':
+        Model = DeliveryBoyProfile;
+        populateOptions = { path: 'user', select: 'name email phone role' };
+        break;
+    }
+
+    // Validate profile ID
+    if (!req.params.id || req.params.id.length !== 24) {
+      res.status(400).json({ message: 'Invalid ID format' });
+      return;
+    }
+
+    const profile = await Model.findByIdAndUpdate(
+      req.params.id,
+      { isVerified: false },
+      { new: true }
+    ).populate(populateOptions);
+
+    if (!profile) {
+      res.status(404).json({ message: 'Profile not found' });
+      return;
+    }
+
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};
+
 // Get user profile by user ID (for admin)
 export const getUserProfileByUserId = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -327,5 +381,163 @@ export const getAllLabAppointments = async (req: Request, res: Response): Promis
   } catch (err) {
     console.error('Error fetching lab appointments:', err);
     res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// Role management functions
+export const updateUserRole = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+    const { newRole } = req.body;
+
+    // Validate user ID
+    if (!userId || userId.length !== 24) {
+      res.status(400).json({ message: 'Invalid user ID format' });
+      return;
+    }
+
+    // Validate new role
+    const validRoles = ['admin', 'user', 'doctor', 'laboratory', 'deliverypartner'];
+    if (!validRoles.includes(newRole)) {
+      res.status(400).json({ 
+        message: 'Invalid role. Use: admin, user, doctor, laboratory, or deliverypartner',
+        validRoles 
+      });
+      return;
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Prevent admin from removing their own admin role
+    const currentAdminId = (req as any).user?._id;
+    if (userId === currentAdminId && newRole !== 'admin') {
+      res.status(403).json({ message: 'Cannot remove your own admin privileges' });
+      return;
+    }
+
+    // Update user role
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { role: newRole },
+      { new: true, select: 'name email phone role isPhoneEmailVerified createdAt updatedAt' }
+    );
+
+    res.json({
+      message: `User role updated successfully to ${newRole}`,
+      user: updatedUser
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: err instanceof Error ? err.message : 'Unknown error' 
+    });
+  }
+};
+
+export const getAllUsersWithRoles = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { page = 1, limit = 20, search = '', role = '' } = req.query;
+
+    // Validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
+
+    // Build filter
+    let filter: any = {};
+    
+    if (role && role !== 'all') {
+      filter.role = role;
+    }
+    
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Get users with pagination
+    const users = await User.find(filter)
+      .select('name email phone role isPhoneEmailVerified createdAt updatedAt')
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .sort({ createdAt: -1 });
+
+    const total = await User.countDocuments(filter);
+
+    // Get role counts for statistics
+    const roleStats = await User.aggregate([
+      { $group: { _id: '$role', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    res.json({
+      users,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+      roleStats
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: err instanceof Error ? err.message : 'Unknown error' 
+    });
+  }
+};
+
+export const removeAdminRole = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    // Validate user ID
+    if (!userId || userId.length !== 24) {
+      res.status(400).json({ message: 'Invalid user ID format' });
+      return;
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Check if user is actually an admin
+    if (user.role !== 'admin') {
+      res.status(400).json({ message: 'User is not an admin' });
+      return;
+    }
+
+    // Prevent admin from removing their own admin role
+    const currentAdminId = (req as any).user?._id;
+    if (userId === currentAdminId) {
+      res.status(403).json({ message: 'Cannot remove your own admin privileges' });
+      return;
+    }
+
+    // Remove admin role (set to user)
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { role: 'user' },
+      { new: true, select: 'name email phone role isPhoneEmailVerified createdAt updatedAt' }
+    );
+
+    res.json({
+      message: 'Admin privileges removed successfully',
+      user: updatedUser
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: err instanceof Error ? err.message : 'Unknown error' 
+    });
   }
 };

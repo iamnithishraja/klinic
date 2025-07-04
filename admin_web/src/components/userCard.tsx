@@ -156,7 +156,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
                 <div className="text-red-500 text-center py-12 text-lg">{error}</div>
               ) : profileDetails ? (
                 <div className="space-y-8">
-                  <div>
+                    <div>
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2 border-gray-100">User Profile</h2>
                     <div className="space-y-3">
                       <div><span className="font-semibold">Email:</span> {profileDetails.email || user.email || <span className='text-gray-400'>Not provided</span>}</div>
@@ -169,7 +169,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
                       <div><span className="font-semibold">Longitude:</span> {profileDetails.address?.longitude ?? <span className='text-gray-400'>Not provided</span>}</div>
                       <div><span className="font-semibold">Pin Code:</span> {profileDetails.address?.pinCode ?? <span className='text-gray-400'>Not provided</span>}</div>
                       <div><span className="font-semibold">Medical History:</span> {profileDetails.medicalHistory || <span className='text-gray-400'>Not provided</span>}</div>
-                      <div>
+                    <div>
                         <span className="font-semibold">Medical History PDFs:</span>
                         {profileDetails.medicalHistoryPdfs && profileDetails.medicalHistoryPdfs.length > 0 ? (
                           <ul className="list-disc ml-5 mt-1">
@@ -185,8 +185,8 @@ const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
                       </div>
                       <div><span className="font-semibold">Created:</span> {profileDetails.createdAt ? new Date(profileDetails.createdAt).toLocaleDateString() : <span className='text-gray-400'>N/A</span>}</div>
                       <div><span className="font-semibold">Updated:</span> {profileDetails.updatedAt ? new Date(profileDetails.updatedAt).toLocaleDateString() : <span className='text-gray-400'>N/A</span>}</div>
+                      </div>
                     </div>
-                  </div>
                 </div>
               ) : (
                 <div className="text-red-500 text-center py-12 text-lg">Failed to load profile details.</div>

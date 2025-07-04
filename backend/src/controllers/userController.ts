@@ -9,24 +9,50 @@ import type { CustomRequest } from '../types/userTypes';
 const registerUser = async (req: Request, res: Response): Promise<void> => {
     try {
         console.log('Register request body:', req.body);
-        const { name, email, phone, password, role } = userSchema.parse(req.body);
-        console.log('Parsed data:', { name, email, phone, role });
         
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            res.status(400).json({ message: 'User already exists' });
+        // Validate request body
+        if (!req.body || Object.keys(req.body).length === 0) {
+            res.status(400).json({ message: 'Request body is required' });
             return;
         }
         
+        const { name, email, phone, password, role } = userSchema.parse(req.body);
+        console.log('Parsed data:', { name, email, phone, role });
+        
+        // Check if user already exists by email
+        const existingUserByEmail = await User.findOne({ email });
+        if (existingUserByEmail) {
+            res.status(400).json({ message: 'User with this email already exists' });
+            return;
+        }
+        
+        // Check if user already exists by phone
+        const existingUserByPhone = await User.findOne({ phone });
+        if (existingUserByPhone) {
+            res.status(400).json({ message: 'User with this phone number already exists' });
+            return;
+        }
+        
+        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         console.log('Password hashed successfully');
         
-        const user = await User.create({ name, email, phone, password: hashedPassword, role });
+        // Create user
+        const user = await User.create({ 
+            name, 
+            email, 
+            phone, 
+            password: hashedPassword, 
+            role,
+            isPhoneEmailVerified: false
+        });
         console.log('User created:', user._id);
         
+        // Generate token
         const token = generateToken(user._id.toString());
         console.log('Token generated');
         
+        // Send OTP (optional - don't fail registration if OTP fails)
         try {
             await sendOtp(email, phone);
             console.log('OTP sent successfully');
@@ -35,14 +61,44 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
             // Continue with registration even if OTP fails
         }
         
-        res.status(201).json({ user, token });
+        // Remove password from response
+        const userResponse = user.toObject();
+        delete userResponse.password;
+        
+        res.status(201).json({ 
+            user: userResponse, 
+            token,
+            message: 'Registration successful'
+        });
     } catch (error) {
         console.error('Registration error:', error);
-        if (error instanceof Error) {
-            res.status(500).json({ message: 'Internal server error', error: error.message });
-        } else {
-            res.status(500).json({ message: 'Internal server error' });
+        
+        // Handle Zod validation errors
+        if (error instanceof Error && error.name === 'ZodError') {
+            res.status(400).json({ 
+                message: 'Validation failed', 
+                errors: error.message 
+            });
+            return;
         }
+        
+        // Handle MongoDB duplicate key errors
+        if (error instanceof Error && error.message.includes('duplicate key')) {
+            if (error.message.includes('email')) {
+                res.status(400).json({ message: 'User with this email already exists' });
+            } else if (error.message.includes('phone')) {
+                res.status(400).json({ message: 'User with this phone number already exists' });
+            } else {
+                res.status(400).json({ message: 'User already exists' });
+            }
+            return;
+        }
+        
+        // Generic error response
+        res.status(500).json({ 
+            message: 'Internal server error', 
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 }
 

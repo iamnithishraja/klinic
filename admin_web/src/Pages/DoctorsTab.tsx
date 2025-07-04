@@ -11,6 +11,10 @@ interface Doctor {
     email: string;
     phone: string;
   };
+  specializations?: string[];
+  experience?: number;
+  consultationType?: string;
+  city?: string;
   createdAt?: string;
   updatedAt?: string;
   isVerified: boolean;
@@ -91,6 +95,15 @@ const DoctorsTab: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedDoctorProfile, setSelectedDoctorProfile] = useState<DoctorProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  
+  // Filter states
+  const [verificationFilter, setVerificationFilter] = useState<'all' | 'verified' | 'unverified'>('all');
+  const [specializationFilter, setSpecializationFilter] = useState<string>('');
+  const [experienceFilter, setExperienceFilter] = useState<string>('');
+  const [consultationTypeFilter, setConsultationTypeFilter] = useState<string>('');
+  const [cityFilter, setCityFilter] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = async () => {
@@ -256,6 +269,42 @@ const DoctorsTab: React.FC = () => {
     }
   };
 
+  const handleVerifyDoctor = async (doctorId: string, verify: boolean) => {
+    setVerificationLoading(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const endpoint = verify ? 'verify' : 'unverify';
+      const apiUrl = (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/profiles/${doctorId}/${endpoint}`;
+      
+      const res = await axios.put(apiUrl, 
+        { type: 'doctors' },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      
+      // Update the doctor in the list
+      setDoctors(prevDoctors => 
+        prevDoctors.map(doctor => 
+          doctor._id === doctorId 
+            ? { ...doctor, isVerified: res.data.isVerified }
+            : doctor
+        )
+      );
+      
+      // Update the selected profile if it's the same doctor
+      if (selectedDoctorProfile && selectedDoctorProfile._id === doctorId) {
+        setSelectedDoctorProfile(res.data);
+      }
+      
+      // Show success message
+      alert(verify ? 'Doctor verified successfully!' : 'Doctor verification removed successfully!');
+    } catch (error) {
+      console.error('Error updating verification status:', error);
+      alert('Failed to update verification status');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Scroll to top on tab change
     if (mainContentRef.current) {
@@ -276,16 +325,62 @@ const DoctorsTab: React.FC = () => {
     console.log('Show all appointments:', showAllAppointments);
   }, [appointments, selectedDoctorId, showAllAppointments]);
 
+  // Get unique values for filter options
+  const allSpecializations = Array.from(new Set(
+    doctors.flatMap(doctor => doctor.specializations || [])
+  )).sort();
+  
+  const allCities = Array.from(new Set(
+    doctors.map(doctor => doctor.city).filter(Boolean)
+  )).sort();
+  
+  const allConsultationTypes = Array.from(new Set(
+    doctors.map(doctor => doctor.consultationType).filter(Boolean)
+  )).sort();
+
   const filteredDoctors = doctors.filter((doctor: Doctor) => {
     const name = doctor.user?.name?.toLowerCase() || '';
     const email = doctor.user?.email?.toLowerCase() || '';
     const phone = doctor.user?.phone || '';
     const searchLower = search.toLowerCase();
-    return (
+    
+    // Basic search filter
+    const matchesSearch = (
       name.includes(searchLower) ||
       email.includes(searchLower) ||
       phone.includes(search)
     );
+    
+    // Verification filter
+    const matchesVerification = 
+      verificationFilter === 'all' ||
+      (verificationFilter === 'verified' && doctor.isVerified) ||
+      (verificationFilter === 'unverified' && !doctor.isVerified);
+    
+    // Specialization filter
+    const matchesSpecialization = 
+      !specializationFilter ||
+      doctor.specializations?.some(spec => 
+        spec.toLowerCase().includes(specializationFilter.toLowerCase())
+      );
+    
+    // Experience filter
+    const matchesExperience = 
+      !experienceFilter ||
+      (doctor.experience && doctor.experience >= parseInt(experienceFilter));
+    
+    // Consultation type filter
+    const matchesConsultationType = 
+      !consultationTypeFilter ||
+      doctor.consultationType?.toLowerCase().includes(consultationTypeFilter.toLowerCase());
+    
+    // City filter
+    const matchesCity = 
+      !cityFilter ||
+      doctor.city?.toLowerCase().includes(cityFilter.toLowerCase());
+    
+    return matchesSearch && matchesVerification && matchesSpecialization && 
+           matchesExperience && matchesConsultationType && matchesCity;
   });
 
   return (
@@ -321,32 +416,146 @@ const DoctorsTab: React.FC = () => {
         <div className="bg-card rounded-xl shadow p-8">
           <div className="mb-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold">Doctors</h1>
-            <input
-              type="text"
-              placeholder="Search by name, email, or phone"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="border rounded-lg px-4 py-2 w-80 focus:outline-none focus:ring-2 focus:ring-primary transition"
-            />
+            <div className="flex items-center gap-4">
+              <input
+                type="text"
+                placeholder="Search by name, email, or phone"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="border rounded-lg px-4 py-2 w-80 focus:outline-none focus:ring-2 focus:ring-primary transition"
+              />
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <span>Filters</span>
+                <span className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+            </div>
           </div>
+          
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="mb-6 p-6 bg-gray-50 rounded-xl border border-gray-200">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">Filter Options</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Verification Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Verification Status</label>
+                  <select
+                    value={verificationFilter}
+                    onChange={(e) => setVerificationFilter(e.target.value as 'all' | 'verified' | 'unverified')}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="all">All Doctors</option>
+                    <option value="verified">Verified Only</option>
+                    <option value="unverified">Unverified Only</option>
+                  </select>
+                </div>
+                
+                {/* Specialization Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
+                  <select
+                    value={specializationFilter}
+                    onChange={(e) => setSpecializationFilter(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">All Specializations</option>
+                    {allSpecializations.map(spec => (
+                      <option key={spec} value={spec}>{spec}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Experience Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Experience (years)</label>
+                  <select
+                    value={experienceFilter}
+                    onChange={(e) => setExperienceFilter(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Any Experience</option>
+                    <option value="1">1+ years</option>
+                    <option value="3">3+ years</option>
+                    <option value="5">5+ years</option>
+                    <option value="10">10+ years</option>
+                    <option value="15">15+ years</option>
+                  </select>
+                </div>
+                
+                {/* Consultation Type Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Consultation Type</label>
+                  <select
+                    value={consultationTypeFilter}
+                    onChange={(e) => setConsultationTypeFilter(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">All Types</option>
+                    {allConsultationTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* City Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                  <select
+                    value={cityFilter}
+                    onChange={(e) => setCityFilter(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">All Cities</option>
+                    {allCities.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Clear Filters */}
+                <div className="flex items-end">
+                  <button
+                    onClick={() => {
+                      setVerificationFilter('all');
+                      setSpecializationFilter('');
+                      setExperienceFilter('');
+                      setConsultationTypeFilter('');
+                      setCityFilter('');
+                    }}
+                    className="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              </div>
+              
+              {/* Results Count */}
+              <div className="mt-4 text-sm text-gray-600">
+                Showing {filteredDoctors.length} of {doctors.length} doctors
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-8">
             {filteredDoctors.length > 0 ? filteredDoctors.map((doctor: Doctor) => (
               <div key={doctor._id} className="relative animate-fade-in">
                 <div className="flex flex-row items-center gap-4">
                   <div style={{ flex: 1 }} onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) => handleViewProfile(e, doctor)}>
-                    <UserCard user={{
-                      _id: doctor.user?._id || '',
-                      name: doctor.user?.name || '',
-                      email: doctor.user?.email || '',
-                      phone: doctor.user?.phone || '',
-                      role: 'doctor',
-                      isPhoneEmailVerified: true,
-                      profile: doctor._id,
-                      isVerified: doctor.isVerified,
-                      createdAt: doctor.createdAt ? new Date(doctor.createdAt) : undefined,
-                      updatedAt: doctor.updatedAt ? new Date(doctor.updatedAt) : undefined,
+                  <UserCard user={{
+                    _id: doctor.user?._id || '',
+                    name: doctor.user?.name || '',
+                    email: doctor.user?.email || '',
+                    phone: doctor.user?.phone || '',
+                    role: 'doctor',
+                    isPhoneEmailVerified: true,
+                    profile: doctor._id,
+                    isVerified: doctor.isVerified,
+                    createdAt: doctor.createdAt ? new Date(doctor.createdAt) : undefined,
+                    updatedAt: doctor.updatedAt ? new Date(doctor.updatedAt) : undefined,
                     }} disableModal={true} />
-                  </div>
+                </div>
                   <button
                     onClick={() => handleDoctorCardClick(doctor)}
                     className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-xl text-base font-semibold shadow-lg hover:from-green-500 hover:to-blue-600 hover:scale-105 transition-all flex items-center gap-2 ml-2"
@@ -579,11 +788,11 @@ const DoctorsTab: React.FC = () => {
                                 const d = new Date(appt.createdAt);
                                 if (isNaN(d.getTime())) return 'N/A';
                                 return d.toLocaleString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
                                 });
                               })()}
                             </td>
@@ -657,11 +866,47 @@ const DoctorsTab: React.FC = () => {
                       <div><span className="font-semibold">Available Slots:</span> {selectedDoctorProfile.availableSlots && selectedDoctorProfile.availableSlots.length > 0 ? selectedDoctorProfile.availableSlots.join(', ') : <span className='text-gray-400'>Not provided</span>}</div>
                       <div><span className="font-semibold">City:</span> {selectedDoctorProfile.city || <span className='text-gray-400'>Not provided</span>}</div>
                       <div><span className="font-semibold">Address:</span> {selectedDoctorProfile.address?.address || <span className='text-gray-400'>Not provided</span>}</div>
-                      <div><span className="font-semibold">Verified:</span> {selectedDoctorProfile.isVerified ? 'Yes' : 'No'}</div>
                       <div><span className="font-semibold">Available:</span> {selectedDoctorProfile.isAvailable ? 'Yes' : 'No'}</div>
                       <div><span className="font-semibold">Rating:</span> {selectedDoctorProfile.rating ?? <span className='text-gray-400'>Not provided</span>}</div>
                       <div><span className="font-semibold">Created:</span> {selectedDoctorProfile.createdAt ? formatDate(selectedDoctorProfile.createdAt) : <span className='text-gray-400'>N/A</span>}</div>
                       <div><span className="font-semibold">Updated:</span> {selectedDoctorProfile.updatedAt ? formatDate(selectedDoctorProfile.updatedAt) : <span className='text-gray-400'>N/A</span>}</div>
+                    </div>
+                  </div>
+                  
+                  {/* Verification Controls */}
+                  <div className="border-t border-gray-100 pt-6">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-800">Verification Status</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-4">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="verification"
+                            checked={selectedDoctorProfile.isVerified === true}
+                            onChange={() => handleVerifyDoctor(selectedDoctorProfile._id, true)}
+                            disabled={verificationLoading}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                          />
+                          <span className="text-sm font-medium text-gray-700">Verified</span>
+                        </label>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="verification"
+                            checked={selectedDoctorProfile.isVerified === false}
+                            onChange={() => handleVerifyDoctor(selectedDoctorProfile._id, false)}
+                            disabled={verificationLoading}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                          />
+                          <span className="text-sm font-medium text-gray-700">Not Verified</span>
+                        </label>
+                      </div>
+                      {verificationLoading && (
+                        <div className="flex items-center space-x-2 text-blue-600">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span className="text-sm">Updating verification status...</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
