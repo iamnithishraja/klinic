@@ -15,7 +15,7 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         default: null,
     },
     timeSlot: {
-        type: String,
+        type: Date,
         required: true,
     },
     consultationType: {

@@ -19,7 +19,7 @@ const labAppointmentsSchema = new mongoose.Schema({
         default: [],
     }],
     timeSlot: {
-        type: String,
+        type: Date,
         required: true,
     },
     collectionType: {

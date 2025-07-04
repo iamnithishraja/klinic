@@ -7,53 +7,30 @@ import LaboratoryService from "../models/laboratoryServiceModel";
 import { DoctorProfile, LaboratoryProfile } from "../models/profileModel";
 import User from "../models/userModel";
 
-// Helper function to parse timeSlot string to Date for proper sorting
-const parseTimeSlotToDate = (timeSlot: string): Date => {
+// Helper function to format Date object to display string in IST
+const formatDateToDisplayString = (date: Date): string => {
     try {
-        // Parse format like "Monday 9:00 AM-10:00 AM"
-        const parts = timeSlot.split(' ');
-        if (parts.length >= 3) {
-            const dayName = parts[0];
-            const timeRange = parts.slice(1).join(' ');
-            const startTime = timeRange.split('-')[0]?.trim(); // "9:00 AM"
-            
-            if (!dayName || !startTime) return new Date();
-            
-            // Get the date for this day of the week
-            const today = new Date();
-            const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const targetDay = dayNames.indexOf(dayName);
-            
-            if (targetDay !== -1) {
-                // Calculate days difference
-                let daysDiff = targetDay - currentDay;
-                if (daysDiff < 0) daysDiff += 7; // Next week
-                
-                const appointmentDate = new Date(today);
-                appointmentDate.setDate(today.getDate() + daysDiff);
-                
-                // Parse the start time
-                const timeMatch = startTime.match(/(\d+):(\d+)\s*(AM|PM)/);
-                if (timeMatch && timeMatch[1] && timeMatch[2] && timeMatch[3]) {
-                    let hour = parseInt(timeMatch[1]);
-                    const minute = parseInt(timeMatch[2]);
-                    const period = timeMatch[3];
-                    
-                    // Convert to 24-hour format
-                    if (period === 'PM' && hour !== 12) hour += 12;
-                    if (period === 'AM' && hour === 12) hour = 0;
-                    
-                    appointmentDate.setHours(hour, minute, 0, 0);
-                    return appointmentDate;
-                }
-            }
-        }
+        // Convert UTC date to IST (UTC + 5:30)
+        const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
         
-        // Fallback - return current date
-        return new Date();
-    } catch {
-        return new Date();
+        // Get day name
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = dayNames[istDate.getDay()];
+        
+        // Format time in 12-hour format
+        let hour = istDate.getHours();
+        const minute = istDate.getMinutes();
+        const period = hour >= 12 ? 'PM' : 'AM';
+        
+        if (hour === 0) hour = 12;
+        else if (hour > 12) hour = hour - 12;
+        
+        const timeString = `${hour}:${minute.toString().padStart(2, '0')} ${period}`;
+        
+        return `${dayName} ${timeString}`;
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return date.toString();
     }
 };
 
@@ -132,7 +109,8 @@ const getUserDashboard = async (req: CustomRequest, res: Response) => {
                     ...appointmentObj,
                     type: 'doctor',
                     providerName: (apt.doctor as any)?.name,
-                    serviceName: 'Doctor Consultation'
+                    serviceName: 'Doctor Consultation',
+                    timeSlotDisplay: formatDateToDisplayString(apt.timeSlot)
                 };
             }),
             ...upcomingLabAppointments.map(apt => {
@@ -143,10 +121,11 @@ const getUserDashboard = async (req: CustomRequest, res: Response) => {
                     providerName: (apt.lab as any)?.laboratoryName || (apt.lab as any)?.name,
                     serviceName: (apt.laboratoryService as any)?.name,
                     // Use package cover image from laboratoryService
-                    packageCoverImage: (apt.laboratoryService as any)?.coverImage
+                    packageCoverImage: (apt.laboratoryService as any)?.coverImage,
+                    timeSlotDisplay: formatDateToDisplayString(apt.timeSlot)
                 };
             })
-        ].sort((a, b) => parseTimeSlotToDate(a.timeSlot).getTime() - parseTimeSlotToDate(b.timeSlot).getTime());
+        ].sort((a, b) => new Date(a.timeSlot).getTime() - new Date(b.timeSlot).getTime());
 
         res.status(200).json({
             upcomingAppointments: allUpcomingAppointments,
@@ -207,7 +186,8 @@ const getPreviousAppointments = async (req: CustomRequest, res: Response) => {
                 return {
                     ...appointmentObj,
                     type: 'doctor',
-                    providerName: (apt.doctor as any)?.name
+                    providerName: (apt.doctor as any)?.name,
+                    timeSlotDisplay: formatDateToDisplayString(apt.timeSlot)
                 };
             }),
             pagination: {
@@ -270,7 +250,8 @@ const getPreviousLabTests = async (req: CustomRequest, res: Response) => {
                     type: 'lab',
                     providerName: (test.lab as any)?.laboratoryName || (test.lab as any)?.name,
                     // Use package cover image from laboratoryService
-                    packageCoverImage: (test.laboratoryService as any)?.coverImage
+                    packageCoverImage: (test.laboratoryService as any)?.coverImage,
+                    timeSlotDisplay: formatDateToDisplayString(test.timeSlot)
                 };
             }),
             pagination: {

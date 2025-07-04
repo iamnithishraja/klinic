@@ -10,7 +10,8 @@ import { router } from 'expo-router';
 interface Appointment {
   _id: string;
   type: 'doctor' | 'lab';
-  timeSlot: string;
+  timeSlot: string; // Now a Date string from backend
+  timeSlotDisplay: string; // Human-readable formatted time display
   status: string;
   consultationType?: 'in-person' | 'online';
   collectionType?: 'lab' | 'home';
@@ -211,43 +212,37 @@ const UserDashboard: React.FC = () => {
     }
   };
 
-  const formatAppointmentTime = (timeSlot: string) => {
+  const formatAppointmentTime = (timeSlot: string, timeSlotDisplay: string) => {
     try {
-      // Parse format like "Monday 9:00 AM-10:00 AM"
-      const parts = timeSlot.split(' ');
-      if (parts.length >= 3) {
-        const dayName = parts[0]; // "Monday"
-        const timeRange = parts.slice(1).join(' '); // "9:00 AM-10:00 AM"
-        const startTime = timeRange.split('-')[0]?.trim(); // "9:00 AM"
-        
-        // Get the date for this day of the week
-        const today = new Date();
-        const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const targetDay = dayNames.indexOf(dayName);
-        
-        if (targetDay !== -1) {
-          // Calculate days difference
-          let daysDiff = targetDay - currentDay;
-          if (daysDiff < 0) daysDiff += 7; // Next week
-          
-          const appointmentDate = new Date(today);
-          appointmentDate.setDate(today.getDate() + daysDiff);
-          
-          if (daysDiff === 0) {
-            return `Today, ${startTime}`;
-          } else if (daysDiff === 1) {
-            return `Tomorrow, ${startTime}`;
-          } else {
-            return `${dayName}, ${startTime}`;
-          }
-        }
-      }
+      // Convert UTC timeSlot to IST for comparison
+      const appointmentDateUTC = new Date(timeSlot);
+      const appointmentDateIST = new Date(appointmentDateUTC.getTime() + (5.5 * 60 * 60 * 1000));
       
-      // Fallback to original format
-      return timeSlot;
+      // Get today's date in IST
+      const todayUTC = new Date();
+      const todayIST = new Date(todayUTC.getTime() + (5.5 * 60 * 60 * 1000));
+      
+      // Check if it's today or tomorrow in IST
+      const todayStartIST = new Date(todayIST.getFullYear(), todayIST.getMonth(), todayIST.getDate());
+      const appointmentStartIST = new Date(appointmentDateIST.getFullYear(), appointmentDateIST.getMonth(), appointmentDateIST.getDate());
+      
+      const daysDiff = Math.floor((appointmentStartIST.getTime() - todayStartIST.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff === 0) {
+        // Today - extract just the time from timeSlotDisplay
+        const timePart = timeSlotDisplay.split(' ').slice(1).join(' ');
+        return `Today, ${timePart}`;
+      } else if (daysDiff === 1) {
+        // Tomorrow - extract just the time from timeSlotDisplay
+        const timePart = timeSlotDisplay.split(' ').slice(1).join(' ');
+        return `Tomorrow, ${timePart}`;
+      } else {
+        // Other days - use the full timeSlotDisplay
+        return timeSlotDisplay;
+      }
     } catch {
-      return timeSlot;
+      // Fallback to timeSlotDisplay
+      return timeSlotDisplay;
     }
   };
 
@@ -260,53 +255,27 @@ const UserDashboard: React.FC = () => {
 
   const canJoinNow = (timeSlot: string) => {
     try {
-      // Parse format like "Monday 9:00 AM-10:00 AM"
-      const parts = timeSlot.split(' ');
-      if (parts.length >= 3) {
-        const dayName = parts[0];
-        const timeRange = parts.slice(1).join(' ');
-        const startTime = timeRange.split('-')[0]?.trim(); // "9:00 AM"
-        
-        // Get the date for this day of the week
-        const today = new Date();
-        const currentDay = today.getDay();
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const targetDay = dayNames.indexOf(dayName);
-        
-        if (targetDay !== -1) {
-          // Calculate days difference
-          let daysDiff = targetDay - currentDay;
-          if (daysDiff < 0) daysDiff += 7; // Next week
-          
-          // Only allow joining if it's today
-          if (daysDiff !== 0) return false;
-          
-          // Parse the start time
-          const timeMatch = startTime.match(/(\d+):(\d+)\s*(AM|PM)/);
-          if (timeMatch) {
-            let hour = parseInt(timeMatch[1]);
-            const minute = parseInt(timeMatch[2]);
-            const period = timeMatch[3];
-            
-            // Convert to 24-hour format
-            if (period === 'PM' && hour !== 12) hour += 12;
-            if (period === 'AM' && hour === 12) hour = 0;
-            
-            // Create appointment time for today
-            const appointmentTime = new Date();
-            appointmentTime.setHours(hour, minute, 0, 0);
-            
-            const now = new Date();
-            const timeDiff = appointmentTime.getTime() - now.getTime();
-            const minutesDiff = timeDiff / (1000 * 60);
-            
-            // Allow joining 15 minutes before to 30 minutes after the appointment time
-            return minutesDiff >= -30 && minutesDiff <= 15;
-          }
-        }
-      }
+      // Parse the UTC Date object from timeSlot and convert to IST
+      const appointmentTimeUTC = new Date(timeSlot);
+      const appointmentTimeIST = new Date(appointmentTimeUTC.getTime() + (5.5 * 60 * 60 * 1000));
       
-      return false;
+      // Get current time in IST
+      const nowUTC = new Date();
+      const nowIST = new Date(nowUTC.getTime() + (5.5 * 60 * 60 * 1000));
+      
+      // Check if appointment is today in IST
+      const appointmentDateIST = new Date(appointmentTimeIST.getFullYear(), appointmentTimeIST.getMonth(), appointmentTimeIST.getDate());
+      const todayDateIST = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate());
+      
+      // Only allow joining if it's today
+      if (appointmentDateIST.getTime() !== todayDateIST.getTime()) return false;
+      
+      // Calculate time difference in minutes (using IST times)
+      const timeDiff = appointmentTimeIST.getTime() - nowIST.getTime();
+      const minutesDiff = timeDiff / (1000 * 60);
+      
+      // Allow joining 15 minutes before to 30 minutes after the appointment time
+      return minutesDiff >= -30 && minutesDiff <= 15;
     } catch {
       return false;
     }
@@ -352,7 +321,7 @@ const UserDashboard: React.FC = () => {
               {item.type === 'doctor' ? `Dr. ${item.providerName}` : item.providerName}
             </Text>
             <Text className="text-gray-600 mb-2">{item.serviceName}</Text>
-            <Text className="text-sm text-gray-500">{formatAppointmentTime(item.timeSlot)}</Text>
+            <Text className="text-sm text-gray-500">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
           </View>
           <View 
             className="px-3 py-1 rounded-full"
@@ -464,7 +433,7 @@ const UserDashboard: React.FC = () => {
             {item.type === 'doctor' ? `Dr. ${item.providerName}` : item.providerName}
           </Text>
           <Text className="text-gray-600 text-sm">{item.serviceName}</Text>
-          <Text className="text-gray-500 text-xs">{formatAppointmentTime(item.timeSlot)}</Text>
+          <Text className="text-gray-500 text-xs">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
         </View>
         
         {item.type === 'doctor' && item.prescription && (
@@ -500,7 +469,7 @@ const UserDashboard: React.FC = () => {
         <View className="flex-1">
           <Text className="text-lg font-semibold text-gray-900">{item.providerName}</Text>
           <Text className="text-gray-600 text-sm">{item.serviceName}</Text>
-          <Text className="text-gray-500 text-xs">{formatAppointmentTime(item.timeSlot)}</Text>
+          <Text className="text-gray-500 text-xs">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
         </View>
         
         {item.reportResult && (
@@ -652,7 +621,7 @@ const UserDashboard: React.FC = () => {
                   Doctor: {prescriptionData.appointment?.doctor?.name}
                 </Text>
                 <Text className="text-gray-600 mb-4">
-                  Date: {formatAppointmentTime(prescriptionData.appointment?.timeSlot)}
+                  Date: {prescriptionData.appointment?.timeSlotDisplay || formatAppointmentTime(prescriptionData.appointment?.timeSlot, prescriptionData.appointment?.timeSlot)}
                 </Text>
                 <Text className="text-gray-900">
                   {prescriptionData.prescription || 'No prescription available'}
@@ -688,7 +657,7 @@ const UserDashboard: React.FC = () => {
                   Service: {reportData.labTest?.laboratoryService?.name}
                 </Text>
                 <Text className="text-gray-600 mb-4">
-                  Date: {formatAppointmentTime(reportData.labTest?.timeSlot)}
+                  Date: {reportData.labTest?.timeSlotDisplay || formatAppointmentTime(reportData.labTest?.timeSlot, reportData.labTest?.timeSlot)}
                 </Text>
                 <Text className="text-gray-900">
                   {reportData.report || 'Report not available yet'}
