@@ -67,10 +67,10 @@ const getUserDashboard = async (req: CustomRequest, res: Response) => {
             }
         }
 
-        // Get upcoming lab appointments
+        // Get upcoming lab appointments (include both pending and upcoming statuses)
         const upcomingLabAppointments = await LabAppointment.find({
             patient: userId,
-            status: 'upcoming'
+            status: { $in: ['pending', 'upcoming'] }
         })
         .populate('lab', 'name email phone')
         .populate('laboratoryService')
