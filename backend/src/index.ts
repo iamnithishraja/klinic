@@ -11,13 +11,15 @@ import paymentRouter from "./routes/paymentRoutes";
 import Razorpay from "razorpay";
 import adminRouter from "./routes/adminRoutes";
 import dashboardRouter from "./routes/dashboardRoutes";
+import doctorRouter from "./routes/doctorRoutes";
+import laboratoryRouter from "./routes/laboratoryRoutes";
 dotenv.config();
 const app = express();
 
 connectDatabse();
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:5173", "http://localhost:8081"],
   credentials: true
 }));
 
@@ -41,6 +43,8 @@ app.use('/api/v1/', appointmentRouter);
 app.use('/api/v1/', paymentRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/user', dashboardRouter);
+app.use('/api/v1/doctor', doctorRouter);
+app.use('/api/v1/laboratory', laboratoryRouter);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server is running on port ${process.env.PORT || 3000}`);

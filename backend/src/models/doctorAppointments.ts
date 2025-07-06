@@ -27,6 +27,10 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    prescriptionSent: {
+        type: Boolean,
+        default: false,
+    },
     status: {
         type: String,
         enum: ['upcoming', 'completed'],

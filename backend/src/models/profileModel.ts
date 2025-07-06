@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import DoctorAppointments from "../models/doctorAppointments";
 
 const userProfileSchema = new mongoose.Schema({
     user: {

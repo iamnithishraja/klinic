@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Linking, Alert, SafeAreaView, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
 import { useCustomAlert } from '@/components/CustomAlert';
 
@@ -486,191 +487,195 @@ const UserDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-gray-50 justify-center items-center">
-        <FontAwesome name="spinner" size={24} color="#6B7280" />
-        <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
-      </View>
+      <SafeAreaProvider>
+        <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+          <FontAwesome name="spinner" size={24} color="#6B7280" />
+          <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView 
-        className="flex-1"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
-        <View className="p-6 pt-2">
-          {/* Header */}
-          <View className="mb-6">
-            <Text className="text-3xl font-bold text-gray-900 mb-2">Your Health Dashboard</Text>
-            <Text className="text-gray-600">Stay on top of your appointments and health records</Text>
+    <SafeAreaProvider>
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <ScrollView 
+          className="flex-1"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
+          <View className="p-6 pt-2">
+            {/* Header */}
+            <View className="mb-6">
+              <Text className="text-3xl font-bold text-gray-900 mb-2">Your Health Dashboard</Text>
+              <Text className="text-gray-600">Stay on top of your appointments and health records</Text>
+            </View>
+
+          {/* Upcoming Appointments Carousel */}
+          <View className="mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-4">
+              Upcoming Appointments ({dashboardData?.totalUpcoming || 0})
+            </Text>
+            
+            {dashboardData?.upcomingAppointments && dashboardData.upcomingAppointments.length > 0 ? (
+              <FlatList
+                data={dashboardData.upcomingAppointments}
+                renderItem={renderUpcomingAppointment}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingLeft: 24, paddingRight: 24 }}
+                ItemSeparatorComponent={() => <View className="w-4" />}
+              />
+            ) : (
+              <View className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 shadow-sm border border-blue-100 items-center">
+                <View className="bg-blue-100 rounded-full p-4 mb-4">
+                  <FontAwesome name="calendar-plus-o" size={40} color="#4F46E5" />
+                </View>
+                <Text className="text-xl font-bold text-gray-900 mb-2">Ready for your next consultation?</Text>
+                <Text className="text-gray-600 text-center mb-6 leading-relaxed">
+                  Book appointments with top doctors and laboratories near you. Your health journey starts here!
+                </Text>
+                <View className="flex-row space-x-3">
+                  <Pressable 
+                    onPress={() => handleNavigateToSection('doctors')}
+                    className="bg-primary px-6 py-3 rounded-xl flex-row items-center"
+                  >
+                    <FontAwesome name="stethoscope" size={16} color="white" style={{ marginRight: 8 }} />
+                    <Text className="text-white font-medium">Find Doctors</Text>
+                  </Pressable>
+                  <Pressable 
+                    onPress={() => handleNavigateToSection('laboratories')}
+                    className="bg-purple-500 px-6 py-3 rounded-xl flex-row items-center"
+                  >
+                    <FontAwesome name="flask" size={16} color="white" style={{ marginRight: 8 }} />
+                    <Text className="text-white font-medium">Book Lab Tests</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </View>
 
-        {/* Upcoming Appointments Carousel */}
-        <View className="mb-8">
-          <Text className="text-xl font-bold text-gray-900 mb-4">
-            Upcoming Appointments ({dashboardData?.totalUpcoming || 0})
-          </Text>
-          
-          {dashboardData?.upcomingAppointments && dashboardData.upcomingAppointments.length > 0 ? (
-            <FlatList
-              data={dashboardData.upcomingAppointments}
-              renderItem={renderUpcomingAppointment}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingLeft: 24, paddingRight: 24 }}
-              ItemSeparatorComponent={() => <View className="w-4" />}
-            />
-          ) : (
-            <View className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 shadow-sm border border-blue-100 items-center">
-              <View className="bg-blue-100 rounded-full p-4 mb-4">
-                <FontAwesome name="calendar-plus-o" size={40} color="#4F46E5" />
-              </View>
-              <Text className="text-xl font-bold text-gray-900 mb-2">Ready for your next consultation?</Text>
-              <Text className="text-gray-600 text-center mb-6 leading-relaxed">
-                Book appointments with top doctors and laboratories near you. Your health journey starts here!
-              </Text>
-              <View className="flex-row space-x-3">
-                <Pressable 
-                  onPress={() => handleNavigateToSection('doctors')}
-                  className="bg-primary px-6 py-3 rounded-xl flex-row items-center"
-                >
-                  <FontAwesome name="stethoscope" size={16} color="white" style={{ marginRight: 8 }} />
-                  <Text className="text-white font-medium">Find Doctors</Text>
-                </Pressable>
-                <Pressable 
-                  onPress={() => handleNavigateToSection('laboratories')}
-                  className="bg-purple-500 px-6 py-3 rounded-xl flex-row items-center"
-                >
-                  <FontAwesome name="flask" size={16} color="white" style={{ marginRight: 8 }} />
-                  <Text className="text-white font-medium">Book Lab Tests</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Previous Appointments */}
-        <View className="mb-8">
-          <Text className="text-xl font-bold text-gray-900 mb-4">Previous Appointments</Text>
-          
-          {previousAppointments?.appointments && previousAppointments.appointments.length > 0 ? (
-            <FlatList
-              data={previousAppointments.appointments}
-              renderItem={renderPreviousAppointment}
-              scrollEnabled={false}
-            />
-          ) : (
-            <View className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border border-green-100 items-center">
-              <View className="bg-green-100 rounded-full p-3 mb-3">
-                <FontAwesome name="clock-o" size={28} color="#059669" />
-              </View>
-              <Text className="text-lg font-semibold text-gray-900 mb-1">Your consultation history</Text>
-              <Text className="text-gray-600 text-center text-sm">
-                Previous appointments and prescriptions will appear here
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Previous Lab Tests */}
-        <View className="mb-8">
-          <Text className="text-xl font-bold text-gray-900 mb-4">Previous Lab Tests</Text>
-          
-          {previousLabTests?.labTests && previousLabTests.labTests.length > 0 ? (
-            <FlatList
-              data={previousLabTests.labTests}
-              renderItem={renderPreviousLabTest}
-              scrollEnabled={false}
-            />
-          ) : (
-            <View className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-6 shadow-sm border border-purple-100 items-center">
-              <View className="bg-purple-100 rounded-full p-3 mb-3">
-                <FontAwesome name="heartbeat" size={28} color="#8B5CF6" />
-              </View>
-              <Text className="text-lg font-semibold text-gray-900 mb-1">Your health reports</Text>
-              <Text className="text-gray-600 text-center text-sm">
-                Lab test results and health reports will be available here
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Prescription Modal */}
-      <Modal
-        visible={showPrescriptionModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowPrescriptionModal(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center p-6">
-          <View className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-gray-900">Prescription</Text>
-              <Pressable onPress={() => setShowPrescriptionModal(false)}>
-                <FontAwesome name="times" size={24} color="#6B7280" />
-              </Pressable>
-            </View>
+          {/* Previous Appointments */}
+          <View className="mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-4">Previous Appointments</Text>
             
-            {prescriptionData && (
-              <ScrollView className="max-h-80">
-                <Text className="text-gray-600 mb-2">
-                  Doctor: {prescriptionData.appointment?.doctor?.name}
+            {previousAppointments?.appointments && previousAppointments.appointments.length > 0 ? (
+              <FlatList
+                data={previousAppointments.appointments}
+                renderItem={renderPreviousAppointment}
+                scrollEnabled={false}
+              />
+            ) : (
+              <View className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border border-green-100 items-center">
+                <View className="bg-green-100 rounded-full p-3 mb-3">
+                  <FontAwesome name="clock-o" size={28} color="#059669" />
+                </View>
+                <Text className="text-lg font-semibold text-gray-900 mb-1">Your consultation history</Text>
+                <Text className="text-gray-600 text-center text-sm">
+                  Previous appointments and prescriptions will appear here
                 </Text>
-                <Text className="text-gray-600 mb-4">
-                  Date: {prescriptionData.appointment?.timeSlotDisplay || formatAppointmentTime(prescriptionData.appointment?.timeSlot, prescriptionData.appointment?.timeSlot)}
+              </View>
+            )}
+          </View>
+
+          {/* Previous Lab Tests */}
+          <View className="mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-4">Previous Lab Tests</Text>
+            
+            {previousLabTests?.labTests && previousLabTests.labTests.length > 0 ? (
+              <FlatList
+                data={previousLabTests.labTests}
+                renderItem={renderPreviousLabTest}
+                scrollEnabled={false}
+              />
+            ) : (
+              <View className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-6 shadow-sm border border-purple-100 items-center">
+                <View className="bg-purple-100 rounded-full p-3 mb-3">
+                  <FontAwesome name="heartbeat" size={28} color="#8B5CF6" />
+                </View>
+                <Text className="text-lg font-semibold text-gray-900 mb-1">Your health reports</Text>
+                <Text className="text-gray-600 text-center text-sm">
+                  Lab test results and health reports will be available here
                 </Text>
-                <Text className="text-gray-900">
-                  {prescriptionData.prescription || 'No prescription available'}
-                </Text>
-              </ScrollView>
+              </View>
             )}
           </View>
         </View>
-      </Modal>
 
-      {/* Lab Report Modal */}
-      <Modal
-        visible={showReportModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowReportModal(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center p-6">
-          <View className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-gray-900">Lab Report</Text>
-              <Pressable onPress={() => setShowReportModal(false)}>
-                <FontAwesome name="times" size={24} color="#6B7280" />
-              </Pressable>
+        {/* Prescription Modal */}
+        <Modal
+          visible={showPrescriptionModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowPrescriptionModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-center items-center p-6">
+            <View className="bg-white rounded-2xl p-6 w-full max-w-md">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-xl font-bold text-gray-900">Prescription</Text>
+                <Pressable onPress={() => setShowPrescriptionModal(false)}>
+                  <FontAwesome name="times" size={24} color="#6B7280" />
+                </Pressable>
+              </View>
+              
+              {prescriptionData && (
+                <ScrollView className="max-h-80">
+                  <Text className="text-gray-600 mb-2">
+                    Doctor: {prescriptionData.appointment?.doctor?.name}
+                  </Text>
+                  <Text className="text-gray-600 mb-4">
+                    Date: {prescriptionData.appointment?.timeSlotDisplay || formatAppointmentTime(prescriptionData.appointment?.timeSlot, prescriptionData.appointment?.timeSlot)}
+                  </Text>
+                  <Text className="text-gray-900">
+                    {prescriptionData.prescription || 'No prescription available'}
+                  </Text>
+                </ScrollView>
+              )}
             </View>
-            
-            {reportData && (
-              <ScrollView className="max-h-80">
-                <Text className="text-gray-600 mb-2">
-                  Laboratory: {reportData.labTest?.lab?.name}
-                </Text>
-                <Text className="text-gray-600 mb-2">
-                  Service: {reportData.labTest?.laboratoryService?.name}
-                </Text>
-                <Text className="text-gray-600 mb-4">
-                  Date: {reportData.labTest?.timeSlotDisplay || formatAppointmentTime(reportData.labTest?.timeSlot, reportData.labTest?.timeSlot)}
-                </Text>
-                <Text className="text-gray-900">
-                  {reportData.report || 'Report not available yet'}
-                </Text>
-              </ScrollView>
-            )}
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-        <AlertComponent />
-      </ScrollView>
-    </SafeAreaView>
+        {/* Lab Report Modal */}
+        <Modal
+          visible={showReportModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowReportModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-center items-center p-6">
+            <View className="bg-white rounded-2xl p-6 w-full max-w-md">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-xl font-bold text-gray-900">Lab Report</Text>
+                <Pressable onPress={() => setShowReportModal(false)}>
+                  <FontAwesome name="times" size={24} color="#6B7280" />
+                </Pressable>
+              </View>
+              
+              {reportData && (
+                <ScrollView className="max-h-80">
+                  <Text className="text-gray-600 mb-2">
+                    Laboratory: {reportData.labTest?.lab?.name}
+                  </Text>
+                  <Text className="text-gray-600 mb-2">
+                    Service: {reportData.labTest?.laboratoryService?.name}
+                  </Text>
+                  <Text className="text-gray-600 mb-4">
+                    Date: {reportData.labTest?.timeSlotDisplay || formatAppointmentTime(reportData.labTest?.timeSlot, reportData.labTest?.timeSlot)}
+                  </Text>
+                  <Text className="text-gray-900">
+                    {reportData.report || 'Report not available yet'}
+                  </Text>
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </Modal>
+
+          <AlertComponent />
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 };
 

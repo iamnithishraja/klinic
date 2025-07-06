@@ -64,16 +64,22 @@ export async function canRequestOtp(req: CustomRequest, res: Response, next: Nex
     }
 }
 export async function checkRole(req: CustomRequest, res: Response, next: NextFunction, roles: UserRole[]): Promise<void>    {
+    console.log('CheckRole - User:', req.user);
+    console.log('CheckRole - Required roles:', roles);
+    console.log('CheckRole - User role:', req.user?.role);
 
     if (!req.user) {
+        console.log('CheckRole - No user found');
         res.status(401).json({ message: 'Unauthorized' });
         return;
     }
     const user = req.user;
     if (!roles.includes(user.role)) {
+        console.log('CheckRole - Role not allowed. User role:', user.role, 'Required roles:', roles);
         res.status(403).json({ message: 'Forbidden' });
         return;
     }
+    console.log('CheckRole - Role check passed');
     next();
 }
 

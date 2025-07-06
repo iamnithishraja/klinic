@@ -1,9 +1,12 @@
 import { View, Text, ScrollView } from 'react-native';
 import { useEffect, useState } from 'react';
 import { FontAwesome } from '@expo/vector-icons';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '@/store/userStore';
 import { UserRole } from '@/types/userTypes';
 import UserDashboard from '@/components/UserDashboard';
+import DoctorDashboard from '@/components/DoctorDashboard';
+import LaboratoryDashboard from '@/components/LaboratoryDashboard';
 
 export default function HomeScreen() {
   const { user } = useUserStore();
@@ -20,52 +23,31 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-gray-50 justify-center items-center">
+      <SafeAreaProvider>
+        <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
         <FontAwesome name="spinner" size={24} color="#6B7280" />
         <Text className="text-gray-600 mt-2">Loading...</Text>
-      </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
-  // Show UserDashboard only for users
+  // Show appropriate dashboard based on user role
   if (user?.role === UserRole.USER) {
     return <UserDashboard />;
   }
 
-  // Show different content for other roles (doctors, labs, etc.)
+  if (user?.role === UserRole.DOCTOR) {
+    return <DoctorDashboard />;
+  }
+
+  if (user?.role === UserRole.LABORATORY) {
+    return <LaboratoryDashboard />;
+  }
+
+  // Show different content for other roles (admin, delivery, etc.)
   const getRoleSpecificContent = () => {
     switch (user?.role) {
-      case UserRole.DOCTOR:
-        return (
-          <View className="p-6">
-            <Text className="text-3xl font-roboto-bold text-primary mb-4">Doctor Dashboard</Text>
-            <Text className="text-lg font-opensans text-text-primary mb-6">
-              Manage your appointments, patients, and practice.
-            </Text>
-            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 items-center">
-              <FontAwesome name="stethoscope" size={48} color="#4F46E5" />
-              <Text className="text-gray-600 mt-4 text-center">
-                Doctor-specific features coming soon!
-              </Text>
-            </View>
-          </View>
-        );
-      
-      case UserRole.LABORATORY:
-        return (
-          <View className="p-6">
-            <Text className="text-3xl font-roboto-bold text-primary mb-4">Laboratory Dashboard</Text>
-            <Text className="text-lg font-opensans text-text-primary mb-6">
-              Manage your lab services and test appointments.
-            </Text>
-            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 items-center">
-              <FontAwesome name="flask" size={48} color="#8B5CF6" />
-              <Text className="text-gray-600 mt-4 text-center">
-                Laboratory-specific features coming soon!
-              </Text>
-            </View>
-          </View>
-        );
       
       case UserRole.ADMIN:
         return (
@@ -118,8 +100,12 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <SafeAreaProvider>
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <ScrollView className="flex-1">
       {getRoleSpecificContent()}
     </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

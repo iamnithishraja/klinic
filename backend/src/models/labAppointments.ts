@@ -29,8 +29,8 @@ const labAppointmentsSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['upcoming', 'collected', 'completed'],
-        default: 'upcoming',
+        enum: ['pending', 'processing', 'completed', 'upcoming', 'collected'],
+        default: 'pending',
     },
     isPaid: {
         type: Boolean,
@@ -50,6 +50,18 @@ const labAppointmentsSchema = new mongoose.Schema({
         default: 'pending',
     },
     reportResult: {
+        type: String,
+        default: null,
+    },
+    testReportPdfs: [{
+        type: String,
+        default: [],
+    }],
+    reportsUploaded: {
+        type: Boolean,
+        default: false,
+    },
+    notes: {
         type: String,
         default: null,
     },
