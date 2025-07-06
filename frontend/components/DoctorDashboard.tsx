@@ -4,6 +4,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
 import { useCustomAlert } from '@/components/CustomAlert';
+import VideoCallModal from '@/components/VideoCallModal';
 
 interface Patient {
   _id: string;
@@ -65,6 +66,8 @@ const DoctorDashboard: React.FC = () => {
   const [prescriptionText, setPrescriptionText] = useState('');
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [notesText, setNotesText] = useState('');
+  const [showVideoCallModal, setShowVideoCallModal] = useState(false);
+  const [selectedVideoCallAppointment, setSelectedVideoCallAppointment] = useState<DoctorAppointment | null>(null);
   const { showAlert, AlertComponent } = useCustomAlert();
 
   useEffect(() => {
@@ -278,13 +281,14 @@ const DoctorDashboard: React.FC = () => {
   };
 
   const handleJoinNow = (appointment: DoctorAppointment) => {
-    // Empty function for online consultation join
     console.log('Join Now clicked for appointment:', appointment._id);
-    showAlert({
-      title: 'Join Consultation',
-      message: 'Online consultation joining functionality will be implemented here.',
-      type: 'info'
-    });
+    setSelectedVideoCallAppointment(appointment);
+    setShowVideoCallModal(true);
+  };
+
+  const handleCloseVideoCall = () => {
+    setShowVideoCallModal(false);
+    setSelectedVideoCallAppointment(null);
   };
 
   const renderUpcomingAppointment = ({ item }: { item: DoctorAppointment }) => (
@@ -980,6 +984,20 @@ const DoctorDashboard: React.FC = () => {
               </View>
             </View>
           </Modal>
+
+          {/* Video Call Modal */}
+          {selectedVideoCallAppointment && (
+            <VideoCallModal
+              visible={showVideoCallModal}
+              onClose={handleCloseVideoCall}
+              appointmentId={selectedVideoCallAppointment._id}
+              userRole="doctor"
+              appointmentData={{
+                patientName: selectedVideoCallAppointment.patient.name,
+                appointmentTime: selectedVideoCallAppointment.timeSlotDisplay
+              }}
+            />
+          )}
 
           <AlertComponent />
         </ScrollView>

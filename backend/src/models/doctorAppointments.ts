@@ -57,6 +57,22 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    videoCallStarted: {
+        type: Boolean,
+        default: false,
+    },
+    videoCallStartTime: {
+        type: Date,
+        default: null,
+    },
+    videoCallEnded: {
+        type: Boolean,
+        default: false,
+    },
+    videoCallEndTime: {
+        type: Date,
+        default: null,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

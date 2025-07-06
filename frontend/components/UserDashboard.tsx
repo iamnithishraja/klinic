@@ -4,6 +4,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
 import { useCustomAlert } from '@/components/CustomAlert';
+import VideoCallModal from '@/components/VideoCallModal';
 
 // @ts-ignore
 import { router } from 'expo-router';
@@ -55,6 +56,8 @@ const UserDashboard: React.FC = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [prescriptionData, setPrescriptionData] = useState<any>(null);
   const [reportData, setReportData] = useState<any>(null);
+  const [showVideoCallModal, setShowVideoCallModal] = useState(false);
+  const [selectedVideoCallAppointment, setSelectedVideoCallAppointment] = useState<Appointment | null>(null);
   const { showAlert, AlertComponent } = useCustomAlert();
 
   useEffect(() => {
@@ -131,16 +134,17 @@ const UserDashboard: React.FC = () => {
           text: 'Join Now', 
           style: 'primary',
           onPress: () => {
-            // In a real app, this would open the video call interface
-            showAlert({
-              title: 'Joining...',
-              message: 'Connecting you to the online consultation...',
-              type: 'success'
-            });
+            setSelectedVideoCallAppointment(appointment);
+            setShowVideoCallModal(true);
           }
         }
       ]
     });
+  };
+
+  const handleCloseVideoCall = () => {
+    setShowVideoCallModal(false);
+    setSelectedVideoCallAppointment(null);
   };
 
   const handleGetDirections = (appointment: Appointment) => {
@@ -255,31 +259,8 @@ const UserDashboard: React.FC = () => {
   };
 
   const canJoinNow = (timeSlot: string) => {
-    try {
-      // Parse the UTC Date object from timeSlot and convert to IST
-      const appointmentTimeUTC = new Date(timeSlot);
-      const appointmentTimeIST = new Date(appointmentTimeUTC.getTime() + (5.5 * 60 * 60 * 1000));
-      
-      // Get current time in IST
-      const nowUTC = new Date();
-      const nowIST = new Date(nowUTC.getTime() + (5.5 * 60 * 60 * 1000));
-      
-      // Check if appointment is today in IST
-      const appointmentDateIST = new Date(appointmentTimeIST.getFullYear(), appointmentTimeIST.getMonth(), appointmentTimeIST.getDate());
-      const todayDateIST = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate());
-      
-      // Only allow joining if it's today
-      if (appointmentDateIST.getTime() !== todayDateIST.getTime()) return false;
-      
-      // Calculate time difference in minutes (using IST times)
-      const timeDiff = appointmentTimeIST.getTime() - nowIST.getTime();
-      const minutesDiff = timeDiff / (1000 * 60);
-      
-      // Allow joining 15 minutes before to 30 minutes after the appointment time
-      return minutesDiff >= -30 && minutesDiff <= 15;
-    } catch {
-      return false;
-    }
+    // Always allow joining for online consultations
+    return true;
   };
 
   const renderUpcomingAppointment = ({ item }: { item: Appointment }) => (
@@ -671,6 +652,20 @@ const UserDashboard: React.FC = () => {
             </View>
           </View>
         </Modal>
+
+        {/* Video Call Modal */}
+        {selectedVideoCallAppointment && (
+          <VideoCallModal
+            visible={showVideoCallModal}
+            onClose={handleCloseVideoCall}
+            appointmentId={selectedVideoCallAppointment._id}
+            userRole="patient"
+            appointmentData={{
+              doctorName: selectedVideoCallAppointment.providerName,
+              appointmentTime: selectedVideoCallAppointment.timeSlotDisplay
+            }}
+          />
+        )}
 
           <AlertComponent />
         </ScrollView>
