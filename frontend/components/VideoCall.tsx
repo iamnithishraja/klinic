@@ -236,44 +236,6 @@ const VideoCall: React.FC<VideoCallProps> = ({
     </View>
   );
 
-  const renderRemoteVideo = () => {
-    if (remoteUid === null) {
-      return (
-        <VideoCallStatus
-          connectionStatus={connectionStatus}
-          userRole={userRole}
-          remoteUserPresent={false}
-        />
-      );
-    }
-
-    return (
-      <View style={styles.remoteVideoContainer}>
-        <RtcSurfaceView
-          style={styles.remoteVideo}
-          canvas={{
-            uid: remoteUid,
-            sourceType: VideoSourceType.VideoSourceRemote,
-          }}
-        />
-        {isRemoteVideoMuted && (
-          <View style={styles.mutedOverlay}>
-            <FontAwesome name="user" size={40} color="#fff" />
-            <Text style={styles.mutedText}>
-              {userRole === 'doctor' ? 'Patient' : 'Doctor'} camera is off
-            </Text>
-          </View>
-        )}
-        {/* Status indicator when connected */}
-        <VideoCallStatus
-          connectionStatus={connectionStatus}
-          userRole={userRole}
-          remoteUserPresent={true}
-        />
-      </View>
-    );
-  };
-
   // Show error screen if there's an initialization error
   if (initializationError) {
     return (
@@ -308,11 +270,44 @@ const VideoCall: React.FC<VideoCallProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Main video area */}
-      <View style={styles.videoContainer}>
-        {renderRemoteVideo()}
-        {renderLocalVideo()}
-      </View>
+      {/* Remote video as full screen background */}
+      {remoteUid !== null ? (
+        <RtcSurfaceView
+          style={styles.remoteVideoFullScreen}
+          canvas={{
+            uid: remoteUid,
+            sourceType: VideoSourceType.VideoSourceRemote,
+          }}
+        />
+      ) : (
+        <VideoCallStatus
+          connectionStatus={connectionStatus}
+          userRole={userRole}
+          remoteUserPresent={false}
+        />
+      )}
+
+      {/* Remote video muted overlay */}
+      {remoteUid !== null && isRemoteVideoMuted && (
+        <View style={styles.mutedOverlay}>
+          <FontAwesome name="user" size={40} color="#fff" />
+          <Text style={styles.mutedText}>
+            {userRole === 'doctor' ? 'Patient' : 'Doctor'} camera is off
+          </Text>
+        </View>
+      )}
+
+      {/* Local video overlay */}
+      {renderLocalVideo()}
+
+      {/* Status indicator when connected */}
+      {remoteUid !== null && (
+        <VideoCallStatus
+          connectionStatus={connectionStatus}
+          userRole={userRole}
+          remoteUserPresent={true}
+        />
+      )}
 
       {/* Control buttons */}
       <View style={styles.controlsContainer}>
@@ -368,21 +363,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  videoContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  remoteVideoContainer: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-  },
-  remoteVideo: {
-    flex: 1,
-  },
-  remoteVideoPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  remoteVideoFullScreen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
     backgroundColor: '#1a1a1a',
   },
   localVideoContainer: {
@@ -394,6 +382,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#333',
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 10,
   },
   localVideo: {
     width: '100%',
@@ -405,9 +404,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    width: '100%',
+    height: '100%',
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 5,
   },
   mutedText: {
     color: '#fff',

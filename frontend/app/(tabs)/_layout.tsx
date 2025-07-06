@@ -16,7 +16,6 @@ export default function TabLayout() {
         tabBarBackground: () => (
           <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
         ),
-        appearance: 'light',
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: '#FFFFFF',
