@@ -43,6 +43,8 @@ interface DoctorAppointment {
     };
   };
   notes?: string;
+  isPaid: boolean;
+  paymentStatus?: 'pending' | 'captured' | 'failed';
   createdAt: string;
 }
 
@@ -275,27 +277,14 @@ const DoctorDashboard: React.FC = () => {
     });
   };
 
-  const handleJoinConsultation = async (appointment: DoctorAppointment) => {
-    try {
-      // Here you can implement the logic to join the online consultation
-      // This could involve opening a video call, generating a meeting link, etc.
-      showAlert({
-        title: 'Joining Consultation',
-        message: `Starting online consultation with ${appointment.patient.name}`,
-        type: 'success'
-      });
-      
-      // You can add your video call integration logic here
-      // For example, opening a video call URL or navigating to a video call screen
-      console.log('Joining online consultation for appointment:', appointment._id);
-      
-    } catch (error) {
-      showAlert({
-        title: 'Error',
-        message: 'Failed to join consultation',
-        type: 'error'
-      });
-    }
+  const handleJoinNow = (appointment: DoctorAppointment) => {
+    // Empty function for online consultation join
+    console.log('Join Now clicked for appointment:', appointment._id);
+    showAlert({
+      title: 'Join Consultation',
+      message: 'Online consultation joining functionality will be implemented here.',
+      type: 'info'
+    });
   };
 
   const renderUpcomingAppointment = ({ item }: { item: DoctorAppointment }) => (
@@ -363,10 +352,15 @@ const DoctorDashboard: React.FC = () => {
           
           {item.consultationType === 'online' && (
             <Pressable
-              onPress={() => handleJoinConsultation(item)}
+              onPress={() => handleJoinNow(item)}
               className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
             >
-              <FontAwesome name="video-camera" size={16} color="white" style={{ marginBottom: 4 }} />
+              <FontAwesome 
+                name="video-camera" 
+                size={16} 
+                color="white" 
+                style={{ marginBottom: 4 }} 
+              />
               <Text className="text-white font-medium text-sm">Join Now</Text>
             </Pressable>
           )}
@@ -388,6 +382,30 @@ const DoctorDashboard: React.FC = () => {
               {item.prescriptionSent ? 'Mark as Read' : 'No Prescription Sent'}
             </Text>
           </Pressable>
+        </View>
+
+        {/* Payment Status */}
+        <View className="mt-3 p-3 bg-gray-50 rounded-xl">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-sm font-medium text-gray-700">Payment Status</Text>
+            <View className="flex-row items-center">
+              <View 
+                className={`w-2 h-2 rounded-full mr-2 ${
+                  item.isPaid ? 'bg-green-500' : 'bg-red-500'
+                }`} 
+              />
+              <Text className={`text-sm font-medium ${
+                item.isPaid ? 'text-green-700' : 'text-red-700'
+              }`}>
+                {item.isPaid ? 'Paid Online' : 'Payment to be Collected'}
+              </Text>
+            </View>
+          </View>
+          {item.paymentStatus && (
+            <Text className="text-xs text-gray-500 mt-1">
+              Status: {item.paymentStatus}
+            </Text>
+          )}
         </View>
       </View>
     </View>
@@ -559,8 +577,8 @@ const DoctorDashboard: React.FC = () => {
             animationType="slide"
             onRequestClose={() => setShowPatientModal(false)}
           >
-            <View className="flex-1 bg-black/50 justify-center items-center p-4">
-              <View className="bg-white rounded-2xl w-full max-w-lg h-[95%]">
+            <View className="flex-1 bg-black/50 justify-center items-center p-4" style={{ zIndex: 1000 }}>
+              <View className="bg-white rounded-2xl w-full max-w-lg h-[95%]" style={{ zIndex: 1001 }}>
                 {/* Header */}
                 <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
                   <Text className="text-xl font-bold text-gray-900">Patient Profile</Text>
@@ -828,8 +846,8 @@ const DoctorDashboard: React.FC = () => {
             animationType="slide"
             onRequestClose={() => setShowPrescriptionModal(false)}
           >
-            <View className="flex-1 bg-black/50 justify-center items-center p-4">
-              <View className="bg-white rounded-2xl w-full max-w-lg h-[90%]">
+            <View className="flex-1 bg-black/50 justify-center items-center p-4" style={{ zIndex: 1000 }}>
+              <View className="bg-white rounded-2xl w-full max-w-lg h-[90%]" style={{ zIndex: 1001 }}>
                 {/* Header */}
                 <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
                   <Text className="text-xl font-bold text-gray-900">Prescription & Notes</Text>

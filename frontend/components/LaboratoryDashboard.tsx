@@ -57,6 +57,8 @@ interface LabAppointment {
   notes?: string;
   testReportPdfs?: string[];
   reportsUploaded?: boolean;
+  isPaid: boolean;
+  paymentStatus?: 'pending' | 'captured' | 'failed';
   createdAt: string;
 }
 
@@ -328,6 +330,16 @@ const LaboratoryDashboard: React.FC = () => {
     });
   };
 
+  const handleJoinNow = (appointment: LabAppointment) => {
+    // Empty function for laboratory appointment join
+    console.log('Join Now clicked for appointment:', appointment._id);
+    showAlert({
+      title: 'Join Appointment',
+      message: 'Laboratory appointment joining functionality will be implemented here.',
+      type: 'info'
+    });
+  };
+
   const formatAppointmentTime = (timeSlot: string, timeSlotDisplay: string) => {
     try {
       const appointmentDateUTC = new Date(timeSlot);
@@ -450,8 +462,21 @@ const LaboratoryDashboard: React.FC = () => {
           </Pressable>
           
           <Pressable
-            onPress={() => handleAddReport(item)}
+            onPress={() => handleJoinNow(item)}
             className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
+          >
+            <FontAwesome 
+              name="flask" 
+              size={16} 
+              color="white" 
+              style={{ marginBottom: 4 }} 
+            />
+            <Text className="text-white font-medium text-sm">Join Now</Text>
+          </Pressable>
+          
+          <Pressable
+            onPress={() => handleAddReport(item)}
+            className="flex-1 py-3 px-4 rounded-xl bg-blue-500 items-center"
           >
             <FontAwesome 
               name="upload" 
@@ -461,6 +486,30 @@ const LaboratoryDashboard: React.FC = () => {
             />
             <Text className="text-white font-medium text-sm">Upload Reports</Text>
           </Pressable>
+        </View>
+
+        {/* Payment Status */}
+        <View className="mt-3 p-3 bg-gray-50 rounded-xl">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-sm font-medium text-gray-700">Payment Status</Text>
+            <View className="flex-row items-center">
+              <View 
+                className={`w-2 h-2 rounded-full mr-2 ${
+                  item.isPaid ? 'bg-green-500' : 'bg-red-500'
+                }`} 
+              />
+              <Text className={`text-sm font-medium ${
+                item.isPaid ? 'text-green-700' : 'text-red-700'
+              }`}>
+                {item.isPaid ? 'Paid Online' : 'Payment to be Collected'}
+              </Text>
+            </View>
+          </View>
+          {item.paymentStatus && (
+            <Text className="text-xs text-gray-500 mt-1">
+              Status: {item.paymentStatus}
+            </Text>
+          )}
         </View>
       </View>
     </View>
@@ -516,10 +565,23 @@ const LaboratoryDashboard: React.FC = () => {
           </Pressable>
           
           <Pressable
+            onPress={() => handleJoinNow(item)}
+            className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
+          >
+            <FontAwesome 
+              name="flask" 
+              size={16} 
+              color="white" 
+              style={{ marginBottom: 4 }} 
+            />
+            <Text className="text-white font-medium text-sm">Join Now</Text>
+          </Pressable>
+          
+          <Pressable
             onPress={() => handleMarkAsRead(item)}
             disabled={!item.reportsUploaded}
             className={`flex-1 py-3 px-4 rounded-xl items-center ${
-              item.reportsUploaded ? 'bg-green-500' : 'bg-gray-300'
+              item.reportsUploaded ? 'bg-blue-500' : 'bg-gray-300'
             }`}
           >
             <FontAwesome 
@@ -545,6 +607,30 @@ const LaboratoryDashboard: React.FC = () => {
               })()}
             </Text>
           </Pressable>
+        </View>
+
+        {/* Payment Status */}
+        <View className="mt-3 p-3 bg-gray-50 rounded-xl">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-sm font-medium text-gray-700">Payment Status</Text>
+            <View className="flex-row items-center">
+              <View 
+                className={`w-2 h-2 rounded-full mr-2 ${
+                  item.isPaid ? 'bg-green-500' : 'bg-red-500'
+                }`} 
+              />
+              <Text className={`text-sm font-medium ${
+                item.isPaid ? 'text-green-700' : 'text-red-700'
+              }`}>
+                {item.isPaid ? 'Paid Online' : 'Payment to be Collected'}
+              </Text>
+            </View>
+          </View>
+          {item.paymentStatus && (
+            <Text className="text-xs text-gray-500 mt-1">
+              Status: {item.paymentStatus}
+            </Text>
+          )}
         </View>
       </View>
     </View>
@@ -729,8 +815,8 @@ const LaboratoryDashboard: React.FC = () => {
             animationType="slide"
             onRequestClose={() => setShowPatientModal(false)}
           >
-            <View className="flex-1 bg-black/50 justify-center items-center p-4">
-              <View className="bg-white rounded-2xl w-full max-w-lg h-[95%]">
+            <View className="flex-1 bg-black/50 justify-center items-center p-4" style={{ zIndex: 1000 }}>
+              <View className="bg-white rounded-2xl w-full max-w-lg h-[95%]" style={{ zIndex: 1001 }}>
                 {/* Header */}
                 <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
                   <Text className="text-xl font-bold text-gray-900">Patient Profile</Text>
@@ -1109,8 +1195,8 @@ const LaboratoryDashboard: React.FC = () => {
             animationType="slide"
             onRequestClose={() => setShowReportModal(false)}
           >
-            <View className="flex-1 bg-black/50 justify-center items-center p-4">
-              <View className="bg-white rounded-2xl w-full max-w-lg h-[90%]">
+            <View className="flex-1 bg-black/50 justify-center items-center p-4" style={{ zIndex: 1000 }}>
+              <View className="bg-white rounded-2xl w-full max-w-lg h-[90%]" style={{ zIndex: 1001 }}>
                 {/* Header */}
                 <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
                   <Text className="text-xl font-bold text-gray-900">Upload Test Reports</Text>
