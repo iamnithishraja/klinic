@@ -5,6 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
 import { useCustomAlert } from '@/components/CustomAlert';
 import VideoCallModal from '@/components/VideoCallModal';
+import RatingPopup from './RatingPopup';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // @ts-ignore
 import { router } from 'expo-router';
@@ -59,11 +61,15 @@ const UserDashboard: React.FC = () => {
   const [showVideoCallModal, setShowVideoCallModal] = useState(false);
   const [selectedVideoCallAppointment, setSelectedVideoCallAppointment] = useState<Appointment | null>(null);
   const { showAlert, AlertComponent } = useCustomAlert();
+  const [showRatingPopup, setShowRatingPopup] = useState(false);
+  const [ratingTarget, setRatingTarget] = useState<Appointment | null>(null);
+  const [userRatings, setUserRatings] = useState<{ [appointmentId: string]: { dontAsk: boolean } }>({});
 
   useEffect(() => {
     fetchDashboardData();
     fetchPreviousAppointments();
     fetchPreviousLabTests();
+    fetchUserRatings();
   }, []);
 
   const handleNavigateToSection = (section: 'doctors' | 'laboratories') => {
@@ -111,6 +117,71 @@ const UserDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching previous lab tests:', error);
     }
+  };
+
+  const fetchUserRatings = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) return;
+      const res = await apiClient.get(`/api/v1/ratings/user/${userId}`);
+      const ratings: any[] = res.data.ratings || [];
+      // Also check local dontAsk
+      const dontAskRaw = await AsyncStorage.getItem('dontAskRatings');
+      const dontAsk = dontAskRaw ? JSON.parse(dontAskRaw) : {};
+      const map: { [appointmentId: string]: { dontAsk: boolean } } = {};
+      ratings.forEach(r => { map[r.appointmentId] = { dontAsk: false }; });
+      Object.keys(dontAsk).forEach(id => { map[id] = { dontAsk: true }; });
+      setUserRatings(map);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (!previousAppointments?.appointments) return;
+    const nextToRate = previousAppointments.appointments.find(
+      (apt) =>
+        ((apt.prescription && apt.type === 'doctor') || (apt.reportResult && apt.type === 'lab')) &&
+        !userRatings[apt._id]?.dontAsk
+    );
+    if (nextToRate) {
+      setRatingTarget(nextToRate);
+      setShowRatingPopup(true);
+    } else {
+      setShowRatingPopup(false);
+      setRatingTarget(null);
+    }
+  }, [previousAppointments, userRatings]);
+
+  const handleSubmitRating = async (rating: number, feedback: string) => {
+    if (!ratingTarget) return;
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      await apiClient.post('/api/v1/ratings/submit', {
+        userId,
+        appointmentId: ratingTarget._id,
+        type: ratingTarget.type,
+        providerId: ratingTarget.type === 'doctor' ? ratingTarget.doctor?._id : ratingTarget.lab?._id,
+        rating,
+        feedback,
+      });
+      setUserRatings((prev) => ({ ...prev, [ratingTarget._id]: { dontAsk: false } }));
+      setShowRatingPopup(false);
+      setRatingTarget(null);
+      fetchUserRatings();
+    } catch (err) {
+      showAlert({ title: 'Error', message: 'Failed to submit rating', type: 'error' });
+    }
+  };
+
+  const handleDontAskAgain = async () => {
+    if (!ratingTarget) return;
+    // Store locally
+    const dontAskRaw = await AsyncStorage.getItem('dontAskRatings');
+    const dontAsk = dontAskRaw ? JSON.parse(dontAskRaw) : {};
+    dontAsk[ratingTarget._id] = true;
+    await AsyncStorage.setItem('dontAskRatings', JSON.stringify(dontAsk));
+    setUserRatings((prev) => ({ ...prev, [ratingTarget._id]: { dontAsk: true } }));
+    setShowRatingPopup(false);
+    setRatingTarget(null);
   };
 
   const handleRefresh = async () => {
@@ -666,6 +737,13 @@ const UserDashboard: React.FC = () => {
             }}
           />
         )}
+
+        <RatingPopup
+          visible={showRatingPopup}
+          onClose={handleDontAskAgain}
+          onSubmit={handleSubmitRating}
+          providerName={ratingTarget?.providerName || ''}
+        />
 
           <AlertComponent />
         </ScrollView>

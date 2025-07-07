@@ -53,6 +53,10 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         enum: ['pending', 'captured', 'failed'],
         default: 'pending',
     },
+    paymentCollected: {
+        type: Boolean,
+        default: false,
+    },
     notes: {
         type: String,
         default: null,

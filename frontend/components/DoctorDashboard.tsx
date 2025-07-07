@@ -46,6 +46,7 @@ interface DoctorAppointment {
   notes?: string;
   isPaid: boolean;
   paymentStatus?: 'pending' | 'captured' | 'failed';
+  paymentCollected?: boolean;
   createdAt: string;
 }
 
@@ -110,12 +111,26 @@ const DoctorDashboard: React.FC = () => {
   };
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchDashboardData();
-    setRefreshing(false);
+    try {
+      setRefreshing(true);
+      console.log('Refreshing doctor dashboard data...');
+      const response = await apiClient.get('/api/v1/doctor/dashboard');
+      console.log('Doctor dashboard refresh response:', response.data);
+      
+      setDashboardData(response.data);
+    } catch (error: any) {
+      console.error('Error refreshing doctor dashboard data:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      showAlert({
+        title: 'Error',
+        message: `Failed to refresh dashboard data: ${error.response?.data?.message || error.message}`,
+        type: 'error'
+      });
+    } finally {
+      setRefreshing(false);
+    }
   };
-
-
 
   const handleViewPatient = (appointment: DoctorAppointment) => {
     console.log('Viewing patient data:', appointment.patient);
@@ -200,6 +215,94 @@ const DoctorDashboard: React.FC = () => {
     }
   };
 
+  const handleDeletePrescription = async () => {
+    if (!selectedAppointment) {
+      showAlert({
+        title: 'Error',
+        message: 'No appointment selected',
+        type: 'error'
+      });
+      return;
+    }
+
+    showAlert({
+      title: 'Delete Prescription',
+      message: 'Are you sure you want to delete this prescription? This action cannot be undone.',
+      type: 'warning',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.delete(`/api/v1/doctor/appointments/${selectedAppointment._id}/prescription`);
+
+              showAlert({
+                title: 'Success',
+                message: 'Prescription deleted successfully. Appointment moved back to pending.',
+                type: 'success'
+              });
+
+              setShowPrescriptionModal(false);
+              setPrescriptionText('');
+              setNotesText('');
+              setSelectedAppointment(null);
+              
+              // Refresh dashboard data
+              await fetchDashboardData();
+            } catch (error: any) {
+              showAlert({
+                title: 'Error',
+                message: `Failed to delete prescription: ${error.response?.data?.message || error.message}`,
+                type: 'error'
+              });
+            }
+          }
+        }
+      ]
+    });
+  };
+
+  const handlePaymentCollection = async (appointment: DoctorAppointment, collected: boolean) => {
+    const action = collected ? 'mark as collected' : 'mark as not collected';
+    
+    showAlert({
+      title: 'Update Payment Status',
+      message: `Are you sure you want to ${action} for ${appointment.patient.name}?`,
+      type: 'info',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: collected ? 'Mark Collected' : 'Mark Not Collected', 
+          style: 'primary',
+          onPress: async () => {
+            try {
+              await apiClient.patch(`/api/v1/doctor/appointments/${appointment._id}/payment-collection`, {
+                paymentCollected: collected
+              });
+
+              showAlert({
+                title: 'Success',
+                message: `Payment ${action} successfully`,
+                type: 'success'
+              });
+
+              // Refresh dashboard data
+              await fetchDashboardData();
+            } catch (error: any) {
+              showAlert({
+                title: 'Error',
+                message: `Failed to update payment status: ${error.response?.data?.message || error.message}`,
+                type: 'error'
+              });
+            }
+          }
+        }
+      ]
+    });
+  };
+
   const formatAppointmentTime = (timeSlot: string, timeSlotDisplay: string) => {
     try {
       const appointmentDateUTC = new Date(timeSlot);
@@ -226,8 +329,6 @@ const DoctorDashboard: React.FC = () => {
       return timeSlotDisplay;
     }
   };
-
-  
 
   const handleMarkAsRead = async (appointment: DoctorAppointment) => {
     if (!appointment.prescriptionSent) {
@@ -291,6 +392,13 @@ const DoctorDashboard: React.FC = () => {
     setSelectedVideoCallAppointment(null);
   };
 
+  // Filter appointments to only show paid online consultations
+  const filterAppointments = (appointments: DoctorAppointment[] = []) =>
+    appointments.filter(
+      (apt) =>
+        apt.consultationType !== 'online' || apt.isPaid === true
+    );
+
   const renderUpcomingAppointment = ({ item }: { item: DoctorAppointment }) => (
     <View className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-4">
       <View className="p-5">
@@ -345,79 +453,99 @@ const DoctorDashboard: React.FC = () => {
           </View>
         )}
 
-        <View className="flex-row space-x-3">
+        <View className="flex-row space-x-2">
           <Pressable
             onPress={() => handleViewPatient(item)}
-            className="flex-1 py-3 px-4 rounded-xl bg-blue-100 items-center"
+            className="flex-1 py-2.5 px-3 rounded-lg bg-blue-50 items-center border border-blue-200"
           >
-            <FontAwesome name="user" size={16} color="#3B82F6" style={{ marginBottom: 4 }} />
-            <Text className="text-blue-700 font-medium text-sm">View Patient</Text>
+            <FontAwesome name="user" size={14} color="#3B82F6" style={{ marginBottom: 3 }} />
+            <Text className="text-blue-700 font-medium text-xs">View Patient</Text>
           </Pressable>
           
           {item.consultationType === 'online' && (
             <Pressable
               onPress={() => handleJoinNow(item)}
-              className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
+              className="flex-1 py-2.5 px-3 rounded-lg bg-green-500 items-center shadow-sm"
+              style={{
+                shadowColor: '#10B981',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
             >
               <FontAwesome 
                 name="video-camera" 
-                size={16} 
+                size={14} 
                 color="white" 
-                style={{ marginBottom: 4 }} 
+                style={{ marginBottom: 3 }} 
               />
-              <Text className="text-white font-medium text-sm">Join Now</Text>
+              <Text className="text-white font-medium text-xs">Join Now</Text>
             </Pressable>
           )}
           
           <Pressable
             onPress={() => handleMarkAsRead(item)}
             disabled={!item.prescriptionSent}
-            className={`flex-1 py-3 px-4 rounded-xl items-center ${
-              item.prescriptionSent ? 'bg-blue-500' : 'bg-gray-300'
+            className={`flex-1 py-2.5 px-3 rounded-lg items-center ${
+              item.prescriptionSent 
+                ? 'bg-blue-500 shadow-sm' 
+                : 'bg-gray-100 border border-gray-200'
             }`}
+            style={item.prescriptionSent ? {
+              shadowColor: '#3B82F6',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 3,
+            } : {}}
           >
             <FontAwesome 
               name="check-circle" 
-              size={16} 
-              color="white" 
-              style={{ marginBottom: 4 }} 
+              size={14} 
+              color={item.prescriptionSent ? "white" : "#9CA3AF"} 
+              style={{ marginBottom: 3 }} 
             />
-            <Text className="text-white font-medium text-sm">
-              {item.prescriptionSent ? 'Mark as Read' : 'No Prescription Sent'}
+            <Text className={`font-medium text-xs ${
+              item.prescriptionSent ? 'text-white' : 'text-gray-500'
+            }`}>
+              {item.prescriptionSent ? 'Mark as Read' : 'No Prescription'}
             </Text>
           </Pressable>
         </View>
 
-        {/* Payment Status */}
-        <View className="mt-3 p-3 bg-gray-50 rounded-xl">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-sm font-medium text-gray-700">Payment Status</Text>
-            <View className="flex-row items-center">
-              <View 
-                className={`w-2 h-2 rounded-full mr-2 ${
-                  item.isPaid ? 'bg-green-500' : 'bg-red-500'
-                }`} 
-              />
-              <Text className={`text-sm font-medium ${
-                item.isPaid ? 'text-green-700' : 'text-red-700'
-              }`}>
-                {item.isPaid ? 'Paid Online' : 'Payment to be Collected'}
-              </Text>
+        {/* Payment Status - Only show for online consultations */}
+        {item.consultationType === 'online' && (
+          <View className="mt-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-xs font-medium text-gray-600">Payment Status</Text>
+              <View className="flex-row items-center">
+                <View 
+                  className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                    item.isPaid ? 'bg-green-500' : 'bg-red-500'
+                  }`} 
+                />
+                <Text className={`text-xs font-medium ${
+                  item.isPaid ? 'text-green-700' : 'text-red-700'
+                }`}>
+                  {item.isPaid ? 'Paid Online' : 'Payment Pending'}
+                </Text>
+              </View>
             </View>
+            {item.paymentStatus && (
+              <Text className="text-xs text-gray-500 mt-0.5">
+                Online Status: {item.paymentStatus}
+              </Text>
+            )}
           </View>
-          {item.paymentStatus && (
-            <Text className="text-xs text-gray-500 mt-1">
-              Status: {item.paymentStatus}
-            </Text>
-          )}
-        </View>
+        )}
       </View>
     </View>
   );
 
   const renderCompletedAppointment = ({ item }: { item: DoctorAppointment }) => (
     <View className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-100">
-      <View className="flex-row items-start mb-3">
+      <View className="flex-row items-center">
         <View className="mr-3">
           {item.patient.profilePicture ? (
             <Image
@@ -432,26 +560,33 @@ const DoctorDashboard: React.FC = () => {
           )}
         </View>
         
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-gray-900">{item.patient.name}</Text>
-          <Text className="text-gray-600 text-sm">{item.patient.email}</Text>
-          <Text className="text-gray-500 text-xs">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
+        <View className="flex-1 items-start ">
+          <Text className="text-lg font-semibold text-gray-900 text-center">{item.patient.name}</Text>
+          <Text className="text-gray-600 text-sm text-center">{item.patient.email}</Text>
+          <Text className="text-gray-500 text-xs text-center">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
         </View>
         
-        <View className="flex-row space-x-2">
+        <View className="flex-col space-y-1.5 ml-3">
           <Pressable
             onPress={() => handleViewPatient(item)}
-            className="bg-blue-100 px-3 py-1 rounded-lg"
+            className="bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 items-center"
           >
+            <FontAwesome name="user" size={10} color="#3B82F6" style={{ marginBottom: 1 }} />
             <Text className="text-blue-700 text-xs font-medium">Patient</Text>
           </Pressable>
           
           <Pressable
             onPress={() => handleAddPrescription(item)}
-            className="bg-green-100 px-3 py-1 rounded-lg"
+            className="bg-green-50 px-2.5 py-1.5 rounded-lg border border-green-200 items-center"
           >
+            <FontAwesome 
+              name="stethoscope" 
+              size={10} 
+              color="#10B981" 
+              style={{ marginBottom: 1 }} 
+            />
             <Text className="text-green-700 text-xs font-medium">
-              {item.prescription ? 'Edit Rx' : 'Add Rx'}
+              {item.prescription ? 'Edit' : 'Add Prescription'}
             </Text>
           </Pressable>
         </View>
@@ -476,8 +611,16 @@ const DoctorDashboard: React.FC = () => {
         <ScrollView 
           className="flex-1"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={handleRefresh}
+              colors={['#3B82F6', '#10B981', '#F59E0B']}
+              tintColor="#3B82F6"
+              title="Pull to refresh"
+              titleColor="#6B7280"
+            />
           }
+          showsVerticalScrollIndicator={false}
         >
           <View className="p-6 pt-2">
             {/* Header */}
@@ -531,9 +674,9 @@ const DoctorDashboard: React.FC = () => {
                 Pending Appointments ({dashboardData?.totalPending || 0})
               </Text>
               
-              {dashboardData?.pendingAppointments && dashboardData.pendingAppointments.length > 0 ? (
+              {filterAppointments(dashboardData?.pendingAppointments).length > 0 ? (
                 <FlatList
-                  data={dashboardData.pendingAppointments.sort((a: DoctorAppointment, b: DoctorAppointment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+                  data={filterAppointments(dashboardData?.pendingAppointments).sort((a: DoctorAppointment, b: DoctorAppointment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
                   renderItem={renderUpcomingAppointment}
                   scrollEnabled={false}
                 />
@@ -554,9 +697,9 @@ const DoctorDashboard: React.FC = () => {
             <View className="mb-8">
               <Text className="text-xl font-bold text-gray-900 mb-4">Recent Consultations</Text>
               
-              {dashboardData?.completedAppointments && dashboardData.completedAppointments.length > 0 ? (
+              {filterAppointments(dashboardData?.completedAppointments).length > 0 ? (
                 <FlatList
-                  data={dashboardData.completedAppointments.sort((a: DoctorAppointment, b: DoctorAppointment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+                  data={filterAppointments(dashboardData?.completedAppointments).sort((a: DoctorAppointment, b: DoctorAppointment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
                   renderItem={renderCompletedAppointment}
                   scrollEnabled={false}
                 />
@@ -615,6 +758,29 @@ const DoctorDashboard: React.FC = () => {
                         <Text className="text-gray-600 mb-1">{selectedAppointment.patient.email}</Text>
                         <Text className="text-gray-500 text-sm">{selectedAppointment.patient.phone}</Text>
                       </View>
+                      
+                      {/* Payment Collection Button - Only for in-person consultations */}
+                      {selectedAppointment.consultationType === 'in-person' && (
+                        <Pressable
+                          onPress={() => handlePaymentCollection(selectedAppointment, !selectedAppointment.paymentCollected)}
+                          className={`ml-2 px-2 py-1 rounded-lg items-center border ${
+                            selectedAppointment.paymentCollected 
+                              ? 'bg-green-100 border-green-300' 
+                              : 'bg-red-100 border-red-300'
+                          }`}
+                        >
+                          <FontAwesome 
+                            name={selectedAppointment.paymentCollected ? "check" : "times"} 
+                            size={12} 
+                            color={selectedAppointment.paymentCollected ? "#10B981" : "#EF4444"} 
+                          />
+                          <Text className={`text-xs font-medium mt-0.5 ${
+                            selectedAppointment.paymentCollected ? 'text-green-700' : 'text-red-700'
+                          }`}>
+                            {selectedAppointment.paymentCollected ? 'Collected' : 'Not Collected'}
+                          </Text>
+                        </Pressable>
+                      )}
                     </View>
 
                     {/* Personal Information */}
@@ -898,7 +1064,7 @@ const DoctorDashboard: React.FC = () => {
                         />
                       </View>
                       <Text className="text-xs text-gray-500 mt-2">
-                        This prescription will be sent to the patient and saved in their medical records.
+                        This prescription will be sent to the patient immediately. Notes are private and for your records only.
                       </Text>
                     </View>
                     
@@ -927,7 +1093,18 @@ const DoctorDashboard: React.FC = () => {
 
                     {/* Action Buttons */}
                     <View className="mt-8 mb-4">
-                      <View className="flex-row space-x-4">
+                      <View className="flex-row space-x-2">
+                        {/* Delete Button - Only show if prescription exists */}
+                        {(selectedAppointment?.prescription || prescriptionText.trim()) && (
+                          <Pressable
+                            onPress={handleDeletePrescription}
+                            className="flex-1 py-2.5 px-3 rounded-lg bg-red-500 items-center border border-red-200"
+                          >
+                            <FontAwesome name="trash" size={14} color="white" style={{ marginBottom: 3 }} />
+                            <Text className="text-white font-medium text-xs">Delete</Text>
+                          </Pressable>
+                        )}
+                        
                         <Pressable
                           onPress={() => {
                             setShowPrescriptionModal(false);
@@ -935,34 +1112,25 @@ const DoctorDashboard: React.FC = () => {
                             setNotesText('');
                             setSelectedAppointment(null);
                           }}
-                          className="flex-1 py-4 px-6 rounded-2xl bg-gray-200 items-center shadow-sm"
-                          style={{
-                            shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.1,
-                            shadowRadius: 4,
-                            elevation: 3,
-                          }}
+                          className="flex-1 py-2.5 px-3 rounded-lg bg-gray-100 items-center border border-gray-200"
                         >
-                          <FontAwesome name="times" size={18} color="#6B7280" style={{ marginBottom: 6 }} />
-                          <Text className="text-gray-700 font-semibold text-base">Cancel</Text>
-                          <Text className="text-gray-500 text-xs mt-1">Discard changes</Text>
+                          <FontAwesome name="times" size={14} color="#6B7280" style={{ marginBottom: 3 }} />
+                          <Text className="text-gray-700 font-medium text-xs">Cancel</Text>
                         </Pressable>
                         
                         <Pressable
                           onPress={handleSavePrescription}
-                          className="flex-1 py-4 px-6 rounded-2xl bg-green-500 items-center shadow-lg"
+                          className="flex-1 py-2.5 px-3 rounded-lg bg-green-500 items-center shadow-sm"
                           style={{
                             shadowColor: '#10B981',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 8,
-                            elevation: 6,
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 4,
+                            elevation: 3,
                           }}
                         >
-                          <FontAwesome name="save" size={18} color="white" style={{ marginBottom: 6 }} />
-                          <Text className="text-white font-semibold text-base">Save & Send</Text>
-                          <Text className="text-green-100 text-xs mt-1">Send to patient</Text>
+                          <FontAwesome name="save" size={14} color="white" style={{ marginBottom: 3 }} />
+                          <Text className="text-white font-medium text-xs">Save & Send</Text>
                         </Pressable>
                       </View>
                       

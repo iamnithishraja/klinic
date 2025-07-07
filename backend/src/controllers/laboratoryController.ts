@@ -56,10 +56,11 @@ const getLaboratoryDashboard = async (req: CustomRequest, res: Response) => {
         console.log('Pending appointments found:', pendingAppointments.length);
 
         // Get processing appointments (tests in progress, sample collected but report not uploaded)
+        // Also include completed appointments that haven't been marked as read yet
         // Handle both old 'collected' and new 'processing' status during transition
         const processingAppointments = await LabAppointment.find({
             lab: laboratoryId,
-            status: { $in: ['processing', 'collected'] }
+            status: { $in: ['processing', 'collected', 'completed'] }
         })
         .populate('patient', 'name email phone profilePicture age gender')
         .populate('laboratoryService')
@@ -70,7 +71,7 @@ const getLaboratoryDashboard = async (req: CustomRequest, res: Response) => {
         // Get completed appointments (test reports uploaded and marked as read)
         const completedAppointments = await LabAppointment.find({
             lab: laboratoryId,
-            status: 'completed'
+            status: 'marked-as-read'
         })
         .populate('patient', 'name email phone profilePicture age gender')
         .populate('laboratoryService')
@@ -194,7 +195,17 @@ const addLabReport = async (req: CustomRequest, res: Response) => {
         appointment.notes = notes || null;
         appointment.testReportPdfs = testReportPdfs || [];
         appointment.reportsUploaded = true;
-        appointment.status = 'processing'; // Move to processing when reports are uploaded
+        
+        // Check if both report details and PDFs are complete, then move to completed
+        const hasReportDetails = appointment.reportResult && appointment.reportResult.trim() !== '';
+        const hasPdfs = appointment.testReportPdfs && appointment.testReportPdfs.length > 0;
+        
+        if (hasReportDetails && hasPdfs) {
+          appointment.status = 'completed'; // Move to completed when all reports are uploaded
+        } else {
+          appointment.status = 'processing'; // Keep in processing if reports are incomplete
+        }
+        
         await appointment.save();
 
         res.status(200).json({ 
@@ -206,6 +217,49 @@ const addLabReport = async (req: CustomRequest, res: Response) => {
         });
     } catch (error) {
         console.error('Add lab report error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
+const deleteLabReport = async (req: CustomRequest, res: Response) => {
+    try {
+        const laboratoryId = req.user._id;
+        const { appointmentId } = req.params;
+
+        // Verify appointment belongs to this laboratory
+        const appointment = await LabAppointment.findOne({
+            _id: appointmentId,
+            lab: laboratoryId
+        });
+
+        if (!appointment) {
+            res.status(404).json({ message: "Appointment not found or access denied" });
+            return;
+        }
+
+        // Check if appointment has reports to delete
+        if (!appointment.reportResult && (!appointment.testReportPdfs || appointment.testReportPdfs.length === 0)) {
+            res.status(400).json({ message: "No reports found to delete" });
+            return;
+        }
+
+        // Clear all report data
+        appointment.reportResult = null;
+        appointment.notes = null;
+        appointment.testReportPdfs = [];
+        appointment.reportsUploaded = false;
+        appointment.status = 'processing'; // Move back to processing status
+        await appointment.save();
+
+        res.status(200).json({ 
+            message: "Lab report deleted successfully. Appointment moved back to processing.",
+            appointment: {
+                ...appointment.toObject(),
+                timeSlotDisplay: formatDateToDisplayString(appointment.timeSlot)
+            }
+        });
+    } catch (error) {
+        console.error('Delete lab report error:', error);
         res.status(500).json({ message: "Internal server error", error });
     }
 };
@@ -239,8 +293,8 @@ const markAsRead = async (req: CustomRequest, res: Response) => {
             return;
         }
 
-        // Mark appointment as completed
-        appointment.status = 'completed';
+        // Mark appointment as marked-as-read (moves to recent tests)
+        appointment.status = 'marked-as-read';
         await appointment.save();
 
         res.status(200).json({ 
@@ -252,6 +306,46 @@ const markAsRead = async (req: CustomRequest, res: Response) => {
         });
     } catch (error) {
         console.error('Mark as read error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
+const updatePaymentCollection = async (req: CustomRequest, res: Response) => {
+    try {
+        const laboratoryId = req.user._id;
+        const { appointmentId } = req.params;
+        const { paymentCollected } = req.body;
+
+        // Verify appointment belongs to this laboratory
+        const appointment = await LabAppointment.findOne({
+            _id: appointmentId,
+            lab: laboratoryId
+        });
+
+        if (!appointment) {
+            res.status(404).json({ message: "Appointment not found or access denied" });
+            return;
+        }
+
+        // Check if it's a lab visit consultation
+        if (appointment.collectionType !== 'lab') {
+            res.status(400).json({ message: "Payment collection is only applicable for lab visit consultations" });
+            return;
+        }
+
+        // Update payment collection status
+        appointment.paymentCollected = paymentCollected;
+        await appointment.save();
+
+        res.status(200).json({ 
+            message: `Payment ${paymentCollected ? 'marked as collected' : 'marked as not collected'} successfully`,
+            appointment: {
+                ...appointment.toObject(),
+                timeSlotDisplay: formatDateToDisplayString(appointment.timeSlot)
+            }
+        });
+    } catch (error) {
+        console.error('Update payment collection error:', error);
         res.status(500).json({ message: "Internal server error", error });
     }
 };
@@ -313,7 +407,7 @@ const updateAppointmentStatus = async (req: CustomRequest, res: Response) => {
         const { status } = req.body;
 
         // Handle both old and new status values during transition
-        const validStatuses = ['pending', 'processing', 'completed', 'upcoming', 'collected'];
+        const validStatuses = ['pending', 'processing', 'completed', 'marked-as-read', 'upcoming', 'collected'];
         if (!validStatuses.includes(status)) {
             res.status(400).json({ message: "Invalid status" });
             return;
@@ -382,12 +476,54 @@ const testLaboratoryEndpoint = async (req: CustomRequest, res: Response) => {
     }
 };
 
+const markSampleCollected = async (req: CustomRequest, res: Response) => {
+    try {
+        const laboratoryId = req.user._id;
+        const { appointmentId } = req.params;
+
+        // Verify appointment belongs to this laboratory
+        const appointment = await LabAppointment.findOne({
+            _id: appointmentId,
+            lab: laboratoryId
+        });
+
+        if (!appointment) {
+            res.status(404).json({ message: "Appointment not found or access denied" });
+            return;
+        }
+
+        // Check if appointment is in pending status
+        if (appointment.status !== 'pending' && appointment.status !== 'upcoming') {
+            res.status(400).json({ message: "Sample can only be marked as collected for pending appointments" });
+            return;
+        }
+
+        // Update appointment status to processing
+        appointment.status = 'processing';
+        await appointment.save();
+
+        res.status(200).json({ 
+            message: "Sample marked as collected successfully",
+            appointment: {
+                ...appointment.toObject(),
+                timeSlotDisplay: formatDateToDisplayString(appointment.timeSlot)
+            }
+        });
+    } catch (error) {
+        console.error('Mark sample collected error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
 export { 
     getLaboratoryDashboard, 
     addLabReport, 
+    deleteLabReport,
     getAppointmentDetails, 
     updateAppointmentStatus,
     getLaboratoryServices,
     testLaboratoryEndpoint,
-    markAsRead
+    markAsRead,
+    updatePaymentCollection,
+    markSampleCollected
 }; 

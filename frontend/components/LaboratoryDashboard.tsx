@@ -59,6 +59,7 @@ interface LabAppointment {
   reportsUploaded?: boolean;
   isPaid: boolean;
   paymentStatus?: 'pending' | 'captured' | 'failed';
+  paymentCollected?: boolean;
   createdAt: string;
 }
 
@@ -109,33 +110,54 @@ const LaboratoryDashboard: React.FC = () => {
   };
 
   const handleRefresh = async () => {
+    try {
     setRefreshing(true);
-    await fetchDashboardData();
+      console.log('Refreshing laboratory dashboard data...');
+      const response = await apiClient.get('/api/v1/laboratory/dashboard');
+      console.log('Laboratory dashboard refresh response:', response.data);
+      
+      setDashboardData(response.data);
+    } catch (error: any) {
+      console.error('Error refreshing laboratory dashboard data:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      showAlert({
+        title: 'Error',
+        message: `Failed to refresh dashboard data: ${error.response?.data?.message || error.message}`,
+        type: 'error'
+      });
+    } finally {
     setRefreshing(false);
+    }
   };
 
-  const handleStartCollection = (appointment: LabAppointment) => {
+  const handleSampleCollected = async (appointment: LabAppointment) => {
     showAlert({
-      title: 'Start Sample Collection',
-      message: `Ready to start sample collection for ${appointment.patient.name}?`,
+      title: 'Sample Collected',
+      message: `Mark sample as collected for ${appointment.patient.name}? This will move the appointment to processing.`,
       type: 'info',
       buttons: [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Start Now', 
+          text: 'Mark Collected', 
           style: 'primary',
-          onPress: () => {
-            if (appointment.collectionType === 'home') {
+          onPress: async () => {
+            try {
+              await apiClient.patch(`/api/v1/laboratory/appointments/${appointment._id}/sample-collected`);
+              
               showAlert({
-                title: 'Home Collection',
-                message: 'Sample collection team will visit the patient',
+                title: 'Success',
+                message: 'Sample marked as collected. Appointment moved to processing.',
                 type: 'success'
               });
-            } else {
+              
+              // Refresh dashboard data
+              await fetchDashboardData();
+            } catch (error: any) {
               showAlert({
-                title: 'Lab Collection',
-                message: 'Patient is ready for sample collection',
-                type: 'success'
+                title: 'Error',
+                message: `Failed to mark sample as collected: ${error.response?.data?.message || error.message}`,
+                type: 'error'
               });
             }
           }
@@ -212,6 +234,30 @@ const LaboratoryDashboard: React.FC = () => {
     }
   };
 
+  const handleRemovePdf = (index: number) => {
+    showAlert({
+      title: 'Remove PDF',
+      message: 'Are you sure you want to remove this PDF from the upload list?',
+      type: 'warning',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Remove', 
+          style: 'destructive',
+          onPress: () => {
+            const updatedPdfs = testReportPdfs.filter((_, i) => i !== index);
+            setTestReportPdfs(updatedPdfs);
+            showAlert({
+              title: 'Success',
+              message: 'PDF removed from upload list',
+              type: 'success'
+            });
+          }
+        }
+      ]
+    });
+  };
+
   const handleViewDocument = async (pdfUrl: string, documentName: string) => {
     try {
       console.log('Opening document:', pdfUrl);
@@ -277,6 +323,95 @@ const LaboratoryDashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteReport = async () => {
+    if (!selectedAppointment) {
+      showAlert({
+        title: 'Error',
+        message: 'No appointment selected',
+        type: 'error'
+      });
+      return;
+    }
+
+    showAlert({
+      title: 'Delete Report',
+      message: 'Are you sure you want to delete this report? This will move the appointment back to processing and remove all uploaded reports.',
+      type: 'warning',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.delete(`/api/v1/laboratory/appointments/${selectedAppointment._id}/report`);
+
+              showAlert({
+                title: 'Success',
+                message: 'Report deleted successfully. Appointment moved back to processing.',
+                type: 'success'
+              });
+
+              setShowReportModal(false);
+              setReportText('');
+              setNotesText('');
+              setTestReportPdfs([]);
+              setSelectedAppointment(null);
+              
+              // Refresh dashboard data
+              await fetchDashboardData();
+            } catch (error: any) {
+              showAlert({
+                title: 'Error',
+                message: `Failed to delete report: ${error.response?.data?.message || error.message}`,
+                type: 'error'
+              });
+            }
+          }
+        }
+      ]
+    });
+  };
+
+  const handlePaymentCollection = async (appointment: LabAppointment, collected: boolean) => {
+    const action = collected ? 'mark as collected' : 'mark as not collected';
+    
+    showAlert({
+      title: 'Update Payment Status',
+      message: `Are you sure you want to ${action} for ${appointment.patient.name}?`,
+      type: 'info',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: collected ? 'Mark Collected' : 'Mark Not Collected', 
+          style: 'primary',
+          onPress: async () => {
+            try {
+              await apiClient.patch(`/api/v1/laboratory/appointments/${appointment._id}/payment-collection`, {
+                paymentCollected: collected
+              });
+
+              showAlert({
+                title: 'Success',
+                message: `Payment ${action} successfully`,
+                type: 'success'
+              });
+
+              // Refresh dashboard data
+              await fetchDashboardData();
+            } catch (error: any) {
+              showAlert({
+                title: 'Error',
+                message: `Failed to update payment status: ${error.response?.data?.message || error.message}`,
+                type: 'error'
+              });
+            }
+          }
+        }
+      ]
+    });
+  };
+
   const handleMarkAsRead = async (appointment: LabAppointment) => {
     // Check if both report details and PDFs are uploaded
     const hasReportDetails = appointment.reportResult && appointment.reportResult.trim() !== '';
@@ -327,16 +462,6 @@ const LaboratoryDashboard: React.FC = () => {
           }
         }
       ]
-    });
-  };
-
-  const handleJoinNow = (appointment: LabAppointment) => {
-    // Empty function for laboratory appointment join
-    console.log('Join Now clicked for appointment:', appointment._id);
-    showAlert({
-      title: 'Join Appointment',
-      message: 'Laboratory appointment joining functionality will be implemented here.',
-      type: 'info'
     });
   };
 
@@ -400,6 +525,13 @@ const LaboratoryDashboard: React.FC = () => {
       .join(', ');
   };
 
+  // Filter appointments to only show paid home collections
+  const filterAppointments = (appointments: LabAppointment[] = []) =>
+    appointments.filter(
+      (apt) =>
+        apt.collectionType !== 'home' || apt.isPaid === true
+    );
+
   const renderPendingAppointment = ({ item }: { item: LabAppointment }) => (
     <View className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-4">
       <View className="p-5">
@@ -452,65 +584,87 @@ const LaboratoryDashboard: React.FC = () => {
           <Text className="text-sm text-gray-500">{getSelectedTestsNames(item)}</Text>
         </View>
 
-        <View className="flex-row space-x-3">
-          <Pressable
+        <View className="flex-row space-x-2">
+                    <Pressable
             onPress={() => handleViewPatient(item)}
-            className="flex-1 py-3 px-4 rounded-xl bg-purple-100 items-center"
+            className="flex-1 py-2.5 px-3 rounded-lg bg-purple-50 items-center border border-purple-200"
           >
-            <FontAwesome name="user" size={16} color="#8B5CF6" style={{ marginBottom: 4 }} />
-            <Text className="text-purple-700 font-medium text-sm">View Patient</Text>
+            <FontAwesome name="user" size={14} color="#8B5CF6" style={{ marginBottom: 3 }} />
+            <Text className="text-purple-700 font-medium text-xs">View Patient</Text>
           </Pressable>
           
           <Pressable
-            onPress={() => handleJoinNow(item)}
-            className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
+            onPress={() => handleSampleCollected(item)}
+            className="flex-1 py-2.5 px-3 rounded-lg bg-orange-500 items-center shadow-sm"
+            style={{
+              shadowColor: '#F97316',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
           >
             <FontAwesome 
               name="flask" 
-              size={16} 
+              size={14} 
               color="white" 
-              style={{ marginBottom: 4 }} 
+              style={{ marginBottom: 3 }} 
             />
-            <Text className="text-white font-medium text-sm">Join Now</Text>
-          </Pressable>
-          
-          <Pressable
-            onPress={() => handleAddReport(item)}
-            className="flex-1 py-3 px-4 rounded-xl bg-blue-500 items-center"
-          >
-            <FontAwesome 
-              name="upload" 
-              size={16} 
-              color="white" 
-              style={{ marginBottom: 4 }} 
-            />
-            <Text className="text-white font-medium text-sm">Upload Reports</Text>
+            <Text className="text-white font-medium text-xs">Sample Collected</Text>
           </Pressable>
         </View>
 
-        {/* Payment Status */}
-        <View className="mt-3 p-3 bg-gray-50 rounded-xl">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-sm font-medium text-gray-700">Payment Status</Text>
-            <View className="flex-row items-center">
-              <View 
-                className={`w-2 h-2 rounded-full mr-2 ${
-                  item.isPaid ? 'bg-green-500' : 'bg-red-500'
-                }`} 
-              />
-              <Text className={`text-sm font-medium ${
-                item.isPaid ? 'text-green-700' : 'text-red-700'
-              }`}>
-                {item.isPaid ? 'Paid Online' : 'Payment to be Collected'}
-              </Text>
+        {/* Payment Status - Only show for offline collections */}
+        {item.collectionType === 'lab' && (
+          <View className="mt-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-xs font-medium text-gray-600">Payment Status</Text>
+              <View className="flex-row items-center">
+                <View 
+                  className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                    item.paymentCollected ? 'bg-green-500' : 'bg-red-500'
+                  }`} 
+                />
+                <Text className={`text-xs font-medium ${
+                  item.paymentCollected ? 'text-green-700' : 'text-red-700'
+                }`}>
+                  {item.paymentCollected ? 'Payment Collected' : 'Payment Not Collected'}
+                </Text>
+              </View>
             </View>
+            {item.paymentStatus && (
+              <Text className="text-xs text-gray-500 mt-0.5">
+                Online Status: {item.paymentStatus}
+              </Text>
+            )}
           </View>
-          {item.paymentStatus && (
-            <Text className="text-xs text-gray-500 mt-1">
-              Status: {item.paymentStatus}
-            </Text>
-          )}
-        </View>
+        )}
+
+        {/* Payment Status - Only show for home collections */}
+        {item.collectionType === 'home' && (
+          <View className="mt-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-xs font-medium text-gray-600">Payment Status</Text>
+              <View className="flex-row items-center">
+                <View 
+                  className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                    item.isPaid ? 'bg-green-500' : 'bg-red-500'
+                  }`} 
+                />
+                <Text className={`text-xs font-medium ${
+                  item.isPaid ? 'text-green-700' : 'text-red-700'
+                }`}>
+                  {item.isPaid ? 'Paid Online' : 'Payment Pending'}
+                </Text>
+              </View>
+            </View>
+            {item.paymentStatus && (
+              <Text className="text-xs text-gray-500 mt-0.5">
+                Online Status: {item.paymentStatus}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -544,8 +698,14 @@ const LaboratoryDashboard: React.FC = () => {
             </Text>
           </View>
           
-          <View className="px-3 py-1 rounded-full bg-orange-100">
-            <Text className="text-xs font-medium text-orange-700">Processing</Text>
+          <View className={`px-3 py-1 rounded-full ${
+            item.status === 'completed' ? 'bg-green-100' : 'bg-orange-100'
+          }`}>
+            <Text className={`text-xs font-medium ${
+              item.status === 'completed' ? 'text-green-700' : 'text-orange-700'
+            }`}>
+              {item.status === 'completed' ? 'Completed' : 'Processing'}
+            </Text>
           </View>
         </View>
 
@@ -555,90 +715,105 @@ const LaboratoryDashboard: React.FC = () => {
           <Text className="text-sm text-gray-500">{getSelectedTestsNames(item)}</Text>
         </View>
 
-        <View className="flex-row space-x-3">
-          <Pressable
+        <View className="flex-row space-x-2">
+                    <Pressable
             onPress={() => handleViewPatient(item)}
-            className="flex-1 py-3 px-4 rounded-xl bg-orange-100 items-center"
+            className="flex-1 py-2.5 px-3 rounded-lg bg-orange-50 items-center border border-orange-200"
           >
-            <FontAwesome name="user" size={16} color="#F97316" style={{ marginBottom: 4 }} />
-            <Text className="text-orange-700 font-medium text-sm">View Patient</Text>
+            <FontAwesome name="user" size={14} color="#F97316" style={{ marginBottom: 3 }} />
+            <Text className="text-orange-700 font-medium text-xs">View Patient</Text>
           </Pressable>
           
-          <Pressable
-            onPress={() => handleJoinNow(item)}
-            className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
-          >
-            <FontAwesome 
-              name="flask" 
-              size={16} 
-              color="white" 
-              style={{ marginBottom: 4 }} 
-            />
-            <Text className="text-white font-medium text-sm">Join Now</Text>
-          </Pressable>
-          
-          <Pressable
-            onPress={() => handleMarkAsRead(item)}
-            disabled={!item.reportsUploaded}
-            className={`flex-1 py-3 px-4 rounded-xl items-center ${
-              item.reportsUploaded ? 'bg-blue-500' : 'bg-gray-300'
-            }`}
-          >
-            <FontAwesome 
-              name="check-circle" 
-              size={16} 
-              color="white" 
-              style={{ marginBottom: 4 }} 
-            />
-            <Text className="text-white font-medium text-sm">
-              {(() => {
+          {(() => {
                 const hasReportDetails = item.reportResult && item.reportResult.trim() !== '';
                 const hasPdfs = item.testReportPdfs && item.testReportPdfs.length > 0;
-                
-                if (!hasReportDetails && !hasPdfs) {
-                  return 'No Reports Uploaded';
-                } else if (!hasReportDetails) {
-                  return 'Missing Report Details';
-                } else if (!hasPdfs) {
-                  return 'Missing PDFs';
+            const reportsComplete = hasReportDetails && hasPdfs;
+            
+            // If status is completed, show Mark as Read button
+            if (item.status === 'completed') {
+              return (
+                <Pressable
+                  onPress={() => handleMarkAsRead(item)}
+                  className="flex-1 py-2.5 px-3 rounded-lg bg-green-500 items-center shadow-sm"
+                  style={{
+                    shadowColor: '#10B981',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
+                >
+                  <FontAwesome 
+                    name="check-circle" 
+                    size={14} 
+                    color="white" 
+                    style={{ marginBottom: 3 }} 
+                  />
+                  <Text className="text-white font-medium text-xs">Mark as Read</Text>
+                </Pressable>
+              );
                 } else {
-                  return 'Mark as Read';
+              // If status is processing, show Upload Reports button
+              return (
+                <Pressable
+                  onPress={() => handleAddReport(item)}
+                  className="flex-1 py-2.5 px-3 rounded-lg bg-blue-500 items-center shadow-sm"
+                  style={{
+                    shadowColor: '#3B82F6',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
+                >
+                  <FontAwesome 
+                    name="upload" 
+                    size={14} 
+                    color="white" 
+                    style={{ marginBottom: 3 }} 
+                  />
+                  <Text className="text-white font-medium text-xs">
+                    {!hasReportDetails && !hasPdfs ? 'Upload Reports' : 
+                     !hasReportDetails ? 'Add Details' : 'Add PDFs'}
+                  </Text>
+                </Pressable>
+              );
                 }
               })()}
-            </Text>
-          </Pressable>
         </View>
 
-        {/* Payment Status */}
-        <View className="mt-3 p-3 bg-gray-50 rounded-xl">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-sm font-medium text-gray-700">Payment Status</Text>
-            <View className="flex-row items-center">
-              <View 
-                className={`w-2 h-2 rounded-full mr-2 ${
-                  item.isPaid ? 'bg-green-500' : 'bg-red-500'
-                }`} 
-              />
-              <Text className={`text-sm font-medium ${
-                item.isPaid ? 'text-green-700' : 'text-red-700'
-              }`}>
-                {item.isPaid ? 'Paid Online' : 'Payment to be Collected'}
-              </Text>
-            </View>
-          </View>
-          {item.paymentStatus && (
-            <Text className="text-xs text-gray-500 mt-1">
-              Status: {item.paymentStatus}
+        {/* Payment Status - Only show for offline collections */}
+        {item.collectionType === 'lab' && (
+          <View className="mt-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-xs font-medium text-gray-600">Payment Status</Text>
+              <View className="flex-row items-center">
+                <View 
+                  className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                    item.paymentCollected ? 'bg-green-500' : 'bg-red-500'
+                  }`} 
+                />
+                <Text className={`text-xs font-medium ${
+                  item.paymentCollected ? 'text-green-700' : 'text-red-700'
+                }`}>
+                  {item.paymentCollected ? 'Payment Collected' : 'Payment Not Collected'}
             </Text>
-          )}
         </View>
+            </View>
+            {item.paymentStatus && (
+              <Text className="text-xs text-gray-500 mt-0.5">
+                Online Status: {item.paymentStatus}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
 
   const renderCompletedAppointment = ({ item }: { item: LabAppointment }) => (
     <View className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-100">
-      <View className="flex-row items-start mb-3">
+      <View className="flex-row items-center">
         <View className="mr-3">
           {item.patient.profilePicture ? (
             <Image
@@ -653,24 +828,31 @@ const LaboratoryDashboard: React.FC = () => {
           )}
         </View>
         
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-gray-900">{item.patient.name}</Text>
-          <Text className="text-gray-600 text-sm">{item.laboratoryService.name}</Text>
-          <Text className="text-gray-500 text-xs">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
+        <View className="flex-1 items-start">
+          <Text className="text-lg font-semibold text-gray-900 text-center">{item.patient.name}</Text>
+          <Text className="text-gray-600 text-sm text-center">{item.laboratoryService.name}</Text>
+          <Text className="text-gray-500 text-xs text-center">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
         </View>
         
-        <View className="flex-row space-x-2">
+        <View className="flex-col space-y-1.5 ml-3">
           <Pressable
             onPress={() => handleViewPatient(item)}
-            className="bg-green-100 px-3 py-1 rounded-lg"
+            className="bg-green-50 px-2.5 py-1.5 rounded-lg border border-green-200 items-center"
           >
+            <FontAwesome name="user" size={10} color="#10B981" style={{ marginBottom: 1 }} />
             <Text className="text-green-700 text-xs font-medium">Patient</Text>
           </Pressable>
           
           <Pressable
             onPress={() => handleAddReport(item)}
-            className="bg-blue-100 px-3 py-1 rounded-lg"
+            className="bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 items-center"
           >
+            <FontAwesome 
+              name="upload" 
+              size={10} 
+              color="#3B82F6" 
+              style={{ marginBottom: 1 }} 
+            />
             <Text className="text-blue-700 text-xs font-medium">
               {item.reportResult ? 'Edit Report' : 'Add Report'}
             </Text>
@@ -697,8 +879,16 @@ const LaboratoryDashboard: React.FC = () => {
         <ScrollView 
           className="flex-1"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={handleRefresh}
+              colors={['#8B5CF6', '#10B981', '#F59E0B']}
+              tintColor="#8B5CF6"
+              title="Pull to refresh"
+              titleColor="#6B7280"
+            />
           }
+          showsVerticalScrollIndicator={false}
         >
           <View className="p-6 pt-2">
             {/* Header */}
@@ -708,28 +898,37 @@ const LaboratoryDashboard: React.FC = () => {
             </View>
 
             {/* Stats Cards */}
-            <View className="flex-row space-x-4 mb-8">
-              <View className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <View className="flex-row items-center">
-                  <View className="bg-purple-100 rounded-full p-3 mr-3">
-                    <FontAwesome name="flask" size={20} color="#8B5CF6" />
+            <View className="flex-row space-x-3 mb-8">
+              {/* Pending Tests */}
+              <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <View className="items-center">
+                  <View className="bg-purple-100 rounded-full p-2 mb-2 self-center">
+                    <FontAwesome name="clock-o" size={14} color="#8B5CF6" />
                   </View>
-                  <View>
-                    <Text className="text-2xl font-bold text-gray-900">{dashboardData?.totalPending || 0}</Text>
-                    <Text className="text-sm text-gray-600">Pending</Text>
-                  </View>
+                  <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalPending || 0}</Text>
+                  <Text className="text-xs text-gray-600 font-medium text-center">Pending</Text>
                 </View>
               </View>
               
-              <View className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <View className="flex-row items-center">
-                  <View className="bg-green-100 rounded-full p-3 mr-3">
-                    <FontAwesome name="file-text" size={20} color="#10B981" />
+              {/* Processing Tests */}
+              <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <View className="items-center">
+                  <View className="bg-orange-100 rounded-full p-2 mb-2 self-center">
+                    <FontAwesome name="flask" size={14} color="#F97316" />
                   </View>
-                  <View>
-                    <Text className="text-2xl font-bold text-gray-900">{dashboardData?.totalProcessing || 0}</Text>
-                    <Text className="text-sm text-gray-600">Processing</Text>
+                  <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalProcessing || 0}</Text>
+                  <Text className="text-xs text-gray-600 font-medium text-center">Processing</Text>
+                </View>
+              </View>
+              
+              {/* Completed Tests */}
+              <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <View className="items-center">
+                  <View className="bg-green-100 rounded-full p-2 mb-2 self-center">
+                    <FontAwesome name="check-circle" size={14} color="#10B981" />
                   </View>
+                  <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalCompleted || 0}</Text>
+                  <Text className="text-xs text-gray-600 font-medium text-center">Completed</Text>
                 </View>
               </View>
             </View>
@@ -737,12 +936,12 @@ const LaboratoryDashboard: React.FC = () => {
             {/* Upcoming Appointments */}
             <View className="mb-8">
               <Text className="text-xl font-bold text-gray-900 mb-4">
-                Upcoming Tests ({dashboardData?.totalAppointments || 0})
+                Upcoming Tests ({filterAppointments(dashboardData?.pendingAppointments).length || 0})
               </Text>
               
-              {dashboardData?.pendingAppointments && dashboardData.pendingAppointments.length > 0 ? (
+              {filterAppointments(dashboardData?.pendingAppointments).length > 0 ? (
                 <FlatList
-                  data={dashboardData.pendingAppointments}
+                  data={filterAppointments(dashboardData?.pendingAppointments)}
                   renderItem={renderPendingAppointment}
                   scrollEnabled={false}
                 />
@@ -762,12 +961,12 @@ const LaboratoryDashboard: React.FC = () => {
             {/* Processing Appointments */}
             <View className="mb-8">
               <Text className="text-xl font-bold text-gray-900 mb-4">
-                Processing Tests ({dashboardData?.totalProcessing || 0})
+                Processing & Completed Tests ({filterAppointments(dashboardData?.processingAppointments).length || 0})
               </Text>
               
-              {dashboardData?.processingAppointments && dashboardData.processingAppointments.length > 0 ? (
+              {filterAppointments(dashboardData?.processingAppointments).length > 0 ? (
                 <FlatList
-                  data={dashboardData.processingAppointments}
+                  data={filterAppointments(dashboardData?.processingAppointments)}
                   renderItem={renderProcessingAppointment}
                   scrollEnabled={false}
                 />
@@ -776,9 +975,9 @@ const LaboratoryDashboard: React.FC = () => {
                   <View className="bg-orange-100 rounded-full p-4 mb-4">
                     <FontAwesome name="flask" size={40} color="#F97316" />
                   </View>
-                  <Text className="text-xl font-bold text-gray-900 mb-2">No processing tests</Text>
+                  <Text className="text-xl font-bold text-gray-900 mb-2">No processing or completed tests</Text>
                   <Text className="text-gray-600 text-center leading-relaxed">
-                    Processing tests will appear here.
+                    Processing and completed tests will appear here.
                   </Text>
                 </View>
               )}
@@ -788,9 +987,9 @@ const LaboratoryDashboard: React.FC = () => {
             <View className="mb-8">
               <Text className="text-xl font-bold text-gray-900 mb-4">Recent Tests</Text>
               
-              {dashboardData?.completedAppointments && dashboardData.completedAppointments.length > 0 ? (
+              {filterAppointments(dashboardData?.completedAppointments).length > 0 ? (
                 <FlatList
-                  data={dashboardData.completedAppointments}
+                  data={filterAppointments(dashboardData?.completedAppointments)}
                   renderItem={renderCompletedAppointment}
                   scrollEnabled={false}
                 />
@@ -849,6 +1048,29 @@ const LaboratoryDashboard: React.FC = () => {
                         <Text className="text-gray-600 mb-1">{selectedAppointment.patient.email}</Text>
                         <Text className="text-gray-500 text-sm">{selectedAppointment.patient.phone}</Text>
                       </View>
+                      
+                      {/* Payment Collection Button - Only for lab visit consultations */}
+                      {selectedAppointment.collectionType === 'lab' && (
+                        <Pressable
+                          onPress={() => handlePaymentCollection(selectedAppointment, !selectedAppointment.paymentCollected)}
+                          className={`ml-2 px-1.5 py-0.5 rounded-md items-center border ${
+                            selectedAppointment.paymentCollected 
+                              ? 'bg-green-100 border-green-300' 
+                              : 'bg-red-100 border-red-300'
+                          }`}
+                        >
+                          <FontAwesome 
+                            name={selectedAppointment.paymentCollected ? "check" : "times"} 
+                            size={10} 
+                            color={selectedAppointment.paymentCollected ? "#10B981" : "#EF4444"} 
+                          />
+                          <Text className={`text-xs font-medium mt-0.5 ${
+                            selectedAppointment.paymentCollected ? 'text-green-700' : 'text-red-700'
+                          }`}>
+                            {selectedAppointment.paymentCollected ? 'Collected' : 'Not Collected'}
+                          </Text>
+                        </Pressable>
+                      )}
                     </View>
 
                     {/* Personal Information */}
@@ -1298,12 +1520,20 @@ const LaboratoryDashboard: React.FC = () => {
                                     {pdf.length > 50 ? pdf.substring(0, 50) + '...' : pdf}
                                   </Text>
                                 </View>
+                                <View className="flex-row space-x-2">
                                 <Pressable 
                                   onPress={() => handleViewDocument(pdf, `Test Report ${index + 1}`)}
                                   className="bg-blue-500 px-3 py-2 rounded-lg"
                                 >
                                   <Text className="text-white text-xs font-medium">View</Text>
                                 </Pressable>
+                                  <Pressable 
+                                    onPress={() => handleRemovePdf(index)}
+                                    className="bg-red-500 px-3 py-2 rounded-lg"
+                                  >
+                                    <Text className="text-white text-xs font-medium">Remove</Text>
+                                  </Pressable>
+                                </View>
                               </View>
                             ))}
                           </View>
@@ -1316,7 +1546,26 @@ const LaboratoryDashboard: React.FC = () => {
 
                     {/* Action Buttons */}
                     <View className="mt-8 mb-4">
-                      <View className="flex-row space-x-4">
+                      <View className="flex-row space-x-2">
+                        {/* Delete Button - Only show if there's existing report data */}
+                        {(selectedAppointment?.reportResult || selectedAppointment?.testReportPdfs?.length || reportText.trim() || testReportPdfs.length > 0) && (
+                          <Pressable
+                            onPress={handleDeleteReport}
+                            className="flex-1 py-4 px-6 rounded-2xl bg-red-500 items-center shadow-lg"
+                            style={{
+                              shadowColor: '#EF4444',
+                              shadowOffset: { width: 0, height: 4 },
+                              shadowOpacity: 0.3,
+                              shadowRadius: 8,
+                              elevation: 6,
+                            }}
+                          >
+                            <FontAwesome name="trash" size={18} color="white" style={{ marginBottom: 6 }} />
+                            <Text className="text-white font-semibold text-base">Delete Report</Text>
+                            <Text className="text-red-100 text-xs mt-1">Move to processing</Text>
+                          </Pressable>
+                        )}
+                        
                         <Pressable
                           onPress={() => {
                             setShowReportModal(false);

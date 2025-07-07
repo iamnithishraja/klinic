@@ -49,6 +49,10 @@ const labAppointmentsSchema = new mongoose.Schema({
         enum: ['pending', 'captured', 'failed'],
         default: 'pending',
     },
+    paymentCollected: {
+        type: Boolean,
+        default: false,
+    },
     reportResult: {
         type: String,
         default: null,

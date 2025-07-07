@@ -195,6 +195,87 @@ const addPrescription = async (req: CustomRequest, res: Response) => {
     }
 };
 
+const deletePrescription = async (req: CustomRequest, res: Response) => {
+    try {
+        const doctorId = req.user._id;
+        const { appointmentId } = req.params;
+
+        // Verify appointment belongs to this doctor
+        const appointment = await DoctorAppointments.findOne({
+            _id: appointmentId,
+            doctor: doctorId
+        });
+
+        if (!appointment) {
+            res.status(404).json({ message: "Appointment not found or access denied" });
+            return;
+        }
+
+        // Check if prescription exists
+        if (!appointment.prescription || appointment.prescription.trim() === '') {
+            res.status(400).json({ message: "No prescription found to delete" });
+            return;
+        }
+
+        // Clear prescription, reset prescriptionSent flag, and move back to pending
+        appointment.prescription = '';
+        appointment.prescriptionSent = false;
+        appointment.status = 'upcoming'; // Move back to pending appointments
+        await appointment.save();
+
+        res.status(200).json({ 
+            message: "Prescription deleted successfully. Appointment moved back to pending.",
+            appointment: {
+                ...appointment.toObject(),
+                timeSlotDisplay: formatDateToDisplayString(appointment.timeSlot)
+            }
+        });
+    } catch (error) {
+        console.error('Delete prescription error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
+const updatePaymentCollection = async (req: CustomRequest, res: Response) => {
+    try {
+        const doctorId = req.user._id;
+        const { appointmentId } = req.params;
+        const { paymentCollected } = req.body;
+
+        // Verify appointment belongs to this doctor
+        const appointment = await DoctorAppointments.findOne({
+            _id: appointmentId,
+            doctor: doctorId
+        });
+
+        if (!appointment) {
+            res.status(404).json({ message: "Appointment not found or access denied" });
+            return;
+        }
+
+        // Check if it's an in-person consultation
+        if (appointment.consultationType !== 'in-person') {
+            res.status(400).json({ message: "Payment collection is only applicable for in-person consultations" });
+            return;
+        }
+
+        // Update payment collection status
+        appointment.paymentCollected = paymentCollected;
+        await appointment.save();
+
+        res.status(200).json({ 
+            message: `Payment ${paymentCollected ? 'marked as collected' : 'marked as not collected'} successfully`,
+            appointment: {
+                ...appointment.toObject(),
+                timeSlotDisplay: formatDateToDisplayString(appointment.timeSlot)
+            }
+        });
+    } catch (error) {
+        console.error('Update payment collection error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
 const getAppointmentDetails = async (req: CustomRequest, res: Response) => {
     try {
         const doctorId = req.user._id;
@@ -325,6 +406,8 @@ const testDoctorEndpoint = async (req: CustomRequest, res: Response) => {
 export { 
     getDoctorDashboard, 
     addPrescription, 
+    deletePrescription,
+    updatePaymentCollection,
     getAppointmentDetails, 
     updateAppointmentStatus,
     testDoctorEndpoint
