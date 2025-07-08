@@ -14,10 +14,9 @@ interface Review {
 
 interface RatingsProps {
   rating: number;
-  totalReviews?: number;
 }
 
-export default function Ratings({ rating, totalReviews = 0 }: RatingsProps) {
+export default function Ratings({ rating }: RatingsProps) {
   // Generate an array of 5 stars with filled or unfilled state
   const renderStars = (rating: number) => {
     return Array(5)
@@ -48,11 +47,6 @@ export default function Ratings({ rating, totalReviews = 0 }: RatingsProps) {
         </View>
         <View>
           <View className="flex-row">{renderStars(rating)}</View>
-          {totalReviews > 0 ? (
-            <Text className="text-gray-600 text-sm mt-1">Based on {totalReviews} reviews</Text>
-          ) : (
-            <Text className="text-gray-600 text-sm mt-1">No reviews yet</Text>
-          )}
         </View>
       </View>
     </View>

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Laboratory } from '../services/laboratoryService';
 import { FontAwesome } from '@expo/vector-icons';
 import { useState } from 'react';
+import RatingDisplay from './RatingDisplay';
 
 interface LaboratoryCardProps {
   laboratory: Laboratory;
@@ -118,17 +119,28 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
           <View className="p-4">
             {/* Laboratory Info */}
             <View className="mb-3 pb-3 border-b border-gray-100">
-              <Text className="text-lg font-bold text-gray-900">{laboratory.laboratoryName}</Text>
-              <View className="flex-row flex-wrap mt-2">
-                <View className="flex-row items-center mr-4">
-                  <FontAwesome name="phone" size={14} color="#4B5563" />
-                  <Text className="text-gray-600 text-sm ml-2">{laboratory.user?.phone}</Text>
+              <View className="flex-row justify-between items-start">
+                <View className="flex-1">
+                  <Text className="text-lg font-bold text-gray-900">{laboratory.laboratoryName}</Text>
+                  <View className="flex-row flex-wrap mt-2">
+                    <View className="flex-row items-center mr-4">
+                      <FontAwesome name="phone" size={14} color="#4B5563" />
+                      <Text className="text-gray-600 text-sm ml-2">{laboratory.user?.phone}</Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <FontAwesome name="map-marker" size={14} color="#4B5563" />
+                      <Text className="text-gray-600 text-sm ml-2">
+                        {laboratory.laboratoryAddress?.address || 'Address not available'}, {laboratory.laboratoryAddress?.pinCode || 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-                <View className="flex-row items-center">
-                  <FontAwesome name="map-marker" size={14} color="#4B5563" />
-                  <Text className="text-gray-600 text-sm ml-2">
-                    {laboratory.laboratoryAddress?.address || 'Address not available'}, {laboratory.laboratoryAddress?.pinCode || 'N/A'}
-                  </Text>
+                <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-full">
+                  <RatingDisplay 
+                    providerId={laboratory._id} 
+                    type="laboratory" 
+                    size="small" 
+                  />
                 </View>
               </View>
             </View>
@@ -150,12 +162,6 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
                   </Text>
                 )}
               </View>
-            </View>
-
-            {/* Service Rating */}
-            <View className="flex-row items-center mt-3">
-              <FontAwesome name="star" size={14} color="#FFD700" />
-              <Text className="text-gray-600 ml-2">{service.rating}/5</Text>
             </View>
 
             {/* Service Description */}

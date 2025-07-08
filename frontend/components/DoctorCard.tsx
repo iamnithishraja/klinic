@@ -2,6 +2,7 @@ import { View, Text, Image, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { Doctor } from '../services/doctorService';
 import { FontAwesome } from '@expo/vector-icons';
+import RatingDisplay from './RatingDisplay';
 
 interface DoctorCardProps {
   doctor: Doctor;
@@ -64,8 +65,11 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
             <Text className="text-sm text-gray-600 mt-1">{doctor.specializations?.join(', ')}</Text>
           </View>
           <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-full">
-            <FontAwesome name="star" size={14} color="#FFD700" />
-            <Text className="text-primary ml-1 font-semibold text-sm">{doctor.rating}/5</Text>
+            <RatingDisplay 
+              providerId={doctor._id} 
+              type="doctor" 
+              size="medium" 
+            />
           </View>
         </View>
 

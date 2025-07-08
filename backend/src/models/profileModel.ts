@@ -202,6 +202,10 @@ const laboratoryProfileSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    rating: {
+        type: Number,
+        default: 0,
+    }, // added now 
     availableDays: {
         type: [String],
         enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],

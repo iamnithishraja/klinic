@@ -58,8 +58,12 @@ const getUserDashboard = async (req: CustomRequest, res: Response) => {
             if (doctorUser) {
                 try {
                     const doctorProfile = await DoctorProfile.findOne({ user: (doctorUser as any)._id });
-                    if (doctorProfile?.coverImage) {
+                    if (doctorProfile) {
+                        if (doctorProfile.coverImage) {
                         (appointment.doctor as any).coverImage = doctorProfile.coverImage;
+                        }
+                        // Add doctor profile ID for rating purposes
+                        (appointment.doctor as any).profileId = doctorProfile._id;
                     }
                 } catch (error) {
                     console.log('Error fetching doctor profile:', error);
@@ -90,6 +94,8 @@ const getUserDashboard = async (req: CustomRequest, res: Response) => {
                         if (labProfile.laboratoryName) {
                             (appointment.lab as any).laboratoryName = labProfile.laboratoryName;
                         }
+                        // Add laboratory profile ID for rating purposes
+                        (appointment.lab as any).profileId = labProfile._id;
                     }
                 } catch (error) {
                     console.log('Error fetching lab profile:', error);
@@ -162,8 +168,12 @@ const getPreviousAppointments = async (req: CustomRequest, res: Response) => {
             if (doctorUser) {
                 try {
                     const doctorProfile = await DoctorProfile.findOne({ user: (doctorUser as any)._id });
-                    if (doctorProfile?.coverImage) {
+                    if (doctorProfile) {
+                        if (doctorProfile.coverImage) {
                         (appointment.doctor as any).coverImage = doctorProfile.coverImage;
+                        }
+                        // Add doctor profile ID for rating purposes
+                        (appointment.doctor as any).profileId = doctorProfile._id;
                     }
                 } catch (error) {
                     console.log('Error fetching doctor profile:', error);
@@ -233,8 +243,12 @@ const getPreviousLabTests = async (req: CustomRequest, res: Response) => {
             if (labUser) {
                 try {
                     const labProfile = await LaboratoryProfile.findOne({ user: (labUser as any)._id });
-                    if (labProfile?.laboratoryName) {
+                    if (labProfile) {
+                        if (labProfile.laboratoryName) {
                         (test.lab as any).laboratoryName = labProfile.laboratoryName;
+                        }
+                        // Add laboratory profile ID for rating purposes
+                        (test.lab as any).profileId = labProfile._id;
                     }
                 } catch (error) {
                     console.log('Error fetching lab profile:', error);

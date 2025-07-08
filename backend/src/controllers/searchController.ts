@@ -3,8 +3,25 @@ import type { CustomRequest } from '../types/userTypes';
 import { DoctorProfile, LaboratoryProfile } from '../models/profileModel';
 import Clinic from '../models/clinicModel';
 import LaboratoryService from '../models/laboratoryServiceModel';
+import Rating from '../models/ratingModel';
 import { getCategoriesTestType, getSpecializations, getCities } from '../utils/selectors';
 import { getUserCity } from '../utils/userUtils';
+
+// Helper function to calculate average rating for a provider
+const calculateAverageRating = async (providerId: string, type: 'doctor' | 'laboratory') => {
+    try {
+        const ratings = await Rating.find({ providerId, type });
+        if (ratings.length === 0) {
+            return { averageRating: 0 };
+        }
+        const totalRating = ratings.reduce((sum, rating) => sum + rating.rating, 0);
+        const averageRating = Math.round((totalRating / ratings.length) * 10) / 10;
+        return { averageRating };
+    } catch (error) {
+        console.error('Error calculating average rating:', error);
+        return { averageRating: 0 };
+    }
+};
 
 // Search doctors with filters
 const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> => {
@@ -207,13 +224,15 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
             }
         }
 
-        // Fetch clinics for each doctor and attach them to the profile
+        // Fetch clinics and ratings for each doctor and attach them to the profile
         const doctorProfilesWithClinics = await Promise.all(
             doctorProfiles.map(async (doctor) => {
                 const clinics = await Clinic.find({ doctor: doctor.user._id, isActive: true });
+                const ratingData = await calculateAverageRating(doctor._id.toString(), 'doctor');
                 return {
                     ...doctor,
-                    clinics: clinics
+                    clinics: clinics,
+                    rating: ratingData.averageRating
                 };
             })
         );
@@ -488,12 +507,23 @@ const searchLaboratories = async (req: CustomRequest, res: Response): Promise<vo
             }
         }
 
+        // Add rating information to laboratory profiles
+        const laboratoriesWithRatings = await Promise.all(
+            laboratoryProfiles.map(async (lab) => {
+                const ratingData = await calculateAverageRating(lab._id.toString(), 'laboratory');
+                return {
+                    ...lab,
+                    rating: ratingData.averageRating
+                };
+            })
+        );
+
         const totalPages = Math.ceil(totalCount / Number(limit));
         const availableCategories = getCategoriesTestType();
         const availableCities = getCities();
 
         res.status(200).json({
-            laboratories: laboratoryProfiles,
+            laboratories: laboratoriesWithRatings,
             pagination: {
                 currentPage: Number(page),
                 totalPages,

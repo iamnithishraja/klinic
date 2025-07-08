@@ -5,6 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
 import { useCustomAlert } from '@/components/CustomAlert';
 import VideoCallModal from '@/components/VideoCallModal';
+import RatingModal from '@/components/RatingModal';
+import { useRatingSystem } from '@/hooks/useRatingSystem';
 
 // @ts-ignore
 import { router } from 'expo-router';
@@ -59,6 +61,18 @@ const UserDashboard: React.FC = () => {
   const [showVideoCallModal, setShowVideoCallModal] = useState(false);
   const [selectedVideoCallAppointment, setSelectedVideoCallAppointment] = useState<Appointment | null>(null);
   const { showAlert, AlertComponent } = useCustomAlert();
+
+  // Rating system
+  const allAppointments = [
+    ...(dashboardData?.upcomingAppointments || []),
+    ...(previousAppointments?.appointments || []),
+    ...(previousLabTests?.labTests || [])
+  ];
+  const { 
+    showRatingModal, 
+    ratingModalData, 
+    handleRatingSubmitted 
+  } = useRatingSystem(allAppointments);
 
   useEffect(() => {
     fetchDashboardData();
@@ -664,6 +678,19 @@ const UserDashboard: React.FC = () => {
               doctorName: selectedVideoCallAppointment.providerName,
               appointmentTime: selectedVideoCallAppointment.timeSlotDisplay
             }}
+          />
+        )}
+
+        {/* Rating Modal */}
+        {ratingModalData && (
+          <RatingModal
+            visible={showRatingModal}
+            onClose={() => handleRatingSubmitted()}
+            appointmentId={ratingModalData.appointmentId}
+            providerId={ratingModalData.providerId}
+            providerName={ratingModalData.providerName}
+            type={ratingModalData.type}
+            onRatingSubmitted={handleRatingSubmitted}
           />
         )}
 
