@@ -1,8 +1,10 @@
 import { View, Text } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import RatingDisplay from '../RatingDisplay';
 
 interface ServiceInfoProps {
   service: {
+    _id?: string; // Add service ID field
     name: string;
     category: string;
     price: number;
@@ -15,9 +17,13 @@ interface ServiceInfoProps {
     }>;
   };
   laboratoryName: string;
+  laboratoryId: string;
 }
 
-export default function ServiceInfo({ service, laboratoryName }: ServiceInfoProps) {
+export default function ServiceInfo({ service, laboratoryName, laboratoryId }: ServiceInfoProps) {
+  // Use service ID if available, otherwise fall back to laboratory ID for backward compatibility
+  const ratingProviderId = service._id || laboratoryId;
+  
   return (
     <View>
       {/* Service Header */}
@@ -25,8 +31,11 @@ export default function ServiceInfo({ service, laboratoryName }: ServiceInfoProp
         <Text className="text-2xl font-bold text-primary">{service.name}</Text>
         <Text className="text-gray-600 text-lg">at {laboratoryName}</Text>
         <View className="flex-row items-center mt-2">
-          <FontAwesome name="star" size={16} color="#FFD700" />
-          <Text className="text-gray-600 ml-1 font-medium">{service.rating}/5</Text>
+          <RatingDisplay 
+            providerId={ratingProviderId} 
+            type="laboratory" 
+            size="medium"
+          />
           <Text className="text-gray-400 mx-2">•</Text>
           <Text className="text-gray-600">{service.category}</Text>
         </View>

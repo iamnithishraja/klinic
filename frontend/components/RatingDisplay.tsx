@@ -29,23 +29,16 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
   const fetchRating = async () => {
     try {
       setLoading(true);
-      const url = `/api/v1/ratings/provider/${providerId}/${type}`;
-      console.log('RatingDisplay - Fetching rating for provider:', providerId, 'type:', type);
-      console.log('RatingDisplay - Full URL:', url);
-      console.log('RatingDisplay - API base URL:', apiClient.defaults.baseURL);
+      // Use the new API endpoint that expects profile ID
+      const url = `/api/v1/ratings/profile/${providerId}/${type}`;
       
+      console.log('🔍 Fetching rating for:', { providerId, type, url });
       const response = await apiClient.get(url);
-      console.log('RatingDisplay - API response:', response.data);
-      console.log('RatingDisplay - Response status:', response.status);
-      
+      console.log('✅ Rating API response:', response.data);
       setRatingData(response.data);
-      console.log('RatingDisplay - State updated with:', response.data);
     } catch (error: any) {
-      console.error('RatingDisplay - Error fetching rating:', error);
-      console.error('RatingDisplay - Error message:', error.message);
-      console.error('RatingDisplay - Error response:', error.response?.data);
-      console.error('RatingDisplay - Error status:', error.response?.status);
-      console.error('RatingDisplay - Error config:', error.config);
+      console.error('❌ Rating API error:', error.response?.data || error.message);
+      // Set default empty rating on error
       setRatingData({ averageRating: 0 });
     } finally {
       setLoading(false);
@@ -55,48 +48,60 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
   const getSizeConfig = () => {
     switch (size) {
       case 'small':
-        return { textSize: 'text-xs' };
+        return { starSize: 14, textSize: 'text-xs' };
       case 'large':
-        return { textSize: 'text-sm' };
+        return { starSize: 18, textSize: 'text-base' };
       default:
-        return { textSize: 'text-xs' };
+        return { starSize: 16, textSize: 'text-sm' };
     }
   };
 
-  const { textSize } = getSizeConfig();
-
-  console.log('RatingDisplay - Render state:', { 
-    loading, 
-    ratingData, 
-    providerId, 
-    type,
-    hasData: !!ratingData,
-    averageRating: ratingData?.averageRating
-  });
+  const { starSize, textSize } = getSizeConfig();
 
   const renderStars = () => {
-    if (!ratingData || ratingData.averageRating === 0) {
-      // Show empty stars when no ratings
+    // Only show real rating data, no defaults
+    const rating = ratingData?.averageRating || 0;
+    
+    if (rating === 0) {
+      // Show empty stars when no ratings exist
       return Array(5).fill(0).map((_, index) => (
-        <FontAwesome key={index} name="star-o" size={12} color="#D1D5DB" />
+        <FontAwesome 
+          key={index} 
+          name="star-o" 
+          size={starSize} 
+          color="#9CA3AF" 
+          style={{ marginRight: 1 }}
+        />
       ));
     }
 
     const stars = [];
-    const fullStars = Math.floor(ratingData.averageRating);
-    const hasHalfStar = ratingData.averageRating % 1 >= 0.5;
+    const fullStars = Math.floor(ratingData!.averageRating);
+    const hasHalfStar = ratingData!.averageRating % 1 >= 0.5;
 
     // Full stars
     for (let i = 0; i < fullStars; i++) {
       stars.push(
-        <FontAwesome key={`full-${i}`} name="star" size={12} color="#FFD700" />
+        <FontAwesome 
+          key={`full-${i}`} 
+          name="star" 
+          size={starSize} 
+          color="#FFD700" 
+          style={{ marginRight: 1 }}
+        />
       );
     }
 
     // Half star
     if (hasHalfStar) {
       stars.push(
-        <FontAwesome key="half" name="star-half-o" size={12} color="#FFD700" />
+        <FontAwesome 
+          key="half" 
+          name="star-half-o" 
+          size={starSize} 
+          color="#FFD700" 
+          style={{ marginRight: 1 }}
+        />
       );
     }
 
@@ -104,7 +109,13 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
     for (let i = 0; i < emptyStars; i++) {
       stars.push(
-        <FontAwesome key={`empty-${i}`} name="star-o" size={12} color="#D1D5DB" />
+        <FontAwesome 
+          key={`empty-${i}`} 
+          name="star-o" 
+          size={starSize} 
+          color="#9CA3AF" 
+          style={{ marginRight: 1 }}
+        />
       );
     }
 
@@ -114,7 +125,7 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
   if (loading) {
     return (
       <View className="flex-row items-center">
-        <FontAwesome name="star-o" size={12} color="#D1D5DB" />
+        <FontAwesome name="star-o" size={starSize} color="#9CA3AF" />
         <Text className={`${textSize} text-gray-500 ml-1`}>Loading...</Text>
       </View>
     );
@@ -123,9 +134,13 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
   return (
     <View className="flex-row items-center">
       {renderStars()}
-      {ratingData && ratingData.averageRating > 0 && (
+      {ratingData && ratingData.averageRating > 0 ? (
         <Text className={`${textSize} text-gray-600 ml-1 font-medium`}>
           {ratingData.averageRating.toFixed(1)}
+        </Text>
+      ) : (
+        <Text className={`${textSize} text-gray-500 ml-1`}>
+          No ratings
         </Text>
       )}
     </View>

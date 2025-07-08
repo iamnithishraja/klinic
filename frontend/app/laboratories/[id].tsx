@@ -54,19 +54,19 @@ export default function LaboratoryServiceDetails() {
             });
           } else {
             // Default to all tests selected
-            selectedService.tests.forEach((_, index) => {
+            selectedService.tests.forEach((_: any, index: number) => {
               initialSelection[index] = true;
             });
           }
         } else {
           // Default to all tests selected
-          selectedService.tests.forEach((_, index) => {
+          selectedService.tests.forEach((_: any, index: number) => {
             initialSelection[index] = true;
           });
         }
       } else {
         // For package pricing, all tests are always selected
-        selectedService.tests.forEach((_, index) => {
+        selectedService.tests.forEach((_: any, index: number) => {
           initialSelection[index] = true;
         });
       }
@@ -90,85 +90,8 @@ export default function LaboratoryServiceDetails() {
         }
         
         if (!foundLab) {
-          // If still not found, create a mock laboratory with services for demo
-          foundLab = {
-            _id: id as string,
-            laboratoryName: "MedLab Diagnostics",
-            laboratoryPhone: "+91 98765 43210",
-            laboratoryEmail: "info@medlabdiagnostics.com",
-            laboratoryWebsite: "https://www.medlabdiagnostics.com",
-            laboratoryAddress: {
-              address: "123 Health Street, Medical District",
-              city: "Mumbai",
-              state: "Maharashtra", 
-              country: "India",
-              pinCode: "400001",
-              googleMapsLink: "https://maps.google.com/?q=123+Health+Street+Mumbai"
-            } as any,
-            user: {
-              name: "MedLab Diagnostics",
-              phone: "+91 98765 43210",
-              email: "contact@medlab.com",
-              profilePicture: undefined
-            },
-            isAvailable: true,
-            laboratoryServices: [
-              {
-                name: "Complete Blood Count (CBC)",
-                category: "Blood Test",
-                price: 500,
-                collectionType: "both",
-                rating: 4.8,
-                description: "Complete blood count test to check overall health and detect various disorders",
-                tests: [
-                  { name: "White Blood Cell Count", description: "Measures the number of white blood cells", price: 150 },
-                  { name: "Red Blood Cell Count", description: "Measures the number of red blood cells", price: 120 },
-                  { name: "Hemoglobin Level", description: "Measures the amount of hemoglobin", price: 100 },
-                  { name: "Platelet Count", description: "Measures the number of platelets", price: 130 }
-                ]
-              },
-              {
-                name: "Lipid Profile",
-                category: "Blood Test", 
-                price: 800,
-                collectionType: "both",
-                rating: 4.6,
-                description: "Comprehensive cholesterol and lipid analysis",
-                tests: [
-                  { name: "Total Cholesterol", description: "Measures total cholesterol levels", price: 200 },
-                  { name: "HDL Cholesterol", description: "Good cholesterol measurement", price: 180 },
-                  { name: "LDL Cholesterol", description: "Bad cholesterol measurement", price: 180 },
-                  { name: "Triglycerides", description: "Measures triglyceride levels", price: 240 }
-                ]
-              },
-              {
-                name: "Thyroid Function Test",
-                category: "Hormone Test",
-                price: 1200,
-                collectionType: "both", 
-                rating: 4.7,
-                description: "Complete thyroid hormone analysis",
-                tests: [
-                  { name: "TSH", description: "Thyroid Stimulating Hormone", price: 300 },
-                  { name: "T3", description: "Triiodothyronine hormone", price: 400 },
-                  { name: "T4", description: "Thyroxine hormone", price: 500 }
-                ]
-              },
-              {
-                name: "Urine Analysis",
-                category: "Urine Test",
-                price: 300,
-                collectionType: "both",
-                rating: 4.5,
-                description: "Complete urine analysis for various health indicators",
-                tests: [
-                  { name: "Protein Level", description: "Checks protein in urine", price: 80 },
-                  { name: "Glucose Level", description: "Checks glucose in urine", price: 70 },
-                  { name: "Blood Cells", description: "Checks for blood cells in urine", price: 150 }
-                ]
-              }
-            ]
-          } as any;
+          // If still not found, show error
+          throw new Error('Laboratory not found');
         }
         
         setLaboratory(foundLab);
@@ -384,6 +307,7 @@ export default function LaboratoryServiceDetails() {
             <ServiceInfo 
               service={selectedService} 
               laboratoryName={laboratory.laboratoryName}
+              laboratoryId={laboratory._id}
             />
             
             {/* Collection Type Selection */}
@@ -406,7 +330,7 @@ export default function LaboratoryServiceDetails() {
                     : 'All tests included in package price:'
                   }
                 </Text>
-                {(selectedService?.tests || []).map((test, testIndex) => {
+                {(selectedService?.tests || []).map((test: any, testIndex: number) => {
                   const isSelected = selectedTests[testIndex];
                   const TestComponent = hasIndividualTestPricing() ? Pressable : View;
                   

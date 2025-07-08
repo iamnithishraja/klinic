@@ -123,7 +123,7 @@ const getUserDashboard = async (req: CustomRequest, res: Response) => {
                 const appointmentObj = apt.toObject();
                 return {
                     ...appointmentObj,
-                    type: 'lab',
+                    type: 'laboratory',
                     providerName: (apt.lab as any)?.laboratoryName || (apt.lab as any)?.name,
                     serviceName: (apt.laboratoryService as any)?.name,
                     // Use package cover image from laboratoryService
@@ -261,7 +261,7 @@ const getPreviousLabTests = async (req: CustomRequest, res: Response) => {
                 const testObj = test.toObject();
                 return {
                     ...testObj,
-                    type: 'lab',
+                    type: 'laboratory',
                     providerName: (test.lab as any)?.laboratoryName || (test.lab as any)?.name,
                     // Use package cover image from laboratoryService
                     packageCoverImage: (test.laboratoryService as any)?.coverImage,

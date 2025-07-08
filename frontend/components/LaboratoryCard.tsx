@@ -137,7 +137,7 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
                 </View>
                 <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-full">
                   <RatingDisplay 
-                    providerId={laboratory._id} 
+                    providerId={service._id || laboratory._id} 
                     type="laboratory" 
                     size="small" 
                   />

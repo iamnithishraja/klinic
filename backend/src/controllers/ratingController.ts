@@ -3,21 +3,28 @@ import Rating from '../models/ratingModel';
 import type { CustomRequest } from '../types/userTypes';
 
 // Function to update profile ratings
-const updateProfileRating = async (providerId: string, type: 'doctor' | 'laboratory') => {
+const updateProfileRating = async (profileId: string, type: 'doctor' | 'laboratory') => {
   try {
-    const { DoctorProfile, LaboratoryProfile } = require('../models/profileModel');
+    const { DoctorProfile } = require('../models/profileModel');
+    const LaboratoryService = require('../models/laboratoryServiceModel').default;
     
-    // Get all ratings for this provider
-    const ratings = await Rating.find({ providerId, type });
+    let ratings;
+    if (type === 'doctor') {
+      // Get all ratings for this doctor profile
+      ratings = await Rating.find({ doctorProfileId: profileId, type });
+    } else {
+      // Get all ratings for this laboratory service
+      ratings = await Rating.find({ laboratoryServiceId: profileId, type });
+    }
     
     if (ratings.length === 0) {
       // No ratings, set to default values
       const updateData = { rating: 0 };
       
       if (type === 'doctor') {
-        await DoctorProfile.findByIdAndUpdate(providerId, updateData);
+        await DoctorProfile.findByIdAndUpdate(profileId, updateData);
       } else {
-        await LaboratoryProfile.findByIdAndUpdate(providerId, updateData);
+        await LaboratoryService.findByIdAndUpdate(profileId, updateData);
       }
       return 0; // Return 0 as the average rating
     }
@@ -28,14 +35,14 @@ const updateProfileRating = async (providerId: string, type: 'doctor' | 'laborat
     
     const updateData = { rating: averageRating };
     
-    // Update the appropriate profile
+    // Update the appropriate profile/service
     if (type === 'doctor') {
-      await DoctorProfile.findByIdAndUpdate(providerId, updateData);
+      await DoctorProfile.findByIdAndUpdate(profileId, updateData);
     } else {
-      await LaboratoryProfile.findByIdAndUpdate(providerId, updateData);
+      await LaboratoryService.findByIdAndUpdate(profileId, updateData);
     }
     
-    console.log(`Updated ${type} profile ${providerId} with rating: ${averageRating}`);
+    console.log(`Updated ${type} profile ${profileId} with rating: ${averageRating}`);
     return averageRating; // Return the calculated average
   } catch (error: any) {
     console.error('Error updating profile rating:', error);
@@ -46,14 +53,14 @@ const updateProfileRating = async (providerId: string, type: 'doctor' | 'laborat
 // Submit a rating
 export const submitRating = async (req: CustomRequest, res: Response) => {
   try {
-    const { appointmentId, providerId, type, rating, feedback } = req.body;
+    const { appointmentId, profileId, type, rating, feedback } = req.body;
     const userId = req.user?._id;
 
     if (!userId) {
       return res.status(401).json({ message: 'User not authenticated' });
     }
 
-    if (!appointmentId || !providerId || !type || !rating) {
+    if (!appointmentId || !profileId || !type || !rating) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -75,7 +82,7 @@ export const submitRating = async (req: CustomRequest, res: Response) => {
       return res.status(400).json({ message: 'You have already rated this appointment' });
     }
 
-    // Validate that the appointment exists and belongs to the correct provider
+    // Validate that the appointment exists and belongs to the user
     const DoctorAppointment = require('../models/doctorAppointments').default;
     const LabAppointment = require('../models/labAppointments').default;
     
@@ -90,38 +97,35 @@ export const submitRating = async (req: CustomRequest, res: Response) => {
       return res.status(404).json({ message: 'Appointment not found' });
     }
 
-    // For doctor appointments, check if the doctor ID matches
-    if (type === 'doctor' && appointment.doctor?.toString() !== providerId) {
-      return res.status(400).json({ message: 'Appointment does not belong to this doctor' });
+    // Check if the appointment belongs to the current user (patient)
+    if (appointment.patient?.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'You can only rate your own appointments' });
     }
 
-    // For laboratory appointments, check if the laboratory ID matches
-    if (type === 'laboratory' && appointment.lab?.toString() !== providerId) {
-      return res.status(400).json({ message: 'Appointment does not belong to this laboratory' });
-    }
-
-    // In submitRating, ensure mark is set to true when a rating is submitted
-    const ratingData = {
-      ...req.body,
-      mark: true // Always set mark true on submit
-    };
-
-    // Create new rating
-    const newRating = new Rating({
+    // Create new rating with proper fields
+    const ratingData: any = {
       userId,
-      providerId, // This should be the doctor/laboratory profile ID, not user ID
       appointmentId,
       type,
       rating,
-      feedback: feedback?.trim() || undefined
-    });
+      feedback: feedback?.trim() || undefined,
+      mark: true
+    };
 
+    if (type === 'doctor') {
+      ratingData.doctorProfileId = profileId;
+    } else {
+      ratingData.laboratoryServiceId = profileId;
+    }
+
+    const newRating = new Rating(ratingData);
     await newRating.save();
 
     // Update profile ratings after a new rating is submitted
-    const averageRating = await updateProfileRating(providerId, type);
+    const averageRating = await updateProfileRating(profileId, type);
 
     res.json({
+      message: 'Rating submitted successfully',
       averageRating
     });
 
@@ -131,80 +135,182 @@ export const submitRating = async (req: CustomRequest, res: Response) => {
   }
 };
 
-// Get average rating for a provider
-export const getProviderRating = async (req: Request, res: Response) => {
+// Mark feedback as requested for an appointment
+export const markFeedbackRequested = async (req: CustomRequest, res: Response) => {
   try {
-    const { providerId, type } = req.params;
-
-    console.log('getProviderRating - Starting with params:', { providerId, type });
-
-    if (!providerId || !type) {
-      return res.status(400).json({ message: 'Provider ID and type are required' });
+    const { appointmentId, type } = req.body;
+    
+    if (!appointmentId || !type) {
+      return res.status(400).json({ message: 'Appointment ID and type are required' });
     }
 
     if (type !== 'doctor' && type !== 'laboratory') {
       return res.status(400).json({ message: 'Type must be either doctor or laboratory' });
     }
 
-    // First try to find ratings with the provided providerId
-    let ratings = await Rating.find({
-      providerId,
-      type
-    });
-
-    console.log('getProviderRating - Found ratings with providerId:', ratings.length);
-
-    // If no ratings found, try to find ratings by user ID (for backward compatibility)
-    if (ratings.length === 0) {
-      console.log('getProviderRating - No ratings found, trying to find by user ID');
-      
-      try {
-        // Import the Profile models to find the user ID
-        const { DoctorProfile, LaboratoryProfile } = require('../models/profileModel');
-        
-        let user;
-        if (type === 'doctor') {
-          user = await DoctorProfile.findById(providerId).populate('user');
-          console.log('getProviderRating - Doctor profile found:', !!user);
-        } else {
-          user = await LaboratoryProfile.findById(providerId).populate('user');
-          console.log('getProviderRating - Laboratory profile found:', !!user);
-        }
-        
-        if (user && user.user) {
-          console.log('getProviderRating - User ID found:', user.user._id);
-          ratings = await Rating.find({
-            providerId: user.user._id,
-            type
-          });
-          console.log('getProviderRating - Found ratings with user ID:', ratings.length);
-        } else {
-          console.log('getProviderRating - No user found in profile');
-        }
-      } catch (profileError) {
-        console.error('getProviderRating - Error finding profile:', profileError);
-      }
+    const DoctorAppointment = require('../models/doctorAppointments').default;
+    const LabAppointment = require('../models/labAppointments').default;
+    
+    let appointment;
+    let updateResult;
+    
+    if (type === 'doctor') {
+      updateResult = await DoctorAppointment.findByIdAndUpdate(
+        appointmentId,
+        { feedbackRequested: true },
+        { new: true }
+      );
+    } else {
+      updateResult = await LabAppointment.findByIdAndUpdate(
+        appointmentId,
+        { feedbackRequested: true },
+        { new: true }
+      );
+    }
+    
+    if (!updateResult) {
+      return res.status(404).json({ message: 'Appointment not found' });
     }
 
-    console.log('getProviderRating - Total ratings found:', ratings.length);
+    res.json({ 
+      message: 'Feedback request marked successfully',
+      appointmentId,
+      feedbackRequested: true
+    });
+
+  } catch (error) {
+    console.error('Error marking feedback request:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get average rating for a provider
+export const getProviderRating = async (req: Request, res: Response) => {
+  try {
+    const { profileId, type } = req.params;
+
+    console.log('=== RATING QUERY DEBUG ===');
+    console.log('Requested profileId:', profileId);
+    console.log('Requested type:', type);
+
+    if (!profileId || !type) {
+      return res.status(400).json({ message: 'Profile ID and type are required' });
+    }
+
+    if (type !== 'doctor' && type !== 'laboratory') {
+      return res.status(400).json({ message: 'Type must be either doctor or laboratory' });
+    }
+
+    // First, let's see what's actually in the database
+    const allRatings = await Rating.find({});
+    console.log('Total ratings in database:', allRatings.length);
+    
+    if (allRatings.length > 0) {
+      console.log('Sample ratings in database:');
+      allRatings.slice(0, 3).forEach((rating, index) => {
+        console.log(`Rating ${index + 1}:`, {
+          _id: rating._id,
+          userId: rating.userId,
+          doctorProfileId: rating.doctorProfileId,
+          laboratoryServiceId: rating.laboratoryServiceId,
+          type: rating.type,
+          rating: rating.rating,
+          appointmentId: rating.appointmentId
+        });
+      });
+    }
+
+    let ratings = [];
+    
+    if (type === 'doctor') {
+      console.log('Searching for doctor ratings...');
+      console.log('Query: { doctorProfileId:', profileId, ', type: "doctor" }');
+      
+      // Direct query first
+      ratings = await Rating.find({ 
+        doctorProfileId: profileId, 
+        type: 'doctor' 
+      });
+      
+      console.log('Direct query result:', ratings.length);
+      
+      // If no results, try with ObjectId conversion
+      if (ratings.length === 0) {
+        console.log('Trying with ObjectId conversion...');
+        try {
+          const mongoose = require('mongoose');
+          const objectId = new mongoose.Types.ObjectId(profileId);
+          ratings = await Rating.find({ 
+            doctorProfileId: objectId, 
+            type: 'doctor' 
+          });
+          console.log('ObjectId query result:', ratings.length);
+                 } catch (err: any) {
+           console.log('ObjectId conversion failed:', err.message);
+         }
+      }
+      
+      // If still no results, let's see what doctor ratings exist
+      if (ratings.length === 0) {
+        console.log('No doctor ratings found. Checking all doctor type ratings...');
+        const allDoctorRatings = await Rating.find({ type: 'doctor' });
+        console.log('Total doctor ratings in database:', allDoctorRatings.length);
+        
+        if (allDoctorRatings.length > 0) {
+          console.log('Available doctor profile IDs in ratings:');
+          allDoctorRatings.forEach((rating, index) => {
+            console.log(`Doctor rating ${index + 1} - doctorProfileId:`, rating.doctorProfileId, 'type:', typeof rating.doctorProfileId);
+          });
+          
+          // Check if any of these match our query (as string comparison)
+          const matchingRating = allDoctorRatings.find(r => 
+            r.doctorProfileId && r.doctorProfileId.toString() === profileId.toString()
+          );
+          console.log('Found matching rating by string comparison:', !!matchingRating);
+        }
+      }
+      
+    } else {
+      console.log('Searching for laboratory ratings...');
+      ratings = await Rating.find({ 
+        laboratoryServiceId: profileId, 
+        type: 'laboratory' 
+      });
+      console.log('Lab service ratings found:', ratings.length);
+    }
+
+    console.log('Final ratings found:', ratings.length);
+    
+    if (ratings.length > 0) {
+      console.log('Rating details:');
+      ratings.forEach((rating, index) => {
+        console.log(`Rating ${index + 1}:`, {
+          rating: rating.rating,
+          feedback: rating.feedback,
+          createdAt: rating.createdAt
+        });
+      });
+    }
 
     if (ratings.length === 0) {
+      console.log('=== NO RATINGS FOUND ===');
       return res.json({
         averageRating: 0,
+        totalRatings: 0,
         ratings: []
       });
     }
 
     const totalRating = ratings.reduce((sum: number, rating) => sum + rating.rating, 0);
-    const averageRating = Math.round((totalRating / ratings.length) * 10) / 10; // Round to 1 decimal
+    const averageRating = Math.round((totalRating / ratings.length) * 10) / 10;
 
-    console.log('getProviderRating - Calculated rating:', { averageRating, totalRatings: ratings.length });
-
-    // Update profile ratings to keep them in sync
-    await updateProfileRating(providerId, type);
+    console.log('Calculated total rating:', totalRating);
+    console.log('Calculated average rating:', averageRating);
+    console.log('=== RATING QUERY COMPLETE ===');
 
     res.json({
       averageRating,
+      totalRatings: ratings.length,
       ratings: ratings.map(rating => ({
         rating: rating.rating,
         feedback: rating.feedback,
@@ -213,8 +319,7 @@ export const getProviderRating = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('Error getting provider rating:', error);
-    console.error('Error stack:', error.stack);
+    console.error('❌ Error getting provider rating:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -249,20 +354,39 @@ export const getUserRatingForAppointment = async (req: CustomRequest, res: Respo
 // Test endpoint to get all ratings for debugging
 export const getAllRatings = async (req: Request, res: Response) => {
   try {
-    const ratings = await Rating.find({}).populate('userId', 'name').populate('providerId', 'name');
+    const ratings = await Rating.find({})
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 });
     
-    // Group ratings by provider and type
+    // Group ratings by provider and type for analysis
     const ratingsByProvider = ratings.reduce((acc, rating) => {
-      const key = `${rating.providerId}_${rating.type}`;
+      const profileId = rating.doctorProfileId || rating.laboratoryServiceId;
+      const key = `${profileId}_${rating.type}`;
       if (!acc[key]) {
-        acc[key] = [];
+        acc[key] = {
+          profileId: profileId,
+          type: rating.type,
+          ratings: [],
+          totalRatings: 0,
+          averageRating: 0
+        };
       }
-      acc[key].push(rating);
+      acc[key].ratings.push(rating);
+      acc[key].totalRatings++;
       return acc;
     }, {} as any);
     
+    // Calculate averages for each provider
+    Object.keys(ratingsByProvider).forEach(key => {
+      const provider = ratingsByProvider[key];
+      const total = provider.ratings.reduce((sum: number, r: any) => sum + r.rating, 0);
+      provider.averageRating = Math.round((total / provider.totalRatings) * 10) / 10;
+    });
+    
     res.json({ 
-      ratings
+      totalRatings: ratings.length,
+      ratings,
+      ratingsByProvider: Object.values(ratingsByProvider)
     });
   } catch (error: any) {
     console.error('Error getting all ratings:', error);

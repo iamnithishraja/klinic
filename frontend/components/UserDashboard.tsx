@@ -13,7 +13,7 @@ import { router } from 'expo-router';
 
 interface Appointment {
   _id: string;
-  type: 'doctor' | 'lab';
+  type: 'doctor' | 'laboratory';
   timeSlot: string; // Now a Date string from backend
   timeSlotDisplay: string; // Human-readable formatted time display
   status: string;
@@ -23,6 +23,7 @@ interface Appointment {
   serviceName: string;
   prescription?: string;
   reportResult?: string;
+  feedbackRequested?: boolean;
   clinic?: any;
   laboratoryService?: any;
   doctor?: any;
@@ -62,9 +63,8 @@ const UserDashboard: React.FC = () => {
   const [selectedVideoCallAppointment, setSelectedVideoCallAppointment] = useState<Appointment | null>(null);
   const { showAlert, AlertComponent } = useCustomAlert();
 
-  // Rating system
-  const allAppointments = [
-    ...(dashboardData?.upcomingAppointments || []),
+  // Rating system - Only check previous/completed appointments for ratings
+  const completedAppointments = [
     ...(previousAppointments?.appointments || []),
     ...(previousLabTests?.labTests || [])
   ];
@@ -72,7 +72,20 @@ const UserDashboard: React.FC = () => {
     showRatingModal, 
     ratingModalData, 
     handleRatingSubmitted 
-  } = useRatingSystem(allAppointments);
+  } = useRatingSystem(completedAppointments);
+
+  // Handle rating submission and refresh data
+  const handleRatingSubmittedWithRefresh = async () => {
+    handleRatingSubmitted();
+    // Refresh dashboard data after rating submission
+    await Promise.all([
+      fetchDashboardData(),
+      fetchPreviousAppointments(),
+      fetchPreviousLabTests()
+    ]);
+  };
+
+
 
   useEffect(() => {
     fetchDashboardData();
@@ -168,7 +181,7 @@ const UserDashboard: React.FC = () => {
     if (appointment.type === 'doctor' && appointment.clinic) {
       addressData = appointment.clinic.clinicAddress;
       locationName = 'clinic';
-    } else if (appointment.type === 'lab' && appointment.lab) {
+    } else if (appointment.type === 'laboratory' && appointment.lab) {
       // For labs, we need to get the laboratory address
       // This might be stored differently in the lab profile
       addressData = appointment.lab.laboratoryAddress || appointment.lab.address;
@@ -292,7 +305,7 @@ const UserDashboard: React.FC = () => {
             <FontAwesome name="user-md" size={32} color="#6366F1" />
           </View>
         )
-      ) : item.type === 'lab' ? (
+      ) : item.type === 'laboratory' ? (
         item.packageCoverImage ? (
           <Image
             source={{ uri: item.packageCoverImage }}
@@ -371,7 +384,7 @@ const UserDashboard: React.FC = () => {
           </Pressable>
         )}
 
-        {item.type === 'lab' && item.collectionType === 'lab' && (
+        {item.type === 'laboratory' && item.collectionType === 'lab' && (
           <Pressable
             onPress={() => handleGetDirections(item)}
             className="py-3 px-4 rounded-xl flex-row items-center justify-center bg-purple-500"
@@ -386,7 +399,7 @@ const UserDashboard: React.FC = () => {
           </Pressable>
         )}
 
-        {item.type === 'lab' && item.collectionType === 'home' && (
+        {item.type === 'laboratory' && item.collectionType === 'home' && (
           <View className="py-3 px-4 rounded-xl bg-orange-100 flex-row items-center justify-center">
             <FontAwesome 
               name="home" 
@@ -500,12 +513,14 @@ const UserDashboard: React.FC = () => {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <View className="p-6 pt-2">
+          <View className="p-6">
             {/* Header */}
             <View className="mb-6">
               <Text className="text-3xl font-bold text-gray-900 mb-2">Your Health Dashboard</Text>
               <Text className="text-gray-600">Stay on top of your appointments and health records</Text>
             </View>
+
+            
 
           {/* Upcoming Appointments Carousel */}
           <View className="mb-8">
@@ -685,12 +700,12 @@ const UserDashboard: React.FC = () => {
         {ratingModalData && (
           <RatingModal
             visible={showRatingModal}
-            onClose={() => handleRatingSubmitted()}
+            onClose={() => handleRatingSubmittedWithRefresh()}
             appointmentId={ratingModalData.appointmentId}
             providerId={ratingModalData.providerId}
             providerName={ratingModalData.providerName}
             type={ratingModalData.type}
-            onRatingSubmitted={handleRatingSubmitted}
+            onRatingSubmitted={handleRatingSubmittedWithRefresh}
           />
         )}
 

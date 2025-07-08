@@ -77,6 +77,10 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         type: Date,
         default: null,
     },
+    feedbackRequested: {
+        type: Boolean,
+        default: false,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

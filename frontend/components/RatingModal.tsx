@@ -29,7 +29,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
   const { showAlert, AlertComponent } = useCustomAlert();
 
   // Debug: Log the props
-  console.log('RatingModal - providerId:', providerId);
+  console.log('RatingModal - profileId:', providerId);
   console.log('RatingModal - type:', type);
   console.log('RatingModal - appointmentId:', appointmentId);
 
@@ -51,23 +51,29 @@ const RatingModal: React.FC<RatingModalProps> = ({
     try {
       const ratingData = {
         appointmentId,
-        providerId,
+        profileId: providerId,
         type,
         rating,
         feedback: feedback.trim() || undefined,
         mark: true // Always set mark true on submit
       };
-      await apiClient.post('/api/v1/ratings', ratingData);
+      
+      console.log('📤 Submitting rating:', ratingData);
+      const response = await apiClient.post('/api/v1/ratings', ratingData);
+      console.log('✅ Rating submitted successfully:', response.data);
+      
       showAlert({
         title: 'Thank You!',
         message: 'Your rating has been submitted successfully.',
         type: 'success'
       });
+      
       setRating(0);
       setFeedback('');
       onClose();
       onRatingSubmitted();
     } catch (error: any) {
+      console.error('❌ Rating submission failed:', error.response?.data || error.message);
       showAlert({
         title: 'Error',
         message: error.response?.data?.message || 'Failed to submit rating. Please try again.',

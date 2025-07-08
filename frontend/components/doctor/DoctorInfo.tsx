@@ -1,5 +1,6 @@
 import { View, Text, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import RatingDisplay from '../RatingDisplay';
 import { Doctor } from '@/services/doctorService';
 
 interface DoctorInfoProps {
@@ -54,8 +55,11 @@ export default function DoctorInfo({ doctor }: DoctorInfoProps) {
           <Text className="text-xl font-bold text-gray-900">Dr. {doctor.user?.name}</Text>
           <Text className="text-gray-600 text-base mt-1">{doctor.specializations?.join(', ')}</Text>
           <View className="flex-row items-center mt-2">
-            <FontAwesome name="star" size={16} color="#FFD700" />
-            <Text className="text-gray-600 ml-1 font-medium">{doctor.rating}/5</Text>
+            <RatingDisplay 
+              providerId={doctor._id} 
+              type="doctor" 
+              size="medium" 
+            />
             {doctor.gender && (
               <>
                 <Text className="text-gray-400 mx-2">•</Text>

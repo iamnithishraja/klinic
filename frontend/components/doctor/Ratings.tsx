@@ -1,5 +1,6 @@
 import { View, Text, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import StarRating from '../StarRating';
 
 interface Review {
   id: string;
@@ -17,19 +18,9 @@ interface RatingsProps {
 }
 
 export default function Ratings({ rating }: RatingsProps) {
-  // Generate an array of 5 stars with filled or unfilled state
+  // Use the new StarRating component
   const renderStars = (rating: number) => {
-    return Array(5)
-      .fill(0)
-      .map((_, i) => (
-        <FontAwesome
-          key={i}
-          name={i < Math.floor(rating) ? 'star' : i < rating ? 'star-half-o' : 'star-o'}
-          size={16}
-          color="#FFD700"
-          style={{ marginRight: 2 }}
-        />
-      ));
+    return <StarRating rating={rating} size="medium" showRating={false} />;
   };
 
   // Format date to readable format

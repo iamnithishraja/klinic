@@ -2,7 +2,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IRating extends Document {
   userId: mongoose.Types.ObjectId;
-  providerId: mongoose.Types.ObjectId; // doctorId or labId
+  doctorProfileId?: mongoose.Types.ObjectId; // Reference to DoctorProfile
+  laboratoryServiceId?: mongoose.Types.ObjectId; // Reference to LaboratoryService
   appointmentId: mongoose.Types.ObjectId;
   type: 'doctor' | 'laboratory';
   rating: number; // 1-5 stars
@@ -18,9 +19,15 @@ const ratingSchema = new Schema<IRating>({
     ref: 'User',
     required: true
   },
-  providerId: {
+  doctorProfileId: {
     type: Schema.Types.ObjectId,
-    required: true
+    ref: 'DoctorProfile',
+    required: function() { return this.type === 'doctor'; }
+  },
+  laboratoryServiceId: {
+    type: Schema.Types.ObjectId,
+    ref: 'LaboratoryService',
+    required: function() { return this.type === 'laboratory'; }
   },
   appointmentId: {
     type: Schema.Types.ObjectId,
@@ -53,8 +60,11 @@ const ratingSchema = new Schema<IRating>({
 // Compound index to ensure one rating per user per appointment
 ratingSchema.index({ userId: 1, appointmentId: 1 }, { unique: true });
 
-// Index for efficient queries by provider
-ratingSchema.index({ providerId: 1, type: 1 });
+// Index for efficient queries by doctor profile
+ratingSchema.index({ doctorProfileId: 1, type: 1 });
+
+// Index for efficient queries by laboratory service
+ratingSchema.index({ laboratoryServiceId: 1, type: 1 });
 
 const Rating = mongoose.model<IRating>('Rating', ratingSchema);
 

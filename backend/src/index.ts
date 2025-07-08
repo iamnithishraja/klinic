@@ -15,6 +15,7 @@ import doctorRouter from "./routes/doctorRoutes";
 import laboratoryRouter from "./routes/laboratoryRoutes";
 import videoCallRouter from "./routes/videoCallRoutes";
 import ratingRouter from "./routes/ratingRoutes";
+import aiRouter from "./routes/aiRoutes";
 dotenv.config();
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api/v1/doctor', doctorRouter);
 app.use('/api/v1/laboratory', laboratoryRouter);
 app.use('/api/v1/video-call', videoCallRouter);
 app.use('/api/v1/ratings', ratingRouter);
+// app.use('/api/v1/ai', aiRouter);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server is running on port ${process.env.PORT || 3000}`);

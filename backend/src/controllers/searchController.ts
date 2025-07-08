@@ -7,10 +7,22 @@ import Rating from '../models/ratingModel';
 import { getCategoriesTestType, getSpecializations, getCities } from '../utils/selectors';
 import { getUserCity } from '../utils/userUtils';
 
-// Helper function to calculate average rating for a provider
-const calculateAverageRating = async (providerId: string, type: 'doctor' | 'laboratory') => {
+// Helper function to calculate average rating for a profile
+const calculateAverageRating = async (profileId: string, type: 'doctor' | 'laboratory') => {
     try {
-        const ratings = await Rating.find({ providerId, type });
+        let ratings;
+        if (type === 'doctor') {
+            ratings = await Rating.find({ doctorProfileId: profileId });
+        } else {
+            // For laboratories, we need to get ratings for all services of this lab
+            // Since we're being called with lab profile ID, we need to find all services
+            // and aggregate their ratings
+            const Laboratory = require('../models/laboratoryServiceModel').default;
+            const services = await Laboratory.find({ laboratoryId: profileId });
+            const serviceIds = services.map((service: any) => service._id);
+            ratings = await Rating.find({ laboratoryServiceId: { $in: serviceIds } });
+        }
+        
         if (ratings.length === 0) {
             return { averageRating: 0 };
         }

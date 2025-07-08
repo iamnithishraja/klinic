@@ -69,6 +69,10 @@ const labAppointmentsSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    feedbackRequested: {
+        type: Boolean,
+        default: false,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

@@ -1,5 +1,5 @@
 import express from 'express';
-import { submitRating, getProviderRating, getUserRatingForAppointment, getAllRatings } from '../controllers/ratingController';
+import { submitRating, getProviderRating, getUserRatingForAppointment, getAllRatings, markFeedbackRequested } from '../controllers/ratingController';
 import { isAuthenticatedUser } from '../middlewares/auth';
 
 const router = express.Router();
@@ -13,9 +13,18 @@ router.post('/', isAuthenticatedUser, async (req, res, next) => {
   }
 });
 
-// Get average rating for a provider (public)
+// Mark feedback as requested (requires authentication)
+router.post('/mark-feedback-requested', isAuthenticatedUser, async (req, res, next) => {
+  try {
+    await markFeedbackRequested(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get average rating for a profile (public)
 router.get(
-  '/provider/:providerId/:type',
+  '/profile/:profileId/:type',
   async (req, res, next) => {
     try {
       await getProviderRating(req, res);

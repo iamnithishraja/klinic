@@ -17,6 +17,7 @@ export interface Laboratory {
     address: string;
   };
   laboratoryServices?: Array<{
+    _id?: string; // Add service ID field
     name: string;
     category: string;
     price: number;
