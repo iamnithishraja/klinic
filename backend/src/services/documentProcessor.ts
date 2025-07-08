@@ -1,4 +1,4 @@
-import pdf from 'pdf-parse';
+import { readPdfText } from 'pdf-text-reader';
 import axios from 'axios';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import NodeCache from 'node-cache';
@@ -7,6 +7,10 @@ import natural from 'natural';
 import compromise from 'compromise';
 import vectorStore from './vectorStore';
 import type { VectorDocument, SearchResult } from './vectorStore';
+import fs from 'fs';
+import path from 'path';
+import { promisify } from 'util';
+import os from 'os';
 
 // Use existing S3 client configuration
 const s3Client = new S3Client({
@@ -86,8 +90,25 @@ class DocumentProcessor {
 
     async extractTextFromPdf(pdfBuffer: Buffer): Promise<string> {
         try {
-            const data = await pdf(pdfBuffer);
-            return data.text || '';
+            // Create a temporary file since pdf-text-reader requires a file path
+            const tempDir = os.tmpdir();
+            const tempFilePath = path.join(tempDir, `temp_pdf_${Date.now()}.pdf`);
+            
+            // Write buffer to temporary file
+            await fs.promises.writeFile(tempFilePath, pdfBuffer);
+            
+            try {
+                // Extract text using pdf-text-reader
+                const text = await readPdfText({ url: tempFilePath });
+                return text || '';
+            } finally {
+                // Clean up temporary file
+                try {
+                    await fs.promises.unlink(tempFilePath);
+                } catch (cleanupError) {
+                    console.warn('Failed to cleanup temporary PDF file:', cleanupError);
+                }
+            }
         } catch (error) {
             console.error('Error parsing PDF:', error);
             throw new Error('Failed to extract text from PDF');

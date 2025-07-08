@@ -53,7 +53,7 @@ const ToctorFloatingButton: React.FC<ToctorFloatingButtonProps> = ({ onPress }) 
   }, [pulseAnim, glowAnim]);
 
   return (
-    <View className="absolute bottom-24 right-6 z-50 w-16 h-16">
+    <View className="absolute bottom-28 right-6 z-50 w-16 h-16">
       {/* Glow effect */}
       <Animated.View
         className="absolute inset-0 w-16 h-16 rounded-full bg-purple-400"
