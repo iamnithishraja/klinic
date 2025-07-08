@@ -4,6 +4,7 @@ import {
   RecommendationCard,
   TestCard,
   MedicationCard,
+  DoctorRecommendationCard,
   WarningsCard,
   NextStepsCard,
   PlainText
@@ -79,6 +80,20 @@ export const parseXMLContent = (content: string): JSX.Element[] => {
       }
     },
     {
+      pattern: /<medication name="(.*?)" dosage="(.*?)" duration="(.*?)" priority="(.*?)">(.*?)<\/medication>/gs,
+      parser: (match: RegExpMatchArray) => {
+        const name = match[1];
+        const dosage = match[2];
+        const duration = match[3];
+        const priority = match[4];
+        const content = match[5].trim();
+        if (name && content) {
+          return <MedicationCard key={getUniqueKey('medication-full')} name={name} dosage={dosage} duration={duration} priority={priority} content={content} />;
+        }
+        return null;
+      }
+    },
+    {
       pattern: /<medication name="(.*?)" dosage="(.*?)" duration="(.*?)">(.*?)<\/medication>/gs,
       parser: (match: RegExpMatchArray) => {
         const name = match[1];
@@ -92,12 +107,69 @@ export const parseXMLContent = (content: string): JSX.Element[] => {
       }
     },
     {
+      pattern: /<medication name="(.*?)" priority="(.*?)">(.*?)<\/medication>/gs,
+      parser: (match: RegExpMatchArray) => {
+        const name = match[1];
+        const priority = match[2];
+        const content = match[3].trim();
+        if (name && content) {
+          return <MedicationCard key={getUniqueKey('medication-priority')} name={name} priority={priority} content={content} />;
+        }
+        return null;
+      }
+    },
+    {
       pattern: /<medication name="(.*?)">(.*?)<\/medication>/gs,
       parser: (match: RegExpMatchArray) => {
         const name = match[1];
         const content = match[2].trim();
         if (name && content) {
           return <MedicationCard key={getUniqueKey('medication-simple')} name={name} content={content} />;
+        }
+        return null;
+      }
+    },
+    {
+      pattern: /<doctor_rec name="(.*?)" specialization="(.*?)" city="(.*?)" fee="(.*?)" type="(.*?)" priority="(.*?)" reason="(.*?)">(.*?)<\/doctor_rec>/gs,
+      parser: (match: RegExpMatchArray) => {
+        const name = match[1];
+        const specialization = match[2];
+        const city = match[3];
+        const fee = match[4];
+        const type = match[5];
+        const priority = match[6];
+        const reason = match[7];
+        const content = match[8].trim();
+        if (name && specialization && content) {
+          return <DoctorRecommendationCard key={getUniqueKey('doctor-rec-full')} name={name} specialization={specialization} city={city} fee={fee} type={type} priority={priority} reason={reason} content={content} />;
+        }
+        return null;
+      }
+    },
+    {
+      pattern: /<doctor_rec name="(.*?)" specialization="(.*?)" city="(.*?)" priority="(.*?)" reason="(.*?)">(.*?)<\/doctor_rec>/gs,
+      parser: (match: RegExpMatchArray) => {
+        const name = match[1];
+        const specialization = match[2];
+        const city = match[3];
+        const priority = match[4];
+        const reason = match[5];
+        const content = match[6].trim();
+        if (name && specialization && content) {
+          return <DoctorRecommendationCard key={getUniqueKey('doctor-rec-priority')} name={name} specialization={specialization} city={city} priority={priority} reason={reason} content={content} />;
+        }
+        return null;
+      }
+    },
+    {
+      pattern: /<doctor_rec name="(.*?)" specialization="(.*?)" city="(.*?)">(.*?)<\/doctor_rec>/gs,
+      parser: (match: RegExpMatchArray) => {
+        const name = match[1];
+        const specialization = match[2];
+        const city = match[3];
+        const content = match[4].trim();
+        if (name && specialization && content) {
+          return <DoctorRecommendationCard key={getUniqueKey('doctor-rec-simple')} name={name} specialization={specialization} city={city} content={content} />;
         }
         return null;
       }

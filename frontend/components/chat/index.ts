@@ -8,6 +8,7 @@ export {
   RecommendationCard,
   TestCard,
   MedicationCard,
+  DoctorRecommendationCard,
   WarningsCard,
   NextStepsCard,
   PlainText

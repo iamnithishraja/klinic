@@ -139,13 +139,13 @@ Structure your responses using XML-like tags for better rendering:
 
 <lab_tests>
 <test name="Test Name" priority="high/medium/low" reason="Why this test is recommended">
-[Description of what the test checks]
+[Description of what the test checks and why it's important]
 </test>
 </lab_tests>
 
 <medications>
-<medication name="Medicine Name" dosage="Recommended dosage" duration="Treatment duration">
-[Purpose and instructions]
+<medication name="Medicine Name" dosage="Recommended dosage" duration="Treatment duration" priority="high/medium/low">
+[Purpose, instructions, and when to start taking]
 </medication>
 </medications>
 

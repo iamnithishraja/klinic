@@ -263,20 +263,56 @@ interface TestCardProps {
 }
 
 export const TestCard: React.FC<TestCardProps> = ({ name, priority, reason, content }) => {
-  const getPriorityStyle = (priority: string) => {
-    switch (priority) {
+  const getPriorityConfig = (priority: string) => {
+    switch (priority?.toLowerCase()) {
       case 'high': 
-        return { color: '#EF4444', backgroundColor: '#EF4444' };
+        return { 
+          backgroundColor: '#EF4444',
+          borderColor: '#DC2626',
+          textColor: '#FFFFFF',
+          icon: 'exclamation-triangle',
+          iconColor: '#FFFFFF',
+          glowColor: '#EF4444',
+          label: 'HIGH PRIORITY',
+          urgencyText: 'Urgent'
+        };
       case 'medium': 
-        return { color: '#F59E0B', backgroundColor: '#F59E0B' };
+        return { 
+          backgroundColor: '#F59E0B',
+          borderColor: '#D97706',
+          textColor: '#FFFFFF',
+          icon: 'clock-o',
+          iconColor: '#FFFFFF',
+          glowColor: '#F59E0B',
+          label: 'MEDIUM PRIORITY',
+          urgencyText: 'Moderate'
+        };
       case 'low': 
-        return { color: '#10B981', backgroundColor: '#10B981' };
+        return { 
+          backgroundColor: '#10B981',
+          borderColor: '#059669',
+          textColor: '#FFFFFF',
+          icon: 'check-circle',
+          iconColor: '#FFFFFF',
+          glowColor: '#10B981',
+          label: 'LOW PRIORITY',
+          urgencyText: 'Routine'
+        };
       default: 
-        return { color: '#6B7280', backgroundColor: '#6B7280' };
+        return { 
+          backgroundColor: '#6B7280',
+          borderColor: '#4B5563',
+          textColor: '#FFFFFF',
+          icon: 'info-circle',
+          iconColor: '#FFFFFF',
+          glowColor: '#6B7280',
+          label: 'PRIORITY',
+          urgencyText: 'Standard'
+        };
     }
   };
   
-  const priorityStyle = getPriorityStyle(priority);
+  const priorityConfig = getPriorityConfig(priority);
   
   return (
     <View style={{
@@ -320,18 +356,34 @@ export const TestCard: React.FC<TestCardProps> = ({ name, priority, reason, cont
           </Text>
         </View>
         <View style={{
-          backgroundColor: priorityStyle.backgroundColor,
-          paddingHorizontal: 12,
-          paddingVertical: 4,
-          borderRadius: 16,
+          backgroundColor: priorityConfig.backgroundColor,
+          borderWidth: 1,
+          borderColor: priorityConfig.borderColor,
+          paddingHorizontal: 8,
+          paddingVertical: 6,
+          borderRadius: 20,
+          flexDirection: 'row',
+          alignItems: 'center',
+          shadowColor: priorityConfig.glowColor,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 4,
+          elevation: 4,
         }}>
+          <FontAwesome 
+            name={priorityConfig.icon} 
+            size={12} 
+            color={priorityConfig.iconColor} 
+            style={{ marginRight: 6 }}
+          />
           <Text style={{
-            color: '#FFFFFF',
-            fontSize: 12,
+            color: priorityConfig.textColor,
+            fontSize: 11,
             fontWeight: 'bold',
             textTransform: 'uppercase',
+            letterSpacing: 0.5,
           }}>
-            {priority} PRIORITY
+            {priorityConfig.label}
           </Text>
         </View>
       </View>
@@ -372,10 +424,53 @@ interface MedicationCardProps {
   name: string;
   dosage?: string;
   duration?: string;
+  priority?: string;
   content: string;
 }
 
-export const MedicationCard: React.FC<MedicationCardProps> = ({ name, dosage, duration, content }) => (
+export const MedicationCard: React.FC<MedicationCardProps> = ({ name, dosage, duration, priority, content }) => {
+  const getPriorityConfig = (priority?: string) => {
+    if (!priority) return null;
+    
+    switch (priority?.toLowerCase()) {
+      case 'high': 
+        return { 
+          backgroundColor: '#EF4444',
+          borderColor: '#DC2626',
+          textColor: '#FFFFFF',
+          icon: 'exclamation-triangle',
+          iconColor: '#FFFFFF',
+          label: 'URGENT',
+          urgencyText: 'Start Immediately'
+        };
+      case 'medium': 
+        return { 
+          backgroundColor: '#F59E0B',
+          borderColor: '#D97706',
+          textColor: '#FFFFFF',
+          icon: 'clock-o',
+          iconColor: '#FFFFFF',
+          label: 'MODERATE',
+          urgencyText: 'Start Soon'
+        };
+      case 'low': 
+        return { 
+          backgroundColor: '#10B981',
+          borderColor: '#059669',
+          textColor: '#FFFFFF',
+          icon: 'check',
+          iconColor: '#FFFFFF',
+          label: 'ROUTINE',
+          urgencyText: 'When Convenient'
+        };
+      default: 
+        return null;
+    }
+  };
+  
+  const priorityConfig = getPriorityConfig(priority);
+  
+  return (
   <View style={{
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
@@ -389,25 +484,55 @@ export const MedicationCard: React.FC<MedicationCardProps> = ({ name, dosage, du
     shadowRadius: 4,
     elevation: 2,
   }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-      <View style={{
-        width: 32,
-        height: 32,
-        backgroundColor: '#D1FAE5',
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <FontAwesome name="plus-circle" size={16} color="#10B981" />
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+        <View style={{
+          width: 32,
+          height: 32,
+          backgroundColor: '#D1FAE5',
+          borderRadius: 16,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <FontAwesome name="plus-circle" size={16} color="#10B981" />
+        </View>
+        <Text style={{
+          marginLeft: 12,
+          fontWeight: 'bold',
+          color: '#064E3B',
+          fontSize: 16,
+          flex: 1,
+        }}>
+          {name}
+        </Text>
       </View>
-      <Text style={{
-        marginLeft: 12,
-        fontWeight: 'bold',
-        color: '#064E3B',
-        fontSize: 16,
-      }}>
-        {name}
-      </Text>
+      {priorityConfig && (
+        <View style={{
+          backgroundColor: priorityConfig.backgroundColor,
+          borderWidth: 1,
+          borderColor: priorityConfig.borderColor,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          borderRadius: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}>
+          <FontAwesome 
+            name={priorityConfig.icon} 
+            size={10} 
+            color={priorityConfig.iconColor} 
+            style={{ marginRight: 4 }}
+          />
+          <Text style={{
+            color: priorityConfig.textColor,
+            fontSize: 10,
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+          }}>
+            {priorityConfig.label}
+          </Text>
+        </View>
+      )}
     </View>
     
     <View style={{
@@ -452,7 +577,221 @@ export const MedicationCard: React.FC<MedicationCardProps> = ({ name, dosage, du
       {formatStructuredContent(content)}
     </View>
   </View>
-);
+  );
+};
+
+interface DoctorRecommendationCardProps {
+  name: string;
+  specialization: string;
+  city: string;
+  fee?: string;
+  type?: string;
+  priority?: string;
+  reason?: string;
+  content: string;
+}
+
+export const DoctorRecommendationCard: React.FC<DoctorRecommendationCardProps> = ({ 
+  name, 
+  specialization, 
+  city, 
+  fee, 
+  type, 
+  priority, 
+  reason, 
+  content 
+}) => {
+  const getPriorityConfig = (priority?: string) => {
+    if (!priority) return null;
+    
+    switch (priority?.toLowerCase()) {
+      case 'high': 
+        return { 
+          backgroundColor: '#EF4444',
+          borderColor: '#DC2626',
+          textColor: '#FFFFFF',
+          icon: 'exclamation-triangle',
+          iconColor: '#FFFFFF',
+          label: 'URGENT',
+          urgencyText: 'Book Today'
+        };
+      case 'medium': 
+        return { 
+          backgroundColor: '#F59E0B',
+          borderColor: '#D97706',
+          textColor: '#FFFFFF',
+          icon: 'clock-o',
+          iconColor: '#FFFFFF',
+          label: 'RECOMMENDED',
+          urgencyText: 'Book Soon'
+        };
+      case 'low': 
+        return { 
+          backgroundColor: '#10B981',
+          borderColor: '#059669',
+          textColor: '#FFFFFF',
+          icon: 'check',
+          iconColor: '#FFFFFF',
+          label: 'OPTIONAL',
+          urgencyText: 'When Convenient'
+        };
+      default: 
+        return null;
+    }
+  };
+  
+  const priorityConfig = getPriorityConfig(priority);
+  
+  return (
+    <View style={{
+      backgroundColor: '#EFF6FF',
+      borderWidth: 1,
+      borderColor: '#DBEAFE',
+      padding: 18,
+      marginBottom: 14,
+      borderRadius: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <View style={{
+            width: 32,
+            height: 32,
+            backgroundColor: '#DBEAFE',
+            borderRadius: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <FontAwesome name="user-md" size={16} color="#2563EB" />
+          </View>
+          <View style={{ marginLeft: 12, flex: 1 }}>
+            <Text style={{
+              fontWeight: 'bold',
+              color: '#1E3A8A',
+              fontSize: 16,
+            }}>
+              {name}
+            </Text>
+            <Text style={{
+              color: '#1D4ED8',
+              fontSize: 14,
+              marginTop: 2,
+            }}>
+              {specialization}
+            </Text>
+          </View>
+        </View>
+        {priorityConfig && (
+          <View style={{
+            backgroundColor: priorityConfig.backgroundColor,
+            borderWidth: 1,
+            borderColor: priorityConfig.borderColor,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+            <FontAwesome 
+              name={priorityConfig.icon} 
+              size={10} 
+              color={priorityConfig.iconColor} 
+              style={{ marginRight: 4 }}
+            />
+            <Text style={{
+              color: priorityConfig.textColor,
+              fontSize: 10,
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+            }}>
+              {priorityConfig.label}
+            </Text>
+          </View>
+        )}
+      </View>
+      
+      <View style={{
+        backgroundColor: '#DBEAFE',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 12,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <FontAwesome name="map-marker" size={12} color="#1D4ED8" />
+          <Text style={{
+            marginLeft: 8,
+            color: '#1E3A8A',
+            fontWeight: '600',
+            fontSize: 14,
+          }}>
+            {city}
+          </Text>
+          {fee && (
+            <>
+              <Text style={{ marginHorizontal: 8, color: '#64748B' }}>•</Text>
+              <FontAwesome name="rupee" size={12} color="#1D4ED8" />
+              <Text style={{
+                marginLeft: 4,
+                color: '#1E3A8A',
+                fontWeight: '600',
+                fontSize: 14,
+              }}>
+                {fee}
+              </Text>
+            </>
+          )}
+        </View>
+        {type && (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <FontAwesome name="video-camera" size={12} color="#1D4ED8" />
+            <Text style={{
+              marginLeft: 8,
+              color: '#1E3A8A',
+              fontWeight: '500',
+              fontSize: 13,
+              textTransform: 'capitalize',
+            }}>
+              {type} Consultation
+            </Text>
+          </View>
+        )}
+      </View>
+      
+      {reason && (
+        <View style={{
+          backgroundColor: '#DBEAFE',
+          padding: 12,
+          borderRadius: 12,
+          marginBottom: 12,
+        }}>
+          <Text style={{
+            color: '#1E3A8A',
+            fontWeight: '600',
+            fontSize: 14,
+            marginBottom: 4,
+          }}>
+            Why this doctor:
+          </Text>
+          <Text style={{
+            color: '#1D4ED8',
+            fontSize: 14,
+            lineHeight: 20,
+          }}>
+            {reason}
+          </Text>
+        </View>
+      )}
+      
+      <View style={{ paddingLeft: 8 }}>
+        {formatStructuredContent(content)}
+      </View>
+    </View>
+  );
+};
 
 interface WarningsCardProps {
   content: string;

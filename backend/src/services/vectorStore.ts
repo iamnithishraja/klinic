@@ -34,6 +34,7 @@ class VectorStore {
     private stemmer = natural.PorterStemmer;
     private tfidf = new natural.TfIdf();
     private vocabulary: Set<string> = new Set();
+    private documentIndexMap: Map<string, number> = new Map(); // Track TF-IDF document indices
 
     constructor() {
         console.log('🗄️ VectorStore initialized');
@@ -95,9 +96,39 @@ class VectorStore {
             people: doc.people().out('array'),
             places: doc.places().out('array'), 
             organizations: doc.organizations().out('array'),
-            dates: doc.dates().out('array'),
+            dates: this.extractDates(text),
             medical: this.extractMedicalEntities(text)
         };
+    }
+
+    private extractDates(text: string): string[] {
+        // Extract dates using regex patterns since compromise.dates() is not available
+        const datePatterns = [
+            // MM/DD/YYYY, DD/MM/YYYY
+            /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
+            // YYYY-MM-DD
+            /\b\d{4}-\d{1,2}-\d{1,2}\b/g,
+            // Month DD, YYYY
+            /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
+            // DD Month YYYY
+            /\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/gi,
+            // Mon DD, YYYY (short month names)
+            /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4}\b/gi,
+            // DD Mon YYYY
+            /\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\b/gi,
+            // Today, yesterday, etc.
+            /\b(?:today|yesterday|tomorrow|last\s+week|next\s+week|last\s+month|next\s+month)\b/gi
+        ];
+
+        const dates: string[] = [];
+        datePatterns.forEach(pattern => {
+            const matches = text.match(pattern);
+            if (matches) {
+                dates.push(...matches.map(match => match.trim()));
+            }
+        });
+
+        return [...new Set(dates)]; // Remove duplicates
     }
 
     private preprocessText(text: string): string[] {
@@ -114,21 +145,40 @@ class VectorStore {
     }
 
     private calculateTfIdf(documentId: string, terms: string[]): number[] {
-        // Add document to TF-IDF calculator
-        this.tfidf.addDocument(terms);
-        
-        // Build vocabulary
-        terms.forEach(term => this.vocabulary.add(term));
-        
-        // Create TF-IDF vector
-        const vocabularyArray = Array.from(this.vocabulary);
-        const vector = new Array(vocabularyArray.length).fill(0);
-        
-        vocabularyArray.forEach((term, index) => {
-            vector[index] = this.tfidf.tfidf(term, this.documents.size - 1);
-        });
-        
-        return vector;
+        try {
+            // Filter out empty terms
+            const validTerms = terms.filter(term => term && term.length > 0);
+            
+            if (validTerms.length === 0) {
+                return []; // Return empty vector for empty documents
+            }
+            
+            // Add document to TF-IDF calculator and track its index
+            const docIndex = this.tfidf.documents.length;
+            this.tfidf.addDocument(validTerms);
+            this.documentIndexMap.set(documentId, docIndex);
+            
+            // Build vocabulary
+            validTerms.forEach(term => this.vocabulary.add(term));
+            
+            // Create TF-IDF vector
+            const vocabularyArray = Array.from(this.vocabulary);
+            const vector = new Array(vocabularyArray.length).fill(0);
+            
+            vocabularyArray.forEach((term, index) => {
+                try {
+                    vector[index] = this.tfidf.tfidf(term, docIndex);
+                } catch (error) {
+                    // If TF-IDF calculation fails for a term, set to 0
+                    vector[index] = 0;
+                }
+            });
+            
+            return vector;
+        } catch (error) {
+            console.error(`❌ Error calculating TF-IDF for document ${documentId}:`, error);
+            return []; // Return empty vector on error
+        }
     }
 
     addDocument(chunk: DocumentChunk): VectorDocument {
@@ -142,28 +192,53 @@ class VectorStore {
 
         console.log('📝 Processing document for vector store:', chunk.id);
 
-        // Extract entities and keywords
-        const entities = this.extractEntities(chunk.content);
-        const processedTerms = this.preprocessText(chunk.content);
-        
-        // Calculate TF-IDF vector
-        const tfidfVector = this.calculateTfIdf(chunk.id, processedTerms);
+        try {
+            // Extract entities and keywords
+            const entities = this.extractEntities(chunk.content);
+            const processedTerms = this.preprocessText(chunk.content);
+            
+            // Calculate TF-IDF vector
+            const tfidfVector = this.calculateTfIdf(chunk.id, processedTerms);
 
-        const vectorDoc: VectorDocument = {
-            id: chunk.id,
-            content: chunk.content,
-            metadata: chunk.metadata,
-            keywords: [...new Set([...chunk.keywords, ...processedTerms])],
-            entities,
-            tfidfVector,
-            processed: true
-        };
+            const vectorDoc: VectorDocument = {
+                id: chunk.id,
+                content: chunk.content,
+                metadata: chunk.metadata,
+                keywords: [...new Set([...chunk.keywords, ...processedTerms])],
+                entities,
+                tfidfVector,
+                processed: true
+            };
 
-        this.documents.set(chunk.id, vectorDoc);
-        this.cache.set(cacheKey, vectorDoc);
+            this.documents.set(chunk.id, vectorDoc);
+            this.cache.set(cacheKey, vectorDoc);
 
-        console.log(`✅ Document ${chunk.id} added to vector store`);
-        return vectorDoc;
+            console.log(`✅ Document ${chunk.id} added to vector store`);
+            return vectorDoc;
+        } catch (error) {
+            console.error(`❌ Error processing document ${chunk.id} for vector store:`, error);
+            
+            // Create a minimal document without TF-IDF vector if processing fails
+            const fallbackDoc: VectorDocument = {
+                id: chunk.id,
+                content: chunk.content,
+                metadata: chunk.metadata,
+                keywords: chunk.keywords,
+                entities: {
+                    people: [],
+                    places: [],
+                    organizations: [],
+                    dates: [],
+                    medical: []
+                },
+                tfidfVector: [],
+                processed: false
+            };
+
+            this.documents.set(chunk.id, fallbackDoc);
+            console.log(`⚠️ Document ${chunk.id} added with minimal processing due to error`);
+            return fallbackDoc;
+        }
     }
 
     addDocuments(chunks: DocumentChunk[]): VectorDocument[] {
