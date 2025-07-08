@@ -531,8 +531,8 @@ Recommended Actions: ${analysisResults.trends?.recommendations?.join(', ') || 'N
                 throw new Error('AI model not initialized');
             }
 
-            // Step 1: Extract medical entities and symptoms from user message
-            const entityExtractionPrompt = `
+                    // Step 1: Extract medical entities and symptoms from user message
+        const entityExtractionPrompt = `
 Analyze this patient message and extract medical information. Return ONLY a JSON object with the following structure:
 {
     "symptoms": ["list of symptoms mentioned"],
@@ -550,6 +550,14 @@ Recent medical context:
 - Recent prescriptions: ${context.recentPrescriptions.length}
 
 Return only valid JSON:`;
+
+        // 🔍 LOG: Medical analysis prompts
+        console.log('\n' + '='.repeat(80));
+        console.log('🧬 MEDICAL ANALYSIS - ENTITY EXTRACTION');
+        console.log('='.repeat(80));
+        console.log('📝 ENTITY EXTRACTION PROMPT:');
+        console.log(entityExtractionPrompt);
+        console.log('='.repeat(80) + '\n');
 
             const entityResult = await this.model.generateContent(entityExtractionPrompt);
             let extractedData = {
@@ -660,6 +668,19 @@ Return only valid JSON:`;
             
             const contextString = this.formatContextForAI(context);
 
+            // 🔍 LOG: Print complete medical context being sent to LLM
+            console.log('\n' + '='.repeat(80));
+            console.log('🧠 TOCTOR AI - FULL MEDICAL CONTEXT BEING SENT TO LLM');
+            console.log('='.repeat(80));
+            console.log('📋 User ID:', userId);
+            console.log('💬 User Message:', userMessage);
+            console.log('📄 Conversation ID:', conversationId || 'NEW CONVERSATION');
+            console.log('\n📊 ANALYSIS RESULTS:');
+            console.log(JSON.stringify(analysisResults, null, 2));
+            console.log('\n📝 COMPLETE FORMATTED CONTEXT:');
+            console.log(contextString);
+            console.log('='.repeat(80) + '\n');
+
             // Get or create conversation
             let conversation: any;
             if (conversationId) {
@@ -699,16 +720,34 @@ Return only valid JSON:`;
                 parts: [{ text: msg.content }]
             })) || [];
 
+            // Prepare system message with context
+            const systemMessage = `SYSTEM INSTRUCTIONS:\n${this.getSystemPrompt()}\n\nMEDICAL CONTEXT:\n${contextString}\n\nSystem: You are now ready to assist this patient. Please acknowledge that you have reviewed their medical context and understand your role as Toctor AI.`;
+            const initialResponse = `I've reviewed your comprehensive medical profile and understand my role as Toctor AI, your advanced medical AI assistant. I have access to your medical history, recent appointments, prescriptions, and lab results to provide personalized healthcare guidance using the structured XML format you'll see in my responses. What health concern can I help you with today?`;
+
+            // 🔍 LOG: Print chat session details
+            console.log('\n' + '='.repeat(80));
+            console.log('💬 CHAT SESSION SETUP');
+            console.log('='.repeat(80));
+            console.log('🎯 SYSTEM MESSAGE TO LLM:');
+            console.log(systemMessage);
+            console.log('\n🤖 INITIAL AI RESPONSE:');
+            console.log(initialResponse);
+            console.log('\n📚 CHAT HISTORY (' + chatHistory.length + ' messages):');
+            chatHistory.forEach((msg: any, index: number) => {
+                console.log(`${index + 1}. ${msg.role.toUpperCase()}: ${msg.parts[0].text.substring(0, 200)}${msg.parts[0].text.length > 200 ? '...' : ''}`);
+            });
+            console.log('='.repeat(80) + '\n');
+
             // Create chat session with history
             const chat = this.model.startChat({
                 history: [
                     {
                         role: 'user',
-                        parts: [{ text: `SYSTEM INSTRUCTIONS:\n${this.getSystemPrompt()}\n\nMEDICAL CONTEXT:\n${contextString}\n\nSystem: You are now ready to assist this patient. Please acknowledge that you have reviewed their medical context and understand your role as Toctor AI.` }]
+                        parts: [{ text: systemMessage }]
                     },
                     {
                         role: 'model',
-                        parts: [{ text: `I've reviewed your comprehensive medical profile and understand my role as Toctor AI, your advanced medical AI assistant. I have access to your medical history, recent appointments, prescriptions, and lab results to provide personalized healthcare guidance using the structured XML format you'll see in my responses. What health concern can I help you with today?` }]
+                        parts: [{ text: initialResponse }]
                     },
                     ...chatHistory
                 ],
@@ -720,10 +759,35 @@ Return only valid JSON:`;
                 }
             });
 
+            // 🔍 LOG: Current user message being sent
+            console.log('\n' + '='.repeat(80));
+            console.log('📤 SENDING MESSAGE TO LLM');
+            console.log('='.repeat(80));
+            console.log('👤 USER MESSAGE:', userMessage);
+            console.log('🔧 Generation Config:', {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 2048,
+            });
+            console.log('='.repeat(80) + '\n');
+
             // Get AI response
             const result = await chat.sendMessage(userMessage);
             const response = result.response;
             const responseText = response.text();
+
+            // 🔍 LOG: LLM Response received
+            console.log('\n' + '='.repeat(80));
+            console.log('📥 LLM RESPONSE RECEIVED');
+            console.log('='.repeat(80));
+            console.log('🤖 AI RESPONSE:');
+            console.log(responseText);
+            console.log('\n📊 RESPONSE METADATA:');
+            console.log('- Length:', responseText.length, 'characters');
+            console.log('- Contains XML tags:', /<[^>]+>/.test(responseText));
+            console.log('- Contains priority tags:', /priority="(high|medium|low)"/.test(responseText));
+            console.log('='.repeat(80) + '\n');
 
             // Save messages to conversation
             conversation!.messages.push({
@@ -745,7 +809,7 @@ Return only valid JSON:`;
 
             return {
                 response: responseText,
-                conversationId: conversation._id.toString(),
+                conversationId: conversation!._id.toString(),
                 context
             };
 
