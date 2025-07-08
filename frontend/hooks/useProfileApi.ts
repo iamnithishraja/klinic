@@ -112,8 +112,8 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
 
   const uploadFile = async (fileType: string, fileName: string, fileUri: string): Promise<string | null> => {
     try {
-      // Get upload URL
-      const urlResponse = await apiClient.post('/api/v1/upload-url', {
+      // Get upload URL from the correct endpoint
+      const urlResponse = await apiClient.post('/api/v1/profile/upload-url', {
         fileType,
         fileName
       });

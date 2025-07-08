@@ -3,15 +3,11 @@ import {
   View,
   Text,
   ScrollView,
-  Pressable,
-  FlatList,
-  Image,
   RefreshControl,
-  Linking
+  Linking,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import apiClient from '@/api/client';
 import RatingModal from './RatingModal';
 import VideoCallModal from './VideoCallModal';
@@ -20,57 +16,49 @@ import { useRatingSystem } from '@/hooks/useRatingSystem';
 import ToctorFloatingButton from './ToctorFloatingButton';
 import ToctorAIChat from './ToctorAIChat';
 
-interface Appointment {
-  _id: string;
-  type: 'doctor' | 'laboratory';
-  timeSlot: string; // Now a Date string from backend
-  timeSlotDisplay: string; // Human-readable formatted time display
-  status: string;
-  consultationType?: 'in-person' | 'online';
-  collectionType?: 'lab' | 'home';
-  providerName: string;
-  serviceName: string;
-  prescription?: string;
-  reportResult?: string;
-  feedbackRequested?: boolean;
-  clinic?: any;
-  laboratoryService?: any;
-  doctor?: any;
-  lab?: any;
-  packageCoverImage?: string; // For lab appointments - cover image from laboratoryService
-  createdAt: string;
-}
-
-interface DashboardData {
-  upcomingAppointments: Appointment[];
-  totalUpcoming: number;
-}
-
-interface PreviousData {
-  appointments?: Appointment[];
-  labTests?: Appointment[];
-  pagination: {
-    current: number;
-    total: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-}
+// Import modular components and types
+import {
+  UpcomingAppointments,
+  PreviousAppointments,
+  CollectedSamples,
+  PreviousLabTests,
+  UserDashboardModals,
+  Appointment,
+  DashboardData,
+  PreviousData,
+  CollectedData
+} from './dashboard';
 
 const UserDashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [previousAppointments, setPreviousAppointments] = useState<PreviousData | null>(null);
   const [previousLabTests, setPreviousLabTests] = useState<PreviousData | null>(null);
+  const [collectedSamples, setCollectedSamples] = useState<CollectedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Modal states
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showPdfsModal, setShowPdfsModal] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [showLabReportsListModal, setShowLabReportsListModal] = useState(false);
+  const [allLabReports, setAllLabReports] = useState<Appointment[]>([]);
+  
+  // Modal data
   const [prescriptionData, setPrescriptionData] = useState<any>(null);
   const [reportData, setReportData] = useState<any>(null);
+  const [pdfsData, setPdfsData] = useState<any>(null);
+  const [notesData, setNotesData] = useState<any>(null);
+  
+  // Video call states
   const [showVideoCallModal, setShowVideoCallModal] = useState(false);
   const [selectedVideoCallAppointment, setSelectedVideoCallAppointment] = useState<Appointment | null>(null);
+  
+  // AI Chat state
   const [showAIChat, setShowAIChat] = useState(false);
+  
   const { showAlert, AlertComponent } = useCustomAlert();
 
   // Rating system - Only check previous/completed appointments for ratings
@@ -91,7 +79,8 @@ const UserDashboard: React.FC = () => {
     await Promise.all([
       fetchDashboardData(),
       fetchPreviousAppointments(),
-      fetchPreviousLabTests()
+      fetchPreviousLabTests(),
+      fetchCollectedSamples()
     ]);
   };
 
@@ -108,20 +97,8 @@ const UserDashboard: React.FC = () => {
     fetchDashboardData();
     fetchPreviousAppointments();
     fetchPreviousLabTests();
+    fetchCollectedSamples();
   }, []);
-
-  const handleNavigateToSection = (section: 'doctors' | 'laboratories') => {
-    try {
-      if (section === 'doctors') {
-        router.push('/(tabs)/doctors');
-      } else {
-        router.push('/(tabs)/laboratories');
-      }
-    } catch (error) {
-      // Fallback - do nothing if navigation fails
-      console.log('Navigation error:', error);
-    }
-  };
 
   const fetchDashboardData = async () => {
     try {
@@ -157,12 +134,22 @@ const UserDashboard: React.FC = () => {
     }
   };
 
+  const fetchCollectedSamples = async (page: number = 1) => {
+    try {
+      const response = await apiClient.get(`/api/v1/user/lab-tests/collected?page=${page}&limit=5`);
+      setCollectedSamples(response.data);
+    } catch (error) {
+      console.error('Error fetching collected samples:', error);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       fetchDashboardData(),
       fetchPreviousAppointments(),
-      fetchPreviousLabTests()
+      fetchPreviousLabTests(),
+      fetchCollectedSamples()
     ]);
     setRefreshing(false);
   };
@@ -261,6 +248,64 @@ const UserDashboard: React.FC = () => {
     }
   };
 
+  const viewLabPdfs = async (testId: string) => {
+    try {
+      const response = await apiClient.get(`/api/v1/user/lab-tests/${testId}/pdfs`);
+      setPdfsData(response.data);
+      setShowPdfsModal(true);
+    } catch (error) {
+      showAlert({
+        title: 'Error',
+        message: 'Failed to load lab report PDFs',
+        type: 'error'
+      });
+    }
+  };
+
+  const viewLabNotes = async (testId: string) => {
+    try {
+      const response = await apiClient.get(`/api/v1/user/lab-tests/${testId}/notes`);
+      setNotesData(response.data);
+      setShowNotesModal(true);
+    } catch (error) {
+      showAlert({
+        title: 'Error',
+        message: 'Failed to load lab notes',
+        type: 'error'
+      });
+    }
+  };
+
+  const fetchAllLabReports = async () => {
+    try {
+      // Fetch all completed lab tests to show in the list
+      const response = await apiClient.get('/api/v1/user/lab-tests/previous?page=1&limit=50');
+      setAllLabReports(response.data.labTests || []);
+      setShowLabReportsListModal(true);
+    } catch (error) {
+      showAlert({
+        title: 'Error',
+        message: 'Failed to load lab reports',
+        type: 'error'
+      });
+    }
+  };
+
+  const showPrescriptionsModal = () => {
+    // Show all appointments with prescriptions
+    const appointmentsWithPrescriptions = previousAppointments?.appointments?.filter(apt => apt.prescription) || [];
+    if (appointmentsWithPrescriptions.length > 0) {
+      setPrescriptionData({ appointments: appointmentsWithPrescriptions });
+      setShowPrescriptionModal(true);
+    } else {
+      showAlert({
+        title: 'No Prescriptions',
+        message: 'You don\'t have any prescriptions yet.',
+        type: 'info'
+      });
+    }
+  };
+
   const formatAppointmentTime = (timeSlot: string, timeSlotDisplay: string) => {
     try {
       // Convert UTC timeSlot to IST for comparison
@@ -307,209 +352,6 @@ const UserDashboard: React.FC = () => {
     return true;
   };
 
-  const renderUpcomingAppointment = ({ item }: { item: Appointment }) => (
-    <View className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" style={{ width: 300 }}>
-      {/* Cover Image Section */}
-      {item.type === 'doctor' && item.doctor ? (
-        item.doctor.coverImage ? (
-          <Image
-            source={{ uri: item.doctor.coverImage }}
-            className="w-full h-32"
-            resizeMode="cover"
-          />
-        ) : (
-          <View className="w-full h-32 bg-gradient-to-r from-blue-100 to-indigo-100 items-center justify-center">
-            <FontAwesome name="user-md" size={32} color="#6366F1" />
-          </View>
-        )
-      ) : item.type === 'laboratory' ? (
-        item.packageCoverImage ? (
-          <Image
-            source={{ uri: item.packageCoverImage }}
-            className="w-full h-32"
-            resizeMode="cover"
-          />
-        ) : (
-          <View className="w-full h-32 bg-gradient-to-r from-purple-100 to-violet-100 items-center justify-center">
-            <FontAwesome name="flask" size={32} color="#8B5CF6" />
-          </View>
-        )
-      ) : (
-        <View className="w-full h-32 bg-gradient-to-r from-gray-100 to-gray-200 items-center justify-center">
-          <FontAwesome name="hospital-o" size={32} color="#6B7280" />
-        </View>
-      )}
-
-      <View className="p-5">
-        <View className="flex-row justify-between items-start mb-4">
-          <View className="flex-1">
-            <Text className="text-xl font-bold text-gray-900 mb-1">
-              {item.type === 'doctor' ? `Dr. ${item.providerName}` : item.providerName}
-            </Text>
-            <Text className="text-gray-600 mb-2">{item.serviceName}</Text>
-            <Text className="text-sm text-gray-500">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
-          </View>
-          <View 
-            className="px-3 py-1 rounded-full"
-            style={{ backgroundColor: `${getAppointmentStatusColor(item)}20` }}
-          >
-            <Text 
-              className="text-xs font-medium"
-              style={{ color: getAppointmentStatusColor(item) }}
-            >
-              {item.type === 'doctor' ? 
-                (item.consultationType === 'online' ? 'Online' : 'In-Person') : 
-                (item.collectionType === 'home' ? 'Home Collection' : 'Lab Visit')
-              }
-            </Text>
-          </View>
-        </View>
-
-      <View className="space-y-3">
-        {item.type === 'doctor' && item.consultationType === 'online' && (
-          <Pressable
-            onPress={() => handleJoinOnlineConsultation(item)}
-            disabled={!canJoinNow(item.timeSlot)}
-            className={`py-3 px-4 rounded-xl flex-row items-center justify-center ${
-              canJoinNow(item.timeSlot) ? 'bg-green-500' : 'bg-gray-300'
-            }`}
-          >
-            <FontAwesome 
-              name="video-camera" 
-              size={16} 
-              color="white" 
-              style={{ marginRight: 8 }} 
-            />
-            <Text className="text-white font-medium">
-              {canJoinNow(item.timeSlot) ? 'Join Now' : 'Join Later'}
-            </Text>
-          </Pressable>
-        )}
-
-        {item.type === 'doctor' && item.consultationType === 'in-person' && item.clinic && (
-          <Pressable
-            onPress={() => handleGetDirections(item)}
-            className="py-3 px-4 rounded-xl flex-row items-center justify-center bg-blue-500"
-          >
-            <FontAwesome 
-              name="map-marker" 
-              size={16} 
-              color="white" 
-              style={{ marginRight: 8 }} 
-            />
-            <Text className="text-white font-medium">Get Directions</Text>
-          </Pressable>
-        )}
-
-        {item.type === 'laboratory' && item.collectionType === 'lab' && (
-          <Pressable
-            onPress={() => handleGetDirections(item)}
-            className="py-3 px-4 rounded-xl flex-row items-center justify-center bg-purple-500"
-          >
-            <FontAwesome 
-              name="map-marker" 
-              size={16} 
-              color="white" 
-              style={{ marginRight: 8 }} 
-            />
-            <Text className="text-white font-medium">Get Directions to Lab</Text>
-          </Pressable>
-        )}
-
-        {item.type === 'laboratory' && item.collectionType === 'home' && (
-          <View className="py-3 px-4 rounded-xl bg-orange-100 flex-row items-center justify-center">
-            <FontAwesome 
-              name="home" 
-              size={16} 
-              color="#ea580c" 
-              style={{ marginRight: 8 }} 
-            />
-            <Text className="text-orange-700 font-medium">Home Collection Scheduled</Text>
-          </View>
-        )}
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderPreviousAppointment = ({ item }: { item: Appointment }) => (
-    <View className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-100">
-      <View className="flex-row items-start mb-2">
-        {/* Small cover image or icon */}
-        <View className="mr-3">
-          {item.type === 'doctor' && item.doctor?.coverImage ? (
-            <Image
-              source={{ uri: item.doctor.coverImage }}
-              className="w-12 h-12 rounded-lg"
-              resizeMode="cover"
-            />
-          ) : item.type === 'doctor' ? (
-            <View className="w-12 h-12 rounded-lg bg-blue-100 items-center justify-center">
-              <FontAwesome name="user-md" size={20} color="#6366F1" />
-            </View>
-          ) : (
-            <View className="w-12 h-12 rounded-lg bg-purple-100 items-center justify-center">
-              <FontAwesome name="flask" size={20} color="#8B5CF6" />
-            </View>
-          )}
-        </View>
-        
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-gray-900">
-            {item.type === 'doctor' ? `Dr. ${item.providerName}` : item.providerName}
-          </Text>
-          <Text className="text-gray-600 text-sm">{item.serviceName}</Text>
-          <Text className="text-gray-500 text-xs">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
-        </View>
-        
-        {item.type === 'doctor' && item.prescription && (
-          <Pressable
-            onPress={() => viewPrescription(item._id)}
-            className="bg-blue-100 px-3 py-1 rounded-lg ml-2"
-          >
-            <Text className="text-blue-700 text-xs font-medium">View Prescription</Text>
-          </Pressable>
-        )}
-      </View>
-    </View>
-  );
-
-  const renderPreviousLabTest = ({ item }: { item: Appointment }) => (
-    <View className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-100">
-      <View className="flex-row items-start mb-2">
-        {/* Small lab icon or package cover image */}
-        <View className="mr-3">
-          {item.packageCoverImage ? (
-            <Image
-              source={{ uri: item.packageCoverImage }}
-              className="w-12 h-12 rounded-lg"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="w-12 h-12 rounded-lg bg-purple-100 items-center justify-center">
-              <FontAwesome name="flask" size={20} color="#8B5CF6" />
-            </View>
-          )}
-        </View>
-        
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-gray-900">{item.providerName}</Text>
-          <Text className="text-gray-600 text-sm">{item.serviceName}</Text>
-          <Text className="text-gray-500 text-xs">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
-        </View>
-        
-        {item.reportResult && (
-          <Pressable
-            onPress={() => viewLabReport(item._id)}
-            className="bg-purple-100 px-3 py-1 rounded-lg ml-2"
-          >
-            <Text className="text-purple-700 text-xs font-medium">View Report</Text>
-          </Pressable>
-        )}
-      </View>
-    </View>
-  );
-
   if (loading) {
     return (
       <SafeAreaProvider>
@@ -537,103 +379,46 @@ const UserDashboard: React.FC = () => {
               <Text className="text-gray-600">Stay on top of your appointments and health records</Text>
             </View>
 
-            {/* Upcoming Appointments Carousel */}
-            <View className="mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-4">
-                Upcoming Appointments ({dashboardData?.totalUpcoming || 0})
-              </Text>
-              
-              {dashboardData?.upcomingAppointments && dashboardData.upcomingAppointments.length > 0 ? (
-                <FlatList
-                  data={dashboardData.upcomingAppointments}
-                  renderItem={renderUpcomingAppointment}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingLeft: 24, paddingRight: 24 }}
-                  ItemSeparatorComponent={() => <View className="w-4" />}
-                />
-              ) : (
-                <View className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 shadow-sm border border-blue-100 items-center">
-                  <View className="bg-blue-100 rounded-full p-4 mb-4">
-                    <FontAwesome name="calendar-plus-o" size={40} color="#4F46E5" />
-                  </View>
-                  <Text className="text-xl font-bold text-gray-900 mb-2">Ready for your next consultation?</Text>
-                  <Text className="text-gray-600 text-center mb-6 leading-relaxed">
-                    Book appointments with top doctors and laboratories near you. Your health journey starts here!
-                  </Text>
-                  <View className="flex-row space-x-3">
-                    <Pressable 
-                      onPress={() => handleNavigateToSection('doctors')}
-                      className="bg-primary px-6 py-3 rounded-xl flex-row items-center"
-                    >
-                      <FontAwesome name="stethoscope" size={16} color="white" style={{ marginRight: 8 }} />
-                      <Text className="text-white font-medium">Find Doctors</Text>
-                    </Pressable>
-                    <Pressable 
-                      onPress={() => handleNavigateToSection('laboratories')}
-                      className="bg-purple-500 px-6 py-3 rounded-xl flex-row items-center"
-                    >
-                      <FontAwesome name="flask" size={16} color="white" style={{ marginRight: 8 }} />
-                      <Text className="text-white font-medium">Book Lab Tests</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
-            </View>
+            {/* Upcoming Appointments */}
+            <UpcomingAppointments
+              dashboardData={dashboardData}
+              onJoinOnlineConsultation={handleJoinOnlineConsultation}
+              onGetDirections={handleGetDirections}
+              formatAppointmentTime={formatAppointmentTime}
+              getAppointmentStatusColor={getAppointmentStatusColor}
+              canJoinNow={canJoinNow}
+            />
 
             {/* Previous Appointments */}
-            <View className="mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-4">Previous Appointments</Text>
-              
-              {previousAppointments?.appointments && previousAppointments.appointments.length > 0 ? (
-                <FlatList
-                  data={previousAppointments.appointments}
-                  renderItem={renderPreviousAppointment}
-                  scrollEnabled={false}
-                />
-              ) : (
-                <View className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border border-green-100 items-center">
-                  <View className="bg-green-100 rounded-full p-3 mb-3">
-                    <FontAwesome name="clock-o" size={28} color="#059669" />
-                  </View>
-                  <Text className="text-lg font-semibold text-gray-900 mb-1">Your consultation history</Text>
-                  <Text className="text-gray-600 text-center text-sm">
-                    Previous appointments and prescriptions will appear here
-                  </Text>
-                </View>
-              )}
-            </View>
+            <PreviousAppointments
+              previousAppointments={previousAppointments}
+              formatAppointmentTime={formatAppointmentTime}
+              onViewPrescription={viewPrescription}
+              onShowPrescriptionsModal={showPrescriptionsModal}
+            />
+
+            {/* Collected Samples */}
+            <CollectedSamples
+              collectedSamples={collectedSamples}
+              formatAppointmentTime={formatAppointmentTime}
+            />
 
             {/* Previous Lab Tests */}
-            <View className="mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-4">Previous Lab Tests</Text>
-              
-              {previousLabTests?.labTests && previousLabTests.labTests.length > 0 ? (
-                <FlatList
-                  data={previousLabTests.labTests}
-                  renderItem={renderPreviousLabTest}
-                  scrollEnabled={false}
-                />
-              ) : (
-                <View className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-6 shadow-sm border border-purple-100 items-center">
-                  <View className="bg-purple-100 rounded-full p-3 mb-3">
-                    <FontAwesome name="heartbeat" size={28} color="#8B5CF6" />
-                  </View>
-                  <Text className="text-lg font-semibold text-gray-900 mb-1">Your health reports</Text>
-                  <Text className="text-gray-600 text-center text-sm">
-                    Lab test results and health reports will be available here
-                  </Text>
-                </View>
-              )}
-            </View>
+            <PreviousLabTests
+              previousLabTests={previousLabTests}
+              formatAppointmentTime={formatAppointmentTime}
+              onViewLabReport={viewLabReport}
+              onViewLabPdfs={viewLabPdfs}
+              onViewLabNotes={viewLabNotes}
+              onShowAllReportsModal={fetchAllLabReports}
+            />
           </View>
         </ScrollView>
 
         {/* AI Chat Floating Button */}
         <ToctorFloatingButton onPress={handleOpenAIChat} />
 
-        {/* Existing Modals - keep unchanged */}
-
+        {/* Video Call Modal */}
         {selectedVideoCallAppointment && (
           <VideoCallModal
             visible={showVideoCallModal}
@@ -659,6 +444,29 @@ const UserDashboard: React.FC = () => {
             onRatingSubmitted={handleRatingSubmittedWithRefresh}
           />
         )}
+
+        {/* All Dashboard Modals */}
+        <UserDashboardModals
+          showPrescriptionModal={showPrescriptionModal}
+          showReportModal={showReportModal}
+          showPdfsModal={showPdfsModal}
+          showNotesModal={showNotesModal}
+          showLabReportsListModal={showLabReportsListModal}
+          prescriptionData={prescriptionData}
+          reportData={reportData}
+          pdfsData={pdfsData}
+          notesData={notesData}
+          allLabReports={allLabReports}
+          onClosePrescriptionModal={() => setShowPrescriptionModal(false)}
+          onCloseReportModal={() => setShowReportModal(false)}
+          onClosePdfsModal={() => setShowPdfsModal(false)}
+          onCloseNotesModal={() => setShowNotesModal(false)}
+          onCloseLabReportsListModal={() => setShowLabReportsListModal(false)}
+          onViewLabReport={viewLabReport}
+          onViewLabPdfs={viewLabPdfs}
+          onViewLabNotes={viewLabNotes}
+          formatAppointmentTime={formatAppointmentTime}
+        />
 
         {/* AI Chat Modal */}
         <ToctorAIChat

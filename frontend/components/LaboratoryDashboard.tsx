@@ -194,34 +194,48 @@ const LaboratoryDashboard: React.FC = () => {
 
         console.log('Document selected:', fileUri);
 
-        // Upload the PDF file
-        const formData = new FormData();
-        formData.append('file', {
-          uri: fileUri,
-          type: fileType,
-          name: fileName,
-        } as any);
+        // Step 1: Get upload URL from backend
+        const uploadUrlResponse = await apiClient.post('/api/v1/upload-url', {
+          fileType,
+          fileName,
+        });
 
-        const response = await apiClient.post('/api/v1/upload', formData, {
+        if (!uploadUrlResponse.data.uploadUrl) {
+          throw new Error('Failed to get upload URL');
+        }
+
+        const uploadUrl = uploadUrlResponse.data.uploadUrl;
+        console.log('Got upload URL:', uploadUrl);
+
+        // Step 2: Upload file directly to the presigned URL
+        const response = await fetch(fileUri);
+        const blob = await response.blob();
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: blob,
           headers: {
-            'Content-Type': 'multipart/form-data',
+            'Content-Type': fileType,
           },
         });
 
-        if (response.data.url) {
-          console.log('PDF uploaded successfully, URL:', response.data.url);
-          setTestReportPdfs([...testReportPdfs, response.data.url]);
+        if (uploadResponse.ok) {
+          // Extract the file URL from the upload URL (remove query parameters)  
+          const urlWithoutQuery = uploadUrl.split('?')[0];
+          const parts = urlWithoutQuery.split('.com/');
+          const key = parts[1];
+          
+          const s3Url = `https://pub-0f703feb53794f768ba649b826a64db4.r2.dev/${key}`;
+          console.log('PDF uploaded successfully, URL:', s3Url);
+          
+          setTestReportPdfs([...testReportPdfs, s3Url]);
           showAlert({
             title: 'Success',
             message: 'Test report PDF uploaded successfully',
             type: 'success'
           });
         } else {
-          showAlert({
-            title: 'Error',
-            message: 'Failed to upload PDF file',
-            type: 'error'
-          });
+          throw new Error(`Upload failed with status: ${uploadResponse.status}`);
         }
       }
     } catch (error) {

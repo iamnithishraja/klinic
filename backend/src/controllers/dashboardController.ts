@@ -220,10 +220,10 @@ const getPreviousLabTests = async (req: CustomRequest, res: Response) => {
         const limit = parseInt(req.query.limit as string) || 10;
         const skip = (page - 1) * limit;
 
-        // Get previous lab appointments
+        // Get previous lab appointments (both completed and marked-as-read)
         const previousLabTests = await LabAppointment.find({
             patient: userId,
-            status: 'completed'
+            status: { $in: ['completed', 'marked-as-read'] }
         })
         .populate('lab', 'name email phone')
         .populate('laboratoryService')
@@ -233,7 +233,7 @@ const getPreviousLabTests = async (req: CustomRequest, res: Response) => {
 
         const totalPreviousTests = await LabAppointment.countDocuments({
             patient: userId,
-            status: 'completed'
+            status: { $in: ['completed', 'marked-as-read'] }
         });
 
         // Populate laboratory profiles for lab names only (cover image comes from laboratoryService)
@@ -317,7 +317,7 @@ const getLabReport = async (req: CustomRequest, res: Response) => {
         const labTest = await LabAppointment.findOne({
             _id: testId,
             patient: userId,
-            status: 'completed'
+            status: { $in: ['completed', 'marked-as-read'] }
         })
         .populate('lab', 'name email phone')
         .populate('laboratoryService');
@@ -337,10 +337,153 @@ const getLabReport = async (req: CustomRequest, res: Response) => {
     }
 };
 
+const getLabReportPdfs = async (req: CustomRequest, res: Response) => {
+    try {
+        const userId = req.user._id;
+        const { testId } = req.params;
+
+        const labTest = await LabAppointment.findOne({
+            _id: testId,
+            patient: userId,
+            status: { $in: ['completed', 'marked-as-read'] }
+        })
+        .populate('lab', 'name email phone')
+        .populate('laboratoryService');
+
+        if (!labTest) {
+            res.status(404).json({ message: "Lab test not found or access denied" });
+            return;
+        }
+
+        res.status(200).json({
+            labTest: {
+                _id: labTest._id,
+                providerName: (labTest.lab as any)?.name,
+                serviceName: (labTest.laboratoryService as any)?.name,
+                timeSlot: labTest.timeSlot
+            },
+            testReportPdfs: labTest.testReportPdfs || []
+        });
+    } catch (error) {
+        console.error('Get lab report PDFs error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
+const getLabNotes = async (req: CustomRequest, res: Response) => {
+    try {
+        const userId = req.user._id;
+        const { testId } = req.params;
+
+        const labTest = await LabAppointment.findOne({
+            _id: testId,
+            patient: userId,
+            status: { $in: ['completed', 'marked-as-read'] }
+        })
+        .populate('lab', 'name email phone')
+        .populate('laboratoryService');
+
+        if (!labTest) {
+            res.status(404).json({ message: "Lab test not found or access denied" });
+            return;
+        }
+
+        res.status(200).json({
+            labTest: {
+                _id: labTest._id,
+                providerName: (labTest.lab as any)?.name,
+                serviceName: (labTest.laboratoryService as any)?.name,
+                timeSlot: labTest.timeSlot
+            },
+            notes: labTest.notes || 'No additional notes available'
+        });
+    } catch (error) {
+        console.error('Get lab notes error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
+const getCollectedSamples = async (req: CustomRequest, res: Response) => {
+    try {
+        const userId = req.user._id;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const skip = (page - 1) * limit;
+
+        // Get lab appointments with collected status (sample collected, in processing)
+        const collectedSamples = await LabAppointment.find({
+            patient: userId,
+            status: { $in: ['collected', 'processing'] }
+        })
+        .populate('lab', 'name email phone')
+        .populate('laboratoryService')
+        .sort({ timeSlot: -1 })
+        .skip(skip)
+        .limit(limit);
+
+        const totalCollectedSamples = await LabAppointment.countDocuments({
+            patient: userId,
+            status: { $in: ['collected', 'processing'] }
+        });
+
+        // Populate laboratory profiles for lab names
+        for (let i = 0; i < collectedSamples.length; i++) {
+            const sample = collectedSamples[i];
+            const labUser = sample?.lab;
+            if (labUser) {
+                try {
+                    const labProfile = await LaboratoryProfile.findOne({ user: (labUser as any)._id });
+                    if (labProfile) {
+                        if (labProfile.laboratoryName) {
+                            (sample.lab as any).laboratoryName = labProfile.laboratoryName;
+                        }
+                        // Add laboratory profile ID for rating purposes
+                        (sample.lab as any).profileId = labProfile._id;
+                    }
+                } catch (error) {
+                    console.log('Error fetching lab profile:', error);
+                }
+            }
+        }
+
+        // Format collected samples for response
+        const formattedSamples = collectedSamples.map(sample => {
+            const sampleObj = sample.toObject();
+            return {
+                ...sampleObj,
+                type: 'laboratory',
+                providerName: (sample.lab as any)?.laboratoryName || (sample.lab as any)?.name,
+                serviceName: (sample.laboratoryService as any)?.name,
+                packageCoverImage: (sample.laboratoryService as any)?.coverImage,
+                timeSlotDisplay: formatDateToDisplayString(sample.timeSlot)
+            };
+        });
+
+        const totalPages = Math.ceil(totalCollectedSamples / limit);
+
+        res.status(200).json({
+            labTests: formattedSamples,
+            pagination: {
+                current: page,
+                total: totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            },
+            totalCollected: totalCollectedSamples
+        });
+    } catch (error) {
+        console.error('Get collected samples error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
 export { 
     getUserDashboard, 
     getPreviousAppointments, 
     getPreviousLabTests, 
     getAppointmentPrescription, 
-    getLabReport 
+    getLabReport,
+    getLabReportPdfs,
+    getLabNotes,
+    getCollectedSamples
 }; 

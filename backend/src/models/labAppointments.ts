@@ -29,7 +29,7 @@ const labAppointmentsSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'processing', 'completed', 'upcoming', 'collected'],
+        enum: ['pending', 'processing', 'completed', 'upcoming', 'collected', 'marked-as-read'],
         default: 'pending',
     },
     isPaid: {
