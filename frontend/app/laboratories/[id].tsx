@@ -6,6 +6,7 @@ import { useLaboratoryStore } from '@/store/laboratoryStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import apiClient from '@/api/client';
 import { useCustomAlert } from '@/components/CustomAlert';
+import RatingDisplay from '@/components/RatingDisplay';
 
 // Import separated components
 import ServiceInfo from '@/components/laboratory/ServiceInfo';
@@ -309,6 +310,16 @@ export default function LaboratoryServiceDetails() {
               laboratoryName={laboratory.laboratoryName}
               laboratoryId={laboratory._id}
             />
+            
+            {/* Ratings Section */}
+            {/* <View className="mt-6">
+              <RatingDisplay 
+                providerId={laboratory.user._id}
+                providerType="lab" 
+                size="medium" 
+              />
+            </View> */}
+
             
             {/* Collection Type Selection */}
             <View className="mt-6">

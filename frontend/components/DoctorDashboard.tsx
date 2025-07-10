@@ -47,6 +47,7 @@ interface DoctorAppointment {
   isPaid: boolean;
   paymentStatus?: 'pending' | 'captured' | 'failed';
   paymentCollected?: boolean;
+  feedbackRequested?: boolean;
   createdAt: string;
 }
 
@@ -342,7 +343,7 @@ const DoctorDashboard: React.FC = () => {
 
     showAlert({
       title: 'Mark as Read',
-      message: `Mark appointment with ${appointment.patient.name} as completed? This will move it to completed appointments.`,
+      message: `Mark appointment with ${appointment.patient.name} as completed? This will move it to completed appointments and request feedback from the patient.`,
       type: 'info',
       buttons: [
         { text: 'Cancel', style: 'cancel' },
@@ -359,7 +360,7 @@ const DoctorDashboard: React.FC = () => {
 
               showAlert({
                 title: 'Success',
-                message: 'Appointment marked as completed',
+                message: 'Appointment marked as completed and feedback requested from patient',
                 type: 'success'
               });
 
@@ -379,6 +380,52 @@ const DoctorDashboard: React.FC = () => {
         }
       ]
     });
+  };
+
+  const handleRequestFeedback = async (appointment: DoctorAppointment) => {
+    try {
+      const response = await apiClient.post(`/api/v1/ratings/appointments/${appointment._id}/request-feedback`);
+      console.log('Request feedback response:', response.data);
+
+      showAlert({
+        title: 'Success',
+        message: 'Feedback request sent to patient successfully',
+        type: 'success'
+      });
+
+      // Refresh dashboard data
+      await fetchDashboardData();
+    } catch (error: any) {
+      console.error('Request feedback error:', error);
+      showAlert({
+        title: 'Error',
+        message: `Failed to request feedback: ${error.response?.data?.message || error.message}`,
+        type: 'error'
+      });
+    }
+  };
+
+  const handleCancelFeedbackRequest = async (appointment: DoctorAppointment) => {
+    try {
+      const response = await apiClient.delete(`/api/v1/ratings/appointments/${appointment._id}/cancel-feedback`);
+      console.log('Cancel feedback response:', response.data);
+
+      showAlert({
+        title: 'Success',
+        message: 'Feedback request cancelled successfully',
+        type: 'success'
+      });
+
+      // Refresh dashboard data
+      await fetchDashboardData();
+    } catch (error: any) {
+      console.error('Cancel feedback error:', error);
+      showAlert({
+        title: 'Error',
+        message: `Failed to cancel feedback request: ${error.response?.data?.message || error.message}`,
+        type: 'error'
+      });
+    }
   };
 
   const handleJoinNow = (appointment: DoctorAppointment) => {
@@ -564,6 +611,25 @@ const DoctorDashboard: React.FC = () => {
           <Text className="text-lg font-semibold text-gray-900 text-center">{item.patient.name}</Text>
           <Text className="text-gray-600 text-sm text-center">{item.patient.email}</Text>
           <Text className="text-gray-500 text-xs text-center">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
+          
+          {/* Feedback Status */}
+          <View className="mt-2 flex-row items-center justify-center">
+            <View 
+              className={`px-2 py-1 rounded-full ${
+                item.feedbackRequested 
+                  ? 'bg-yellow-100 border border-yellow-200' 
+                  : 'bg-gray-100 border border-gray-200'
+              }`}
+            >
+              <Text 
+                className={`text-xs font-medium ${
+                  item.feedbackRequested ? 'text-yellow-700' : 'text-gray-600'
+                }`}
+              >
+                {item.feedbackRequested ? 'Feedback Requested' : 'No Feedback Requested'}
+              </Text>
+            </View>
+          </View>
         </View>
         
         <View className="flex-col space-y-1.5 ml-3">
@@ -585,10 +651,29 @@ const DoctorDashboard: React.FC = () => {
               color="#10B981" 
               style={{ marginBottom: 1 }} 
             />
-            <Text className="text-green-700 text-xs font-medium">
+            <Text className="text-blue-700 text-xs font-medium">
               {item.prescription ? 'Edit' : 'Add Prescription'}
             </Text>
           </Pressable>
+          
+          {/* Feedback Request Button */}
+          {!item.feedbackRequested ? (
+            <Pressable
+              onPress={() => handleRequestFeedback(item)}
+              className="bg-yellow-50 px-2.5 py-1.5 rounded-lg border border-yellow-200 items-center"
+            >
+              <FontAwesome name="star" size={10} color="#F59E0B" style={{ marginBottom: 1 }} />
+              <Text className="text-yellow-700 text-xs font-medium">Request Feedback</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => handleCancelFeedbackRequest(item)}
+              className="bg-red-50 px-2.5 py-1.5 rounded-lg border border-red-200 items-center"
+            >
+              <FontAwesome name="times" size={10} color="#EF4444" style={{ marginBottom: 1 }} />
+              <Text className="text-red-700 text-xs font-medium">Cancel Request</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>

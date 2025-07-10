@@ -32,8 +32,8 @@ export default function ServiceInfo({ service, laboratoryName, laboratoryId }: S
         <Text className="text-gray-600 text-lg">at {laboratoryName}</Text>
         <View className="flex-row items-center mt-2">
           <RatingDisplay 
-            providerId={ratingProviderId} 
-            type="laboratory" 
+            providerId={service._id || ''} // This is the laboratory service ID
+            providerType="laboratoryService" 
             size="medium"
           />
           <Text className="text-gray-400 mx-2">•</Text>

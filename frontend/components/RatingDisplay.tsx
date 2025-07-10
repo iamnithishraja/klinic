@@ -5,43 +5,100 @@ import apiClient from '@/api/client';
 
 interface RatingDisplayProps {
   providerId: string;
-  type: 'doctor' | 'laboratory';
+  providerType: 'doctor' | 'lab' | 'laboratoryService';
   size?: 'small' | 'medium' | 'large';
+  showBreakdown?: boolean;
 }
 
 interface RatingData {
   averageRating: number;
+  totalRatings: number;
+  breakdown: {
+    5: number;
+    4: number;
+    3: number;
+    2: number;
+    1: number;
+  };
 }
 
 const RatingDisplay: React.FC<RatingDisplayProps> = ({
   providerId,
-  type,
+  providerType,
   size = 'medium',
+  showBreakdown = false,
 }) => {
   const [ratingData, setRatingData] = useState<RatingData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Debug: Log component props
+  console.log('🔍 RatingDisplay props:', { providerId, providerType, size, showBreakdown });
+
   useEffect(() => {
-    if (providerId && type) {
+    if (providerId && providerType) {
+      console.log('🚀 RatingDisplay useEffect triggered with:', { providerId, providerType });
       fetchRating();
+    } else {
+      console.log('⚠️ RatingDisplay useEffect skipped - missing props:', { providerId, providerType });
     }
-  }, [providerId, type]);
+  }, [providerId, providerType]);
 
   const fetchRating = async () => {
     try {
       setLoading(true);
-      // Use the new API endpoint that expects profile ID
-      const url = `/api/v1/ratings/profile/${providerId}/${type}`;
+      const url = `/api/v1/ratings/providers/${providerId}?type=${providerType}`;
       
-      console.log('🔍 Fetching rating for:', { providerId, type, url });
+      console.log('🔍 Fetching rating for:', { providerId, providerType, url });
+      console.log('🔍 Base URL:', apiClient.defaults.baseURL);
+      
+      // Test API client configuration
+      console.log('🔍 API Client config:', {
+        baseURL: apiClient.defaults.baseURL,
+        headers: apiClient.defaults.headers
+      });
+      
+      // Log the full URL being called
+      const fullUrl = `${apiClient.defaults.baseURL}${url}`;
+      console.log('🔍 Full URL being called:', fullUrl);
+      
       const response = await apiClient.get(url);
       console.log('✅ Rating API response:', response.data);
+      console.log('✅ Response status:', response.status);
+      console.log('✅ Response headers:', response.headers);
+      
+      // Add more detailed logging for debugging
+      if (response.data.totalRatings === 0) {
+        console.log('⚠️ No ratings found for provider:', { providerId, providerType });
+        console.log('🔍 This could mean:');
+        console.log('   - No ratings exist in the database');
+        console.log('   - Ratings exist but with different provider ID');
+        console.log('   - Ratings exist but with different provider type');
+      } else {
+        console.log('✅ Found ratings:', {
+          totalRatings: response.data.totalRatings,
+          averageRating: response.data.averageRating,
+          breakdown: response.data.breakdown
+        });
+      }
+      
       setRatingData(response.data);
+      console.log('✅ RatingData state updated:', response.data);
     } catch (error: any) {
-      console.error('❌ Rating API error:', error.response?.data || error.message);
+      console.error('❌ Rating API error:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Full error object:', error);
+      
       // Set default empty rating on error
-      setRatingData({ averageRating: 0 });
+      setRatingData({ 
+        averageRating: 0, 
+        totalRatings: 0, 
+        breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } 
+      });
     } finally {
       setLoading(false);
+      console.log('✅ Loading state set to false');
     }
   };
 
@@ -59,7 +116,6 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
   const { starSize, textSize } = getSizeConfig();
 
   const renderStars = () => {
-    // Only show real rating data, no defaults
     const rating = ratingData?.averageRating || 0;
     
     if (rating === 0) {
@@ -76,8 +132,8 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
     }
 
     const stars = [];
-    const fullStars = Math.floor(ratingData!.averageRating);
-    const hasHalfStar = ratingData!.averageRating % 1 >= 0.5;
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
 
     // Full stars
     for (let i = 0; i < fullStars; i++) {
@@ -122,7 +178,36 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
     return stars;
   };
 
+  const renderBreakdown = () => {
+    if (!showBreakdown || !ratingData || ratingData.totalRatings === 0) {
+      return null;
+    }
+
+    return (
+      <View className="mt-4">
+        <Text className={`${textSize} font-medium text-gray-700 mb-2`}>Rating Breakdown</Text>
+        {[5, 4, 3, 2, 1].map((star) => (
+          <View key={star} className="flex-row items-center mb-1">
+            <Text className={`${textSize} text-gray-600 w-8`}>{star}⭐</Text>
+            <View className="flex-1 bg-gray-200 rounded-full h-2 mx-2">
+              <View 
+                className="bg-yellow-400 h-2 rounded-full"
+                style={{ 
+                  width: `${(ratingData.breakdown[star as keyof typeof ratingData.breakdown] / ratingData.totalRatings) * 100}%` 
+                }}
+              />
+            </View>
+            <Text className={`${textSize} text-gray-600 w-8 text-right`}>
+              {ratingData.breakdown[star as keyof typeof ratingData.breakdown]}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   if (loading) {
+    console.log('🔄 RatingDisplay rendering loading state');
     return (
       <View className="flex-row items-center">
         <FontAwesome name="star-o" size={starSize} color="#9CA3AF" />
@@ -131,18 +216,28 @@ const RatingDisplay: React.FC<RatingDisplayProps> = ({
     );
   }
 
+  console.log('🎨 RatingDisplay rendering with data:', {
+    ratingData,
+    averageRating: ratingData?.averageRating,
+    totalRatings: ratingData?.totalRatings,
+    breakdown: ratingData?.breakdown
+  });
+
   return (
-    <View className="flex-row items-center">
-      {renderStars()}
-      {ratingData && ratingData.averageRating > 0 ? (
-        <Text className={`${textSize} text-gray-600 ml-1 font-medium`}>
-          {ratingData.averageRating.toFixed(1)}
-        </Text>
-      ) : (
-        <Text className={`${textSize} text-gray-500 ml-1`}>
-          No ratings
-        </Text>
-      )}
+    <View>
+      <View className="flex-row items-center">
+        {renderStars()}
+        {ratingData && ratingData.averageRating > 0 ? (
+          <Text className={`${textSize} text-gray-600 ml-1 font-medium`}>
+            {ratingData.averageRating.toFixed(1)}
+          </Text>
+        ) : (
+          <Text className={`${textSize} text-gray-500 ml-1`}>
+            No ratings
+          </Text>
+        )}
+      </View>
+      {renderBreakdown()}
     </View>
   );
 };

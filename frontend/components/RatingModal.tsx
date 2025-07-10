@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, Pressable, TextInput,  Alert } from 'react-native';
+import { View, Text, Modal, Pressable, TextInput, Alert } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useCustomAlert } from './CustomAlert';
 import apiClient from '@/api/client';
@@ -10,7 +10,7 @@ interface RatingModalProps {
   appointmentId: string;
   providerId: string;
   providerName: string;
-  type: 'doctor' | 'laboratory';
+  providerType: 'doctor' | 'laboratoryService';
   onRatingSubmitted: () => void;
 }
 
@@ -20,18 +20,13 @@ const RatingModal: React.FC<RatingModalProps> = ({
   appointmentId,
   providerId,
   providerName,
-  type,
+  providerType,
   onRatingSubmitted
 }) => {
   const [rating, setRating] = useState(0);
-  const [feedback, setFeedback] = useState('');
+  const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { showAlert, AlertComponent } = useCustomAlert();
-
-  // Debug: Log the props
-  console.log('RatingModal - profileId:', providerId);
-  console.log('RatingModal - type:', type);
-  console.log('RatingModal - appointmentId:', appointmentId);
 
   const handleStarPress = (starNumber: number) => {
     setRating(starNumber);
@@ -51,11 +46,10 @@ const RatingModal: React.FC<RatingModalProps> = ({
     try {
       const ratingData = {
         appointmentId,
-        profileId: providerId,
-        type,
+        providerId,
+        providerType,
         rating,
-        feedback: feedback.trim() || undefined,
-        mark: true // Always set mark true on submit
+        comment: comment.trim() || undefined
       };
       
       console.log('📤 Submitting rating:', ratingData);
@@ -69,7 +63,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
       });
       
       setRating(0);
-      setFeedback('');
+      setComment('');
       onClose();
       onRatingSubmitted();
     } catch (error: any) {
@@ -96,7 +90,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
             style: 'destructive',
             onPress: () => {
               setRating(0);
-              setFeedback('');
+              setComment('');
               onClose();
             }
           }
@@ -158,10 +152,11 @@ const RatingModal: React.FC<RatingModalProps> = ({
             {/* Provider Info */}
             <View className="bg-gray-50 rounded-xl p-4 mb-6">
               <Text className="text-lg font-semibold text-gray-900 mb-1">
-                {type === 'doctor' ? `Dr. ${providerName}` : providerName}
+                {providerType === 'doctor' ? `Dr. ${providerName}` : providerName}
               </Text>
               <Text className="text-gray-600 text-sm">
-                {type === 'doctor' ? 'Doctor Consultation' : 'Laboratory Service'}
+                {providerType === 'doctor' ? 'Doctor Consultation' : 
+                 providerType === 'laboratoryService' ? 'Laboratory Service' : 'Laboratory'}
               </Text>
             </View>
 
@@ -173,12 +168,12 @@ const RatingModal: React.FC<RatingModalProps> = ({
               {getRatingText()}
             </Text>
 
-            {/* Feedback Input */}
+            {/* Comment Input */}
             <View className="mb-6">
               <Text className="text-gray-700 font-medium mb-2">Share your experience (optional)</Text>
               <TextInput
-                value={feedback}
-                onChangeText={setFeedback}
+                value={comment}
+                onChangeText={setComment}
                 placeholder="Tell us about your experience..."
                 multiline
                 numberOfLines={4}
@@ -187,7 +182,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
                 textAlignVertical="top"
               />
               <Text className="text-gray-500 text-xs mt-1 text-right">
-                {feedback.length}/500
+                {comment.length}/500
               </Text>
             </View>
 
@@ -200,13 +195,13 @@ const RatingModal: React.FC<RatingModalProps> = ({
               }`}
             >
               {submitting ? (
-                <FontAwesome name="spinner" size={16} color="#6B7280" />
+                <Text className="text-white font-semibold">Submitting...</Text>
               ) : (
-                <FontAwesome name="check" size={16} color="white" style={{ marginRight: 8 }} />
+                <>
+                  <Text className="text-white font-semibold mr-2">Submit Rating</Text>
+                  <FontAwesome name="check" size={16} color="white" />
+                </>
               )}
-              <Text className={`font-medium ${submitting || rating === 0 ? 'text-gray-500' : 'text-white'}`}>
-                {submitting ? 'Submitting...' : 'Submit Rating'}
-              </Text>
             </Pressable>
           </View>
         </View>

@@ -18,9 +18,12 @@ const calculateAverageRating = async (profileId: string, type: 'doctor' | 'labor
             // Since we're being called with lab profile ID, we need to find all services
             // and aggregate their ratings
             const Laboratory = require('../models/laboratoryServiceModel').default;
-            const services = await Laboratory.find({ laboratoryId: profileId });
+            const services = await Laboratory.find({ laboratory: profileId });
             const serviceIds = services.map((service: any) => service._id);
-            ratings = await Rating.find({ laboratoryServiceId: { $in: serviceIds } });
+            ratings = await Rating.find({ 
+                providerId: { $in: serviceIds }, 
+                providerType: 'laboratoryService' 
+            });
         }
         
         if (ratings.length === 0) {
@@ -530,12 +533,34 @@ const searchLaboratories = async (req: CustomRequest, res: Response): Promise<vo
             })
         );
 
+        // Attach ratings to each laboratory service
+        const labsWithServiceRatings = await Promise.all(
+          laboratoriesWithRatings.map(async (lab) => {
+            const servicesWithRatings = await Promise.all(
+              (lab.laboratoryServices || []).map(async (service) => {
+                if (!service._id) return service;
+                const dbService = await LaboratoryService.findById(service._id).lean();
+                return {
+                  ...service,
+                  rating: dbService?.rating || 0,
+                  totalRatings: dbService?.totalRatings || 0,
+                  ratingBreakdown: dbService?.ratingBreakdown || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+                };
+              })
+            );
+            return {
+              ...lab,
+              laboratoryServices: servicesWithRatings
+            };
+          })
+        );
+
         const totalPages = Math.ceil(totalCount / Number(limit));
         const availableCategories = getCategoriesTestType();
         const availableCities = getCities();
 
         res.status(200).json({
-            laboratories: laboratoriesWithRatings,
+            laboratories: labsWithServiceRatings,
             pagination: {
                 currentPage: Number(page),
                 totalPages,

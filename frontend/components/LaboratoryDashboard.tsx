@@ -51,7 +51,7 @@ interface LabAppointment {
   timeSlot: string;
   timeSlotDisplay: string;
   collectionType: 'lab' | 'home';
-  status: 'pending' | 'processing' | 'completed' | 'upcoming' | 'collected';
+  status: 'pending' | 'processing' | 'completed' | 'upcoming' | 'collected' | 'marked-as-read';
   selectedTests: number[];
   reportResult?: string;
   notes?: string;
@@ -60,6 +60,7 @@ interface LabAppointment {
   isPaid: boolean;
   paymentStatus?: 'pending' | 'captured' | 'failed';
   paymentCollected?: boolean;
+  feedbackRequested?: boolean;
   createdAt: string;
 }
 
@@ -442,7 +443,7 @@ const LaboratoryDashboard: React.FC = () => {
 
     showAlert({
       title: 'Mark as Read',
-      message: `Mark appointment with ${appointment.patient.name} as completed? This will move it to completed appointments.`,
+      message: `Mark appointment with ${appointment.patient.name} as completed? This will move it to completed appointments and request feedback from the patient.`,
       type: 'info',
       buttons: [
         { text: 'Cancel', style: 'cancel' },
@@ -457,7 +458,7 @@ const LaboratoryDashboard: React.FC = () => {
 
               showAlert({
                 title: 'Success',
-                message: 'Appointment marked as completed',
+                message: 'Appointment marked as completed and feedback requested from patient',
                 type: 'success'
               });
 
@@ -477,6 +478,52 @@ const LaboratoryDashboard: React.FC = () => {
         }
       ]
     });
+  };
+
+  const handleRequestFeedback = async (appointment: LabAppointment) => {
+    try {
+      const response = await apiClient.post(`/api/v1/ratings/appointments/${appointment._id}/request-feedback`);
+      console.log('Request feedback response:', response.data);
+
+      showAlert({
+        title: 'Success',
+        message: 'Feedback request sent to patient successfully',
+        type: 'success'
+      });
+
+      // Refresh dashboard data
+      await fetchDashboardData();
+    } catch (error: any) {
+      console.error('Request feedback error:', error);
+      showAlert({
+        title: 'Error',
+        message: `Failed to request feedback: ${error.response?.data?.message || error.message}`,
+        type: 'error'
+      });
+    }
+  };
+
+  const handleCancelFeedbackRequest = async (appointment: LabAppointment) => {
+    try {
+      const response = await apiClient.delete(`/api/v1/ratings/appointments/${appointment._id}/cancel-feedback`);
+      console.log('Cancel feedback response:', response.data);
+
+      showAlert({
+        title: 'Success',
+        message: 'Feedback request cancelled successfully',
+        type: 'success'
+      });
+
+      // Refresh dashboard data
+      await fetchDashboardData();
+    } catch (error: any) {
+      console.error('Cancel feedback error:', error);
+      showAlert({
+        title: 'Error',
+        message: `Failed to cancel feedback request: ${error.response?.data?.message || error.message}`,
+        type: 'error'
+      });
+    }
   };
 
   const formatAppointmentTime = (timeSlot: string, timeSlotDisplay: string) => {
@@ -529,6 +576,11 @@ const LaboratoryDashboard: React.FC = () => {
   };
 
   const getSelectedTestsNames = (appointment: LabAppointment) => {
+    // Check if laboratoryService exists and has tests
+    if (!appointment.laboratoryService?.tests || appointment.laboratoryService.tests.length === 0) {
+      return 'No tests available';
+    }
+
     if (!appointment.selectedTests || appointment.selectedTests.length === 0) {
       return appointment.laboratoryService.tests.map(test => test.name).join(', ');
     }
@@ -594,7 +646,7 @@ const LaboratoryDashboard: React.FC = () => {
 
         <View className="bg-gray-50 rounded-xl p-3 mb-4">
           <Text className="text-sm font-medium text-gray-700 mb-1">Test Package</Text>
-          <Text className="text-sm text-gray-600">{item.laboratoryService.name}</Text>
+          <Text className="text-sm text-gray-600">{item.laboratoryService?.name || 'Service not available'}</Text>
           <Text className="text-sm text-gray-500">{getSelectedTestsNames(item)}</Text>
         </View>
 
@@ -725,7 +777,7 @@ const LaboratoryDashboard: React.FC = () => {
 
         <View className="bg-gray-50 rounded-xl p-3 mb-4">
           <Text className="text-sm font-medium text-gray-700 mb-1">Test Package</Text>
-          <Text className="text-sm text-gray-600">{item.laboratoryService.name}</Text>
+          <Text className="text-sm text-gray-600">{item.laboratoryService?.name || 'Service not available'}</Text>
           <Text className="text-sm text-gray-500">{getSelectedTestsNames(item)}</Text>
         </View>
 
@@ -844,8 +896,27 @@ const LaboratoryDashboard: React.FC = () => {
         
         <View className="flex-1 items-start">
           <Text className="text-lg font-semibold text-gray-900 text-center">{item.patient.name}</Text>
-          <Text className="text-gray-600 text-sm text-center">{item.laboratoryService.name}</Text>
+          <Text className="text-gray-600 text-sm text-center">{item.laboratoryService?.name || 'Service not available'}</Text>
           <Text className="text-gray-500 text-xs text-center">{formatAppointmentTime(item.timeSlot, item.timeSlotDisplay)}</Text>
+          
+          {/* Feedback Status */}
+          <View className="mt-2 flex-row items-center justify-center">
+            <View 
+              className={`px-2 py-1 rounded-full ${
+                item.feedbackRequested 
+                  ? 'bg-yellow-100 border border-yellow-200' 
+                  : 'bg-gray-100 border border-gray-200'
+              }`}
+            >
+              <Text 
+                className={`text-xs font-medium ${
+                  item.feedbackRequested ? 'text-yellow-700' : 'text-gray-600'
+                }`}
+              >
+                {item.feedbackRequested ? 'Feedback Requested' : 'No Feedback Requested'}
+              </Text>
+            </View>
+          </View>
         </View>
         
         <View className="flex-col space-y-1.5 ml-3">
@@ -871,6 +942,25 @@ const LaboratoryDashboard: React.FC = () => {
               {item.reportResult ? 'Edit Report' : 'Add Report'}
             </Text>
           </Pressable>
+          
+          {/* Feedback Request Button */}
+          {!item.feedbackRequested ? (
+            <Pressable
+              onPress={() => handleRequestFeedback(item)}
+              className="bg-yellow-50 px-2.5 py-1.5 rounded-lg border border-yellow-200 items-center"
+            >
+              <FontAwesome name="star" size={10} color="#F59E0B" style={{ marginBottom: 1 }} />
+              <Text className="text-yellow-700 text-xs font-medium">Request Feedback</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => handleCancelFeedbackRequest(item)}
+              className="bg-red-50 px-2.5 py-1.5 rounded-lg border border-red-200 items-center"
+            >
+              <FontAwesome name="times" size={10} color="#EF4444" style={{ marginBottom: 1 }} />
+              <Text className="text-red-700 text-xs font-medium">Cancel Request</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>
@@ -1190,7 +1280,7 @@ const LaboratoryDashboard: React.FC = () => {
                       <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
                         <View className="flex-row justify-between">
                           <Text className="text-sm font-medium text-gray-700">Test Package</Text>
-                          <Text className="text-gray-900">{selectedAppointment.laboratoryService.name}</Text>
+                          <Text className="text-gray-900">{selectedAppointment.laboratoryService?.name || 'Service not available'}</Text>
                         </View>
                         
                         <View className="flex-row justify-between">
@@ -1456,7 +1546,7 @@ const LaboratoryDashboard: React.FC = () => {
                         Date: {formatAppointmentTime(selectedAppointment.timeSlot, selectedAppointment.timeSlotDisplay)}
                       </Text>
                       <Text className="text-gray-500 text-sm">
-                        Test: {selectedAppointment.laboratoryService.name}
+                        Test: {selectedAppointment.laboratoryService?.name || 'Service not available'}
                       </Text>
                     </View>
                     

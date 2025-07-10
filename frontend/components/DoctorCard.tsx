@@ -66,8 +66,8 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
           </View>
           <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-full">
             <RatingDisplay 
-              providerId={doctor._id} 
-              type="doctor" 
+              providerId={doctor._id} // This is the doctor profile ID
+              providerType="doctor" 
               size="medium" 
             />
           </View>

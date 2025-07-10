@@ -6,6 +6,7 @@ import DoctorInfo from '@/components/doctor/DoctorInfo';
 import Addresses from '@/components/doctor/Addresses';
 import PaymentModal from '@/components/PaymentModal';
 import { useCustomAlert } from '@/components/CustomAlert';
+import RatingDisplay from '@/components/RatingDisplay';
 // @ts-ignore
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import apiClient from '@/api/client';
@@ -353,6 +354,14 @@ export default function DoctorDetails() {
           <View className="bg-white p-4 -mt-6 rounded-t-3xl">
             {/* Doctor Info Component */}
             <DoctorInfo doctor={doctor} />
+            
+            {/* Ratings Section */}
+            <View className="mt-6">
+              <RatingDisplay 
+                providerId={doctor.user._id} 
+                providerType="doctor" 
+              />
+            </View>
             
             {/* Consultation Type Selection */}
             <View className="mt-6">

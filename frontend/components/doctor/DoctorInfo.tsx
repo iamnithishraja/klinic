@@ -56,8 +56,8 @@ export default function DoctorInfo({ doctor }: DoctorInfoProps) {
           <Text className="text-gray-600 text-base mt-1">{doctor.specializations?.join(', ')}</Text>
           <View className="flex-row items-center mt-2">
             <RatingDisplay 
-              providerId={doctor._id} 
-              type="doctor" 
+              providerId={doctor._id} // This is the doctor profile ID
+              providerType="doctor" 
               size="medium" 
             />
             {doctor.gender && (

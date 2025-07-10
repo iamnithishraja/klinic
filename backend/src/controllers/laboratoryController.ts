@@ -295,6 +295,8 @@ const markAsRead = async (req: CustomRequest, res: Response) => {
 
         // Mark appointment as marked-as-read (moves to recent tests)
         appointment.status = 'marked-as-read';
+        // Request feedback from patient
+        appointment.feedbackRequested = true;
         await appointment.save();
 
         res.status(200).json({ 

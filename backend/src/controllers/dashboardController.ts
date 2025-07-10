@@ -226,10 +226,74 @@ const getPreviousLabTests = async (req: CustomRequest, res: Response) => {
             status: { $in: ['completed', 'marked-as-read'] }
         })
         .populate('lab', 'name email phone')
-        .populate('laboratoryService')
+        .populate('laboratoryService', 'name description coverImage')
         .sort({ timeSlot: -1 })
         .skip(skip)
         .limit(limit);
+
+        console.log('🔍 Raw lab tests from database:');
+        for (const test of previousLabTests) {
+            console.log(`🔍 Test ${test._id}:`, {
+                laboratoryServiceId: test.laboratoryService,
+                laboratoryServicePopulated: test.laboratoryService,
+                hasLaboratoryService: !!test.laboratoryService,
+                laboratoryServiceIdString: test.laboratoryService?._id?.toString(),
+                laboratoryServiceName: test.laboratoryService?.name
+            });
+            
+            // Try to manually fetch the laboratory service if it's not populated
+            if (!test.laboratoryService) {
+                console.log(`⚠️ Laboratory service is null for test ${test._id}`);
+                // Check if there's a laboratoryService ID in the raw document
+                const rawTest = test.toObject();
+                console.log(`🔍 Raw test object:`, rawTest);
+                
+                            // Try to manually fetch the laboratory service by ID
+            if (rawTest.laboratoryService) {
+                try {
+                    const LaboratoryService = require('../models/laboratoryServiceModel').default;
+                    console.log(`🔍 Trying to fetch laboratory service with ID:`, rawTest.laboratoryService);
+                    const service = await LaboratoryService.findById(rawTest.laboratoryService);
+                    console.log(`🔍 Manually fetched laboratory service:`, service);
+                    if (service) {
+                        // Update the test object with the populated service
+                        (test as any).laboratoryService = service;
+                        console.log(`✅ Successfully populated laboratory service for test ${test._id}`);
+                    } else {
+                        console.log(`❌ Laboratory service not found with ID:`, rawTest.laboratoryService);
+                        // Try to find any laboratory service to use as fallback
+                        const anyService = await LaboratoryService.findOne();
+                        if (anyService) {
+                            console.log(`⚠️ Using fallback laboratory service:`, anyService._id);
+                            (test as any).laboratoryService = anyService;
+                        }
+                    }
+                } catch (error) {
+                    console.log(`❌ Error fetching laboratory service:`, error);
+                }
+            } else {
+                console.log(`❌ No laboratoryService ID found in raw test object`);
+                // Try to find laboratory services for this lab
+                try {
+                    const LaboratoryService = require('../models/laboratoryServiceModel').default;
+                    console.log(`🔍 Looking for laboratory services for lab:`, rawTest.lab);
+                    const services = await LaboratoryService.find({ laboratory: rawTest.lab });
+                    console.log(`🔍 Found ${services.length} services for lab:`, services.map(s => ({ id: s._id, name: s.name })));
+                    
+                    if (services.length > 0) {
+                        // Use the first service as the laboratory service
+                        const firstService = services[0];
+                        (test as any).laboratoryService = firstService;
+                        console.log(`✅ Using first laboratory service: ${firstService.name} (${firstService._id})`);
+                    } else {
+                        console.log(`❌ No laboratory services found for lab:`, rawTest.lab);
+                    }
+                } catch (error) {
+                    console.log(`❌ Error finding laboratory services:`, error);
+                }
+            }
+            }
+        }
 
         const totalPreviousTests = await LabAppointment.countDocuments({
             patient: userId,
@@ -259,7 +323,11 @@ const getPreviousLabTests = async (req: CustomRequest, res: Response) => {
         res.status(200).json({
             labTests: previousLabTests.map(test => {
                 const testObj = test.toObject();
-                return {
+                console.log(`🔍 Lab test ${test._id} - laboratoryService:`, test.laboratoryService);
+                console.log(`🔍 Lab test ${test._id} - laboratoryService type:`, typeof test.laboratoryService);
+                console.log(`🔍 Lab test ${test._id} - laboratoryService keys:`, test.laboratoryService ? Object.keys(test.laboratoryService) : 'null/undefined');
+                
+                const responseObj = {
                     ...testObj,
                     type: 'laboratory',
                     providerName: (test.lab as any)?.laboratoryName || (test.lab as any)?.name,
@@ -267,6 +335,9 @@ const getPreviousLabTests = async (req: CustomRequest, res: Response) => {
                     packageCoverImage: (test.laboratoryService as any)?.coverImage,
                     timeSlotDisplay: formatDateToDisplayString(test.timeSlot)
                 };
+                
+                console.log(`🔍 Lab test ${test._id} - final response object:`, JSON.stringify(responseObj, null, 2));
+                return responseObj;
             }),
             pagination: {
                 current: page,

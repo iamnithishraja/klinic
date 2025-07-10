@@ -2,12 +2,15 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IRating extends Document {
   userId: mongoose.Types.ObjectId;
-  doctorProfileId?: mongoose.Types.ObjectId; // Reference to DoctorProfile
-  laboratoryServiceId?: mongoose.Types.ObjectId; // Reference to LaboratoryService
   appointmentId: mongoose.Types.ObjectId;
-  type: 'doctor' | 'laboratory';
+  providerId: mongoose.Types.ObjectId; // Generic provider ID (doctor or laboratoryService)
+  providerType: 'doctor' | 'laboratoryService'; // Only doctor and laboratoryService
   rating: number; // 1-5 stars
-  feedback?: string;
+  comment?: string; // Updated from feedback to comment
+  doctorProfileId?: mongoose.Types.ObjectId; // Keep for backward compatibility
+  laboratoryServiceId?: mongoose.Types.ObjectId; // Keep for backward compatibility
+  type?: 'doctor' | 'laboratory'; // Keep for backward compatibility
+  feedback?: string; // Keep for backward compatibility
   mark: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -19,23 +22,17 @@ const ratingSchema = new Schema<IRating>({
     ref: 'User',
     required: true
   },
-  doctorProfileId: {
-    type: Schema.Types.ObjectId,
-    ref: 'DoctorProfile',
-    required: function() { return this.type === 'doctor'; }
-  },
-  laboratoryServiceId: {
-    type: Schema.Types.ObjectId,
-    ref: 'LaboratoryService',
-    required: function() { return this.type === 'laboratory'; }
-  },
   appointmentId: {
     type: Schema.Types.ObjectId,
     required: true
   },
-  type: {
+  providerId: {
+    type: Schema.Types.ObjectId,
+    required: true
+  },
+  providerType: {
     type: String,
-    enum: ['doctor', 'laboratory'],
+    enum: ['doctor', 'laboratoryService'],
     required: true
   },
   rating: {
@@ -43,6 +40,24 @@ const ratingSchema = new Schema<IRating>({
     required: true,
     min: 1,
     max: 5
+  },
+  comment: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  // Backward compatibility fields
+  doctorProfileId: {
+    type: Schema.Types.ObjectId,
+    ref: 'DoctorProfile'
+  },
+  laboratoryServiceId: {
+    type: Schema.Types.ObjectId,
+    ref: 'LaboratoryService'
+  },
+  type: {
+    type: String,
+    enum: ['doctor', 'laboratory']
   },
   feedback: {
     type: String,
@@ -60,11 +75,26 @@ const ratingSchema = new Schema<IRating>({
 // Compound index to ensure one rating per user per appointment
 ratingSchema.index({ userId: 1, appointmentId: 1 }, { unique: true });
 
-// Index for efficient queries by doctor profile
-ratingSchema.index({ doctorProfileId: 1, type: 1 });
+// Index for efficient queries by provider
+ratingSchema.index({ providerId: 1, providerType: 1 });
 
-// Index for efficient queries by laboratory service
+// Backward compatibility indexes
+ratingSchema.index({ doctorProfileId: 1, type: 1 });
 ratingSchema.index({ laboratoryServiceId: 1, type: 1 });
+
+// Pre-save middleware to populate backward compatibility fields
+ratingSchema.pre('save', function(next) {
+  if (this.providerType === 'doctor') {
+    this.doctorProfileId = this.providerId;
+    this.type = 'doctor';
+    this.feedback = this.comment;
+  } else if (this.providerType === 'laboratoryService') {
+    this.laboratoryServiceId = this.providerId;
+    this.type = 'laboratory';
+    this.feedback = this.comment;
+  }
+  next();
+});
 
 const Rating = mongoose.model<IRating>('Rating', ratingSchema);
 

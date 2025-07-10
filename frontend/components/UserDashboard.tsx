@@ -66,6 +66,21 @@ const UserDashboard: React.FC = () => {
     ...(previousAppointments?.appointments || []),
     ...(previousLabTests?.labTests || [])
   ];
+  
+  console.log('📊 Completed appointments for rating system:', {
+    totalAppointments: completedAppointments.length,
+    doctorAppointments: previousAppointments?.appointments?.length || 0,
+    labTests: previousLabTests?.labTests?.length || 0,
+    appointments: completedAppointments.map(apt => ({
+      id: apt._id,
+      status: apt.status,
+      type: apt.type,
+      hasDoctor: !!apt.doctor,
+      hasLaboratoryService: !!apt.laboratoryService,
+      hasLaboratory: !!apt.laboratory
+    }))
+  });
+  
   const { 
     showRatingModal, 
     ratingModalData, 
@@ -440,7 +455,7 @@ const UserDashboard: React.FC = () => {
             appointmentId={ratingModalData.appointmentId}
             providerId={ratingModalData.providerId}
             providerName={ratingModalData.providerName}
-            type={ratingModalData.type}
+            providerType={ratingModalData.providerType}
             onRatingSubmitted={handleRatingSubmittedWithRefresh}
           />
         )}

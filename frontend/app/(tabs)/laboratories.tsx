@@ -8,5 +8,7 @@ export default function LaboratoriesScreen() {
         <LaboratoryList />
       </SafeAreaView>
     </View>
+
+    
   );
 }

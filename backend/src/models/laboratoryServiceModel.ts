@@ -18,6 +18,31 @@ const laboratoryServiceSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    totalRatings: {
+        type: Number,
+        default: 0,
+    },
+    ratingBreakdown: {
+        1: { type: Number, default: 0 },
+        2: { type: Number, default: 0 },
+        3: { type: Number, default: 0 },
+        4: { type: Number, default: 0 },
+        5: { type: Number, default: 0 },
+    },
+    ratedAppointments: [{
+        appointmentId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'LabAppointments',
+        },
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+        },
+        ratedAt: {
+            type: Date,
+            default: Date.now,
+        }
+    }],
     coverImage: {
         type: String,
         default: null,
@@ -62,6 +87,11 @@ const laboratoryServiceSchema = new mongoose.Schema({
         default: Date.now,
     },
 });
+
+// Index for efficient rating queries
+laboratoryServiceSchema.index({ rating: -1 });
+laboratoryServiceSchema.index({ totalRatings: -1 });
+laboratoryServiceSchema.index({ 'ratedAppointments.appointmentId': 1 });
 
 const LaboratoryService = mongoose.model('LaboratoryService', laboratoryServiceSchema);
 

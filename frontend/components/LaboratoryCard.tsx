@@ -72,6 +72,11 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
            service.tests.every((test: any) => test.price && test.price > 0);
   };
 
+  // Debug: Log all service IDs for this card
+  if (laboratory.laboratoryServices) {
+    laboratory.laboratoryServices.forEach(service => console.log('🟢 LaboratoryCard: service._id for RatingDisplay:', service._id));
+  }
+
   // Handle case where laboratoryServices is undefined or empty
   if (!laboratory?.laboratoryServices || laboratory.laboratoryServices.length === 0) {
     return (
@@ -137,8 +142,8 @@ export default function LaboratoryCard({ laboratory }: LaboratoryCardProps) {
                 </View>
                 <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-full">
                   <RatingDisplay 
-                    providerId={service._id || laboratory._id} 
-                    type="laboratory" 
+                    providerId={(service as any)?.laboratoryServiceId ? String((service as any).laboratoryServiceId) : (service._id ? String(service._id) : '')} // Use laboratoryServiceId if present
+                    providerType="laboratoryService" 
                     size="small" 
                   />
                 </View>

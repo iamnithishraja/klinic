@@ -374,6 +374,12 @@ const updateAppointmentStatus = async (req: CustomRequest, res: Response) => {
 
         // Update appointment status
         appointment.status = status;
+        
+        // If marking as completed, request feedback from patient
+        if (status === 'completed') {
+          appointment.feedbackRequested = true;
+        }
+        
         await appointment.save();
 
         console.log('Update appointment status - Successfully updated');
