@@ -4,6 +4,7 @@ import DoctorAppointment from "../models/doctorAppointments";
 import LabAppointment from "../models/labAppointments";
 import Clinic from "../models/clinicModel";
 import LaboratoryService from "../models/laboratoryServiceModel";
+import { DoctorProfile } from "../models/profileModel";
 import { scheduleAppointmentReminders } from "../utils/appointmentReminders";
 
 // Helper function to convert timeSlot string to IST Date
@@ -85,6 +86,12 @@ const bookAppointmentDoctor = async (req: CustomRequest, res: Response) => {
             consultationType,
         };
 
+        // Fetch doctor's profile to get consultationFee
+        const doctorProfile = await DoctorProfile.findOne({ user: doctorId });
+        if (doctorProfile && doctorProfile.consultationFee != null) {
+            appointmentData.consultationFee = doctorProfile.consultationFee;
+        }
+
         // Add clinic reference if it's an in-person consultation and clinicId is provided
         if (consultationType === 'in-person' && clinicId) {
             // Verify clinic belongs to the doctor
@@ -127,14 +134,18 @@ const bookLabAppointment = async (req: CustomRequest, res: Response) => {
             return;
         }
 
-        const appointment = await LabAppointment.create({ 
+        const appointmentData: any = {
             lab: labId, 
             patient: userId,
             timeSlot: appointmentDateTime, 
             collectionType, 
             laboratoryService: serviceId,
             selectedTests: selectedTests || []
-        });
+        };
+        if (service && service.price != null) {
+            appointmentData.serviceFee = service.price;
+        }
+        const appointment = await LabAppointment.create(appointmentData);
         
         // Schedule reminders
         await scheduleAppointmentReminders(appointment._id.toString(), appointmentDateTime.toISOString(), 'lab');

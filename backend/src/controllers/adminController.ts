@@ -3,6 +3,7 @@ import User from '../models/userModel';
 import { UserProfile, DoctorProfile, LaboratoryProfile, DeliveryBoyProfile } from '../models/profileModel';
 import DoctorAppointments from '../models/doctorAppointments';
 import LabAppointments from '../models/labAppointments';
+import SuspendedUser from '../models/suspendedUserModel';
 
 export const getAllData = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -211,9 +212,10 @@ export const verifyProfileById = async (req: Request, res: Response): Promise<vo
       return;
     }
 
+    // Set isVerified and status
     const profile = await Model.findByIdAndUpdate(
       req.params.id,
-      { isVerified: true },
+      { isVerified: true, status: 'verified' },
       { new: true }
     ).populate(populateOptions);
 
@@ -266,9 +268,10 @@ export const unverifyProfileById = async (req: Request, res: Response): Promise<
       return;
     }
 
+    // Set isVerified and status
     const profile = await Model.findByIdAndUpdate(
       req.params.id,
-      { isVerified: false },
+      { isVerified: false, status: 'not_verified' },
       { new: true }
     ).populate(populateOptions);
 
@@ -539,5 +542,353 @@ export const removeAdminRole = async (req: Request, res: Response): Promise<void
       message: 'Server error', 
       error: err instanceof Error ? err.message : 'Unknown error' 
     });
+  }
+};
+
+// --- Admin Dashboard: Revenue Overview ---
+export const getRevenueOverview = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Doctor appointments: paid and unpaid
+    const doctorPaid = await DoctorAppointments.aggregate([
+      { $match: { isPaid: true } },
+      { $group: { _id: null, total: { $sum: '$consultationFee' } } }
+    ]);
+    const doctorUnpaid = await DoctorAppointments.aggregate([
+      { $match: { isPaid: false } },
+      { $group: { _id: null, total: { $sum: '$consultationFee' } } }
+    ]);
+    // Lab appointments: paid and unpaid (FIX: use serviceFee instead of totalPrice)
+    const labPaid = await LabAppointments.aggregate([
+      { $match: { isPaid: true } },
+      { $group: { _id: null, total: { $sum: '$serviceFee' } } }
+    ]);
+    const labUnpaid = await LabAppointments.aggregate([
+      { $match: { isPaid: false } },
+      { $group: { _id: null, total: { $sum: '$serviceFee' } } }
+    ]);
+    const totalRevenue = (doctorPaid[0]?.total || 0) + (labPaid[0]?.total || 0);
+    const upcomingRevenue = (doctorUnpaid[0]?.total || 0) + (labUnpaid[0]?.total || 0);
+    res.json({ totalRevenue, upcomingRevenue });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch revenue overview', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// 2. System Notifications
+export const getSystemNotifications = async (req: Request, res: Response): Promise<void> => {
+  // For now, return static notifications. You can enhance this to fetch from DB or system health checks.
+  const notifications = [
+    { title: 'System Healthy', message: 'API server, database, and file storage are operational.', type: 'success', time: new Date() },
+    { title: 'No critical alerts', message: 'No issues detected in the last 24 hours.', type: 'info', time: new Date() }
+  ];
+  res.json({ notifications });
+};
+
+// 3. Recent Activity Feed
+export const getRecentActivityFeed = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get latest users, doctors, labs, delivery partners (limit 5 each)
+    const users = await User.find().sort({ createdAt: -1 }).limit(5).select('name email role createdAt');
+    const doctors = await DoctorProfile.find().sort({ createdAt: -1 }).limit(5).populate('user', 'name email').select('createdAt');
+    const labs = await LaboratoryProfile.find().sort({ createdAt: -1 }).limit(5).populate('user', 'name email').select('createdAt');
+    const deliveryPartners = await DeliveryBoyProfile.find().sort({ createdAt: -1 }).limit(5).populate('user', 'name email').select('createdAt');
+    // Get latest paid doctor/lab appointments (limit 5 each)
+    const doctorPayments = await DoctorAppointments.find({ isPaid: true }).sort({ updatedAt: -1 }).limit(5).select('doctor patient consultationFee updatedAt');
+    const labPayments = await LabAppointments.find({ isPaid: true }).sort({ updatedAt: -1 }).limit(5).select('lab patient totalPrice updatedAt');
+    res.json({ users, doctors, labs, deliveryPartners, doctorPayments, labPayments });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch activity feed', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// --- User Suspension Management ---
+
+// Suspend a user
+export const suspendUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, reason, expiresAt, notes } = req.body;
+    const adminId = (req as any).user?._id;
+
+    if (!adminId) {
+      res.status(401).json({ message: 'Admin authentication required' });
+      return;
+    }
+
+    if (!userId || !reason) {
+      res.status(400).json({ message: 'User ID and reason are required' });
+      return;
+    }
+
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Check if user is already suspended
+    const existingSuspension = await SuspendedUser.findOne({
+      $or: [
+        { email: user.email },
+        { phone: user.phone }
+      ],
+      isActive: true
+    });
+
+    if (existingSuspension) {
+      res.status(400).json({ message: 'User is already suspended' });
+      return;
+    }
+
+    // Create suspension record
+    const suspensionData: any = {
+      reason,
+      suspendedBy: adminId,
+      isActive: true
+    };
+
+    if (user.email) {
+      suspensionData.email = user.email;
+    }
+    if (user.phone) {
+      suspensionData.phone = user.phone;
+    }
+    if (expiresAt) {
+      suspensionData.expiresAt = new Date(expiresAt);
+    }
+    if (notes) {
+      suspensionData.notes = notes;
+    }
+
+    const suspendedUser = await SuspendedUser.create(suspensionData);
+
+    res.status(200).json({
+      message: 'User suspended successfully',
+      suspension: suspendedUser
+    });
+  } catch (err) {
+    console.error('Error suspending user:', err);
+    res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// Unsuspend a user
+export const unsuspendUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+    const adminId = (req as any).user?._id;
+
+    if (!adminId) {
+      res.status(401).json({ message: 'Admin authentication required' });
+      return;
+    }
+
+    if (!userId) {
+      res.status(400).json({ message: 'User ID is required' });
+      return;
+    }
+
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Find and deactivate suspension
+    const suspension = await SuspendedUser.findOne({
+      $or: [
+        { email: user.email },
+        { phone: user.phone }
+      ],
+      isActive: true
+    });
+
+    if (!suspension) {
+      res.status(404).json({ message: 'No active suspension found for this user' });
+      return;
+    }
+
+    suspension.isActive = false;
+    await suspension.save();
+
+    res.status(200).json({
+      message: 'User unsuspended successfully',
+      suspension
+    });
+  } catch (err) {
+    console.error('Error unsuspending user:', err);
+    res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// Get user suspension status
+export const getUserSuspensionStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      res.status(400).json({ message: 'User ID is required' });
+      return;
+    }
+
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Check suspension status
+    const suspension = await SuspendedUser.getSuspensionDetails(user.email, user.phone);
+
+    res.status(200).json({
+      isSuspended: !!suspension,
+      suspension: suspension || null
+    });
+  } catch (err) {
+    console.error('Error getting user suspension status:', err);
+    res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// Get all suspensions
+export const getAllSuspensions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { page = 1, limit = 20, search = '' } = req.query;
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
+
+    let filter: any = {};
+    if (search) {
+      const searchStr = typeof search === 'string' ? search : '';
+      filter.$or = [
+        { email: { $regex: searchStr, $options: 'i' } },
+        { phone: { $regex: searchStr, $options: 'i' } },
+        { reason: { $regex: searchStr, $options: 'i' } }
+      ];
+    }
+
+    const suspensions = await SuspendedUser.find(filter)
+      .populate('suspendedBy', 'name email')
+      .sort({ suspendedAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum);
+
+    const total = await SuspendedUser.countDocuments(filter);
+
+    res.status(200).json({
+      suspensions,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum)
+    });
+  } catch (err) {
+    console.error('Error getting all suspensions:', err);
+    res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// --- Admin Dashboard: Revenue Details ---
+export const getRevenueDetails = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Doctor Appointments
+    const allDoctorAppointments = await DoctorAppointments.find()
+      .populate('patient', 'name email phone')
+      .populate('doctor', 'name email phone');
+    const paidDoctorAppointments: any[] = [];
+    const unpaidDoctorAppointments: any[] = [];
+    let totalDoctorRevenue = 0;
+    let upcomingDoctorRevenue = 0;
+    for (const apt of allDoctorAppointments) {
+      if (apt.consultationType === 'online') {
+        if (apt.isPaid) {
+          paidDoctorAppointments.push(apt);
+          totalDoctorRevenue += apt.consultationFee || 0;
+        } else {
+          unpaidDoctorAppointments.push(apt);
+          upcomingDoctorRevenue += apt.consultationFee || 0;
+        }
+      } else if (apt.consultationType === 'in-person') {
+        if (apt.isPaid && apt.status === 'completed') {
+          paidDoctorAppointments.push(apt);
+          totalDoctorRevenue += apt.consultationFee || 0;
+        } else {
+          unpaidDoctorAppointments.push(apt);
+          upcomingDoctorRevenue += apt.consultationFee || 0;
+        }
+      }
+    }
+
+    // Lab Appointments
+    const allLabAppointments = await LabAppointments.find()
+      .populate('patient', 'name email phone')
+      .populate('lab', 'name email phone')
+      .populate('laboratoryService', 'name price');
+    const paidLabAppointments: any[] = [];
+    const unpaidLabAppointments: any[] = [];
+    let totalLabRevenue = 0;
+    let upcomingLabRevenue = 0;
+    for (const apt of allLabAppointments) {
+      // Use serviceFee if present, else fallback to laboratoryService.price
+      const price = apt.serviceFee != null ? apt.serviceFee : (apt.laboratoryService && typeof apt.laboratoryService === 'object' ? (apt.laboratoryService.price || 0) : 0);
+      if (apt.collectionType === 'home') {
+        if (apt.isPaid) {
+          paidLabAppointments.push(apt);
+          totalLabRevenue += price;
+        } else {
+          unpaidLabAppointments.push(apt);
+          upcomingLabRevenue += price;
+        }
+      } else if (apt.collectionType === 'lab') {
+        if (apt.isPaid && (apt.status === 'completed' || apt.status === 'marked-as-read')) {
+          paidLabAppointments.push(apt);
+          totalLabRevenue += price;
+        } else {
+          unpaidLabAppointments.push(apt);
+          upcomingLabRevenue += price;
+        }
+      }
+    }
+
+    const totalRevenue = totalDoctorRevenue + totalLabRevenue;
+    const upcomingRevenue = upcomingDoctorRevenue + upcomingLabRevenue;
+
+    res.json({
+      totalDoctorRevenue,
+      totalLabRevenue,
+      totalRevenue,
+      upcomingDoctorRevenue,
+      upcomingLabRevenue,
+      upcomingRevenue,
+      paidDoctorAppointments,
+      unpaidDoctorAppointments,
+      paidLabAppointments,
+      unpaidLabAppointments
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch revenue details', error: err instanceof Error ? err.message : err });
+  }
+};
+
+export const rejectDoctorProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!id || id.length !== 24) {
+      res.status(400).json({ message: 'Invalid doctor profile ID format' });
+      return;
+    }
+    const doctor = await DoctorProfile.findById(id);
+    if (!doctor) {
+      res.status(404).json({ message: 'Doctor profile not found' });
+      return;
+    }
+    doctor.status = 'rejected';
+    doctor.isVerified = false;
+    await doctor.save();
+    res.json({ message: 'Doctor profile rejected successfully', profile: doctor });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
   }
 };

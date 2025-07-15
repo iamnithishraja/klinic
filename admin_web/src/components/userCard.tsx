@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaCheckCircle, FaClock } from 'react-icons/fa';
+import { FaCheckCircle, FaClock, FaBan, FaUserTimes, FaUserCheck } from 'react-icons/fa';
+import SuspensionModal from './SuspensionModal';
 
 interface User {
   _id: string;
@@ -29,6 +30,22 @@ interface UserProfileDetails {
   updatedAt?: string;
 }
 
+interface SuspensionDetails {
+  _id: string;
+  email?: string;
+  phone?: string;
+  reason: string;
+  suspendedBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  suspendedAt: string;
+  expiresAt?: string;
+  isActive: boolean;
+  notes?: string;
+}
+
 interface UserCardProps {
   user: User;
   disableModal?: boolean;
@@ -36,9 +53,31 @@ interface UserCardProps {
 
 const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
   const [showModal, setShowModal] = useState(false);
+  const [showSuspensionModal, setShowSuspensionModal] = useState(false);
   const [profileDetails, setProfileDetails] = useState<UserProfileDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isSuspended, setIsSuspended] = useState(false);
+  const [suspensionDetails, setSuspensionDetails] = useState<SuspensionDetails | null>(null);
+
+  // Check suspension status on component mount
+  useEffect(() => {
+    checkSuspensionStatus();
+  }, [user._id]);
+
+  const checkSuspensionStatus = async () => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const apiUrl = (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/users/${user._id}/suspension-status`;
+      const response = await axios.get(apiUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setIsSuspended(response.data.isSuspended);
+      setSuspensionDetails(response.data.suspension);
+    } catch (error) {
+      console.error('Failed to check suspension status:', error);
+    }
+  };
 
   const handleCardClick = async () => {
     if (disableModal) return;
@@ -86,6 +125,10 @@ const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
     }
   };
 
+  const handleSuspensionChange = () => {
+    checkSuspensionStatus();
+  };
+
   return (
     <>
       <div
@@ -95,7 +138,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
       >
         {/* Profile Image/Initial */}
         <div className="relative w-16 h-16 flex-shrink-0">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg border-4 border-white group-hover:from-blue-600 group-hover:to-purple-700 transition-all duration-200">
+          <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg border-4 border-white group-hover:from-blue-600 group-hover:to-purple-700 transition-all duration-200 ${isSuspended ? 'opacity-50' : ''}`}>
             {user.name?.charAt(0).toUpperCase() || '?'}
           </div>
           {/* Status Badge */}
@@ -105,6 +148,15 @@ const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
             >
               {user.isVerified ? <FaCheckCircle className="text-green-500 mr-1" /> : <FaClock className="text-yellow-500 mr-1" />}
               {user.isVerified ? 'Verified' : 'Pending'}
+            </div>
+          )}
+          {/* Suspension Badge */}
+          {isSuspended && (
+            <div className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full shadow-lg flex items-center gap-1 text-xs font-semibold bg-red-100 text-red-700 border border-white"
+              style={{ zIndex: 2 }}
+            >
+              <FaBan className="text-red-500 mr-1" />
+              Suspended
             </div>
           )}
         </div>
@@ -118,9 +170,42 @@ const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
             {user.createdAt && (
               <span className="inline-block px-2 py-1 rounded-full bg-gray-50 text-gray-400 text-xs font-medium shadow-sm">Joined {new Date(user.createdAt).toLocaleDateString()}</span>
             )}
+            {isSuspended && suspensionDetails && (
+              <span className="inline-block px-2 py-1 rounded-full bg-red-50 text-red-600 text-xs font-medium shadow-sm">
+                {suspensionDetails.expiresAt ? 'Temp Suspended' : 'Permanently Suspended'}
+              </span>
+            )}
           </div>
         </div>
+        {/* Suspension Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSuspensionModal(true);
+          }}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+            isSuspended 
+              ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg' 
+              : 'bg-red-600 text-white hover:bg-red-700 shadow-lg'
+          }`}
+        >
+          {isSuspended ? <FaUserCheck className="text-lg" /> : <FaUserTimes className="text-lg" />}
+          {isSuspended ? 'Unsuspend' : 'Suspend'}
+        </button>
       </div>
+
+      {/* Suspension Modal */}
+      <SuspensionModal
+        isOpen={showSuspensionModal}
+        onClose={() => setShowSuspensionModal(false)}
+        userId={user._id}
+        userName={user.name}
+        userEmail={user.email}
+        userPhone={user.phone}
+        isCurrentlySuspended={isSuspended}
+        onSuspensionChange={handleSuspensionChange}
+      />
+
       {/* Profile Modal for user role */}
       {showModal && user.role === 'user' && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -138,6 +223,12 @@ const UserCard: React.FC<UserCardProps> = ({ user, disableModal = false }) => {
                 <div>
                   <span className="text-xl font-bold text-gray-900">{user.name}</span>
                   <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 capitalize ml-2">User</span>
+                  {isSuspended && (
+                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 ml-2 flex items-center gap-1">
+                      <FaBan className="text-xs" />
+                      Suspended
+                    </span>
+                  )}
                 </div>
               </div>
               <button

@@ -199,10 +199,10 @@ export const getProviderRatings = async (req: Request, res: Response) => {
         } else {
           console.log('⚠️ Laboratory service not found, using basic conditions');
           // Add basic conditions if service not found
-          matchConditions.push(
+        matchConditions.push(
             { providerId: objectId, providerType: 'laboratoryService' } as any,
             { laboratoryServiceId: objectId, type: 'laboratory' } as any
-          );
+        );
         }
       } catch (err) {
         const error = err as Error;

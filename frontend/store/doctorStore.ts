@@ -77,9 +77,10 @@ export const useDoctorStore = create<DoctorStore>((set, get) => ({
       set({ filters: updatedFilters });
 
       const response = await doctorService.searchDoctors(updatedFilters);
-      
+      // Filter out rejected doctors
+      const filteredDoctors = response.doctors.filter(doc => doc.status !== 'rejected');
       set({
-        doctors: response.doctors,
+        doctors: filteredDoctors,
         pagination: response.pagination,
         availableFilters: {
           specializations: response.filters.availableSpecializations,
@@ -112,8 +113,8 @@ export const useDoctorStore = create<DoctorStore>((set, get) => ({
       
       // Create a Set of existing doctor IDs for deduplication
       const existingIds = new Set(doctors.map(doc => doc._id));
-      // Filter out any duplicate doctors from the new response
-      const newDoctors = response.doctors.filter(doc => !existingIds.has(doc._id));
+      // Filter out rejected doctors in loadMore
+      const newDoctors = response.doctors.filter(doc => !existingIds.has(doc._id) && doc.status !== 'rejected');
       
       set({
         doctors: [...doctors, ...newDoctors],

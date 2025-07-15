@@ -18,6 +18,7 @@ interface Doctor {
   createdAt?: string;
   updatedAt?: string;
   isVerified: boolean;
+  status?: 'verified' | 'not_verified' | 'rejected';
 }
 
 interface Appointment {
@@ -42,9 +43,6 @@ interface Appointment {
   prescription?: string;
   status: 'upcoming' | 'completed';
   isPaid: boolean;
-  paymentId?: string;
-  paymentOrderId?: string;
-  paymentStatus?: 'pending' | 'captured' | 'failed';
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -78,6 +76,7 @@ interface DoctorProfile {
   createdAt?: string;
   updatedAt?: string;
   profilePicture?: string;
+  status?: 'verified' | 'not_verified' | 'rejected';
 }
 
 const DoctorsTab: React.FC = () => {
@@ -300,6 +299,27 @@ const DoctorsTab: React.FC = () => {
     } catch (error) {
       console.error('Error updating verification status:', error);
       alert('Failed to update verification status');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  // 1. Update Doctor and DoctorProfile interfaces to include 'status' field
+  // 2. Add handler for rejecting a doctor
+  const handleRejectDoctor = async (doctorId: string) => {
+    setVerificationLoading(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const apiUrl = (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/profiles/${doctorId}/reject`;
+      const res = await axios.put(apiUrl, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      setDoctors(prevDoctors => prevDoctors.map(doctor => doctor._id === doctorId ? { ...doctor, isVerified: false, status: 'rejected' } : doctor));
+      if (selectedDoctorProfile && selectedDoctorProfile._id === doctorId) {
+        setSelectedDoctorProfile({ ...selectedDoctorProfile, isVerified: false, status: 'rejected' });
+      }
+      alert('Doctor profile rejected successfully!');
+    } catch (error) {
+      console.error('Error rejecting doctor:', error);
+      alert('Failed to reject doctor profile');
     } finally {
       setVerificationLoading(false);
     }
@@ -762,11 +782,6 @@ const DoctorsTab: React.FC = () => {
                               }`}>
                                 {appt.isPaid ? '✅ Paid' : '❌ Pending'}
                               </span>
-                              {appt.paymentStatus && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {appt.paymentStatus}
-                                </div>
-                              )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap min-w-[120px]">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -882,7 +897,7 @@ const DoctorsTab: React.FC = () => {
                           <input
                             type="radio"
                             name="verification"
-                            checked={selectedDoctorProfile.isVerified === true}
+                            checked={selectedDoctorProfile.status === 'verified'}
                             onChange={() => handleVerifyDoctor(selectedDoctorProfile._id, true)}
                             disabled={verificationLoading}
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2"
@@ -893,14 +908,32 @@ const DoctorsTab: React.FC = () => {
                           <input
                             type="radio"
                             name="verification"
-                            checked={selectedDoctorProfile.isVerified === false}
+                            checked={selectedDoctorProfile.status === 'not_verified'}
                             onChange={() => handleVerifyDoctor(selectedDoctorProfile._id, false)}
                             disabled={verificationLoading}
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2"
                           />
                           <span className="text-sm font-medium text-gray-700">Not Verified</span>
                         </label>
+                        <button
+                          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${selectedDoctorProfile.status === 'rejected' ? 'bg-gray-500 text-white hover:bg-gray-600' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                          onClick={() => {
+                            if (selectedDoctorProfile.status === 'rejected') {
+                              // Undo reject: set to not_verified
+                              handleVerifyDoctor(selectedDoctorProfile._id, false);
+                            } else {
+                              handleRejectDoctor(selectedDoctorProfile._id);
+                            }
+                          }}
+                          disabled={verificationLoading}
+                          style={{ minWidth: 120 }}
+                        >
+                          {selectedDoctorProfile.status === 'rejected' ? 'Undo Reject' : 'Reject'}
+                        </button>
                       </div>
+                      {selectedDoctorProfile.status === 'rejected' && (
+                        <div className="text-red-700 font-semibold mt-2">This doctor profile has been rejected and will not be shown to users. You can undo rejection by setting the status to Verified or Not Verified.</div>
+                      )}
                       {verificationLoading && (
                         <div className="flex items-center space-x-2 text-blue-600">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>

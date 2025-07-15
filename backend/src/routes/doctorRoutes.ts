@@ -3,7 +3,6 @@ import {
     getDoctorDashboard, 
     addPrescription, 
     deletePrescription,
-    updatePaymentCollection,
     getAppointmentDetails, 
     updateAppointmentStatus,
     testDoctorEndpoint
@@ -27,7 +26,6 @@ doctorRouter.get('/dashboard', getDoctorDashboard);
 doctorRouter.get('/appointments/:appointmentId', getAppointmentDetails);
 doctorRouter.post('/appointments/:appointmentId/prescription', addPrescription);
 doctorRouter.delete('/appointments/:appointmentId/prescription', deletePrescription);
-doctorRouter.patch('/appointments/:appointmentId/payment-collection', updatePaymentCollection);
 doctorRouter.patch('/appointments/:appointmentId/status', updateAppointmentStatus);
 
 export default doctorRouter; 

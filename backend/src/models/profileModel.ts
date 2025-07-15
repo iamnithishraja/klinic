@@ -104,6 +104,11 @@ const doctorProfileSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    status: {
+        type: String,
+        enum: ['verified', 'not_verified', 'rejected'],
+        default: 'not_verified',
+    },
     consultationType: {
         type: String,
         enum: ['in-person', 'online', 'both'],

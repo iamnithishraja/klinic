@@ -83,15 +83,11 @@ const verifyPayment = async (req: CustomRequest, res: Response): Promise<void> =
         // Update appointment payment status
         if (appointmentType === 'doctor') {
             await DoctorAppointment.findByIdAndUpdate(appointmentId, {
-                isPaid: true,
-                paymentId: razorpay_payment_id,
-                paymentOrderId: razorpay_order_id
+                isPaid: true
             });
         } else {
             await LabAppointment.findByIdAndUpdate(appointmentId, {
-                isPaid: true,
-                paymentId: razorpay_payment_id,
-                paymentOrderId: razorpay_order_id
+                isPaid: true
             });
         }
 
@@ -137,31 +133,11 @@ const handleWebhook = async (req: Request, res: Response): Promise<void> => {
                 
                 if (appointmentType === 'doctor') {
                     await DoctorAppointment.findByIdAndUpdate(appointmentId, {
-                        isPaid: true,
-                        paymentId: payload.id,
-                        paymentStatus: 'captured'
+                        isPaid: true
                     });
                 } else {
                     await LabAppointment.findByIdAndUpdate(appointmentId, {
-                        isPaid: true,
-                        paymentId: payload.id,
-                        paymentStatus: 'captured'
-                    });
-                }
-            }
-        } else if (event === 'payment.failed') {
-            // Payment failed
-            const notes = payload.notes;
-            if (notes && notes.appointmentId && notes.appointmentType) {
-                const { appointmentId, appointmentType } = notes;
-                
-                if (appointmentType === 'doctor') {
-                    await DoctorAppointment.findByIdAndUpdate(appointmentId, {
-                        paymentStatus: 'failed'
-                    });
-                } else {
-                    await LabAppointment.findByIdAndUpdate(appointmentId, {
-                        paymentStatus: 'failed'
+                        isPaid: true
                     });
                 }
             }

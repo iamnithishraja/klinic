@@ -160,7 +160,41 @@ export default function RegisterScreen() {
       router.replace('/(auth)/verify' as any);
     } catch (error: any) {
       console.error('Registration failed:', error);
+      
+      // Handle suspension errors specifically
+      if (error.response?.status === 403 && error.response?.data?.message?.includes('suspended')) {
+        const suspensionData = error.response.data;
+        let suspensionMessage = 'Registration failed: ';
+        
+        if (error.response.data.message.includes('email')) {
+          suspensionMessage += 'This email address has been suspended.';
+        } else if (error.response.data.message.includes('phone')) {
+          suspensionMessage += 'This phone number has been suspended.';
+        } else {
+          suspensionMessage += 'This account has been suspended.';
+        }
+        
+        if (suspensionData.reason) {
+          suspensionMessage += `\nReason: ${suspensionData.reason}`;
+        }
+        
+        if (suspensionData.suspendedAt) {
+          const suspendedDate = new Date(suspensionData.suspendedAt).toLocaleDateString();
+          suspensionMessage += `\nSuspended on: ${suspendedDate}`;
+        }
+        
+        if (suspensionData.expiresAt) {
+          const expiryDate = new Date(suspensionData.expiresAt).toLocaleDateString();
+          suspensionMessage += `\nSuspension expires: ${expiryDate}`;
+        } else {
+          suspensionMessage += '\nThis is a permanent suspension.';
+        }
+        
+        suspensionMessage += '\n\nPlease contact support for assistance.';
+        setError(suspensionMessage);
+      } else {
       setError(error.response?.data?.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

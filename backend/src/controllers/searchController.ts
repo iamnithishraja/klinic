@@ -61,7 +61,8 @@ const searchDoctors = async (req: CustomRequest, res: Response): Promise<void> =
 
         // Build base filter query
         const baseFilterQuery: any = {
-            isAvailable: true
+            isAvailable: true,
+            status: { $ne: 'rejected' }
         };
 
         // Gender filter

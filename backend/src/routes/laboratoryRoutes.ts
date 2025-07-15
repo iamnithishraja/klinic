@@ -8,7 +8,6 @@ import {
     getLaboratoryServices,
     testLaboratoryEndpoint,
     markAsRead,
-    updatePaymentCollection,
     markSampleCollected
 } from '../controllers/laboratoryController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
@@ -35,7 +34,6 @@ laboratoryRouter.post('/appointments/:appointmentId/report', addLabReport);
 laboratoryRouter.delete('/appointments/:appointmentId/report', deleteLabReport);
 laboratoryRouter.patch('/appointments/:appointmentId/status', updateAppointmentStatus);
 laboratoryRouter.patch('/appointments/:appointmentId/mark-as-read', markAsRead);
-laboratoryRouter.patch('/appointments/:appointmentId/payment-collection', updatePaymentCollection);
 laboratoryRouter.patch('/appointments/:appointmentId/sample-collected', markSampleCollected);
 
 export default laboratoryRouter; 

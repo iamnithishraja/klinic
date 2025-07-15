@@ -85,7 +85,33 @@ export default function LoginScreen() {
       router.replace('/(tabs)' as any);
     } catch (error: any) {
       console.error('Login failed:', error);
+      
+      // Handle suspension errors specifically
+      if (error.response?.status === 403 && error.response?.data?.message?.includes('suspended')) {
+        const suspensionData = error.response.data;
+        let suspensionMessage = 'Your account has been suspended.';
+        
+        if (suspensionData.reason) {
+          suspensionMessage += `\nReason: ${suspensionData.reason}`;
+        }
+        
+        if (suspensionData.suspendedAt) {
+          const suspendedDate = new Date(suspensionData.suspendedAt).toLocaleDateString();
+          suspensionMessage += `\nSuspended on: ${suspendedDate}`;
+        }
+        
+        if (suspensionData.expiresAt) {
+          const expiryDate = new Date(suspensionData.expiresAt).toLocaleDateString();
+          suspensionMessage += `\nSuspension expires: ${expiryDate}`;
+        } else {
+          suspensionMessage += '\nThis is a permanent suspension.';
+        }
+        
+        suspensionMessage += '\n\nPlease contact support for assistance.';
+        setError(suspensionMessage);
+      } else {
       setError(error.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

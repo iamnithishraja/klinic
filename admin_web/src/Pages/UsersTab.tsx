@@ -20,7 +20,6 @@ const UsersTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [totalUsers, setTotalUsers] = useState(0);
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
@@ -44,7 +43,6 @@ const UsersTab: React.FC = () => {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       setUsers(res.data.users || []);
-      setTotalUsers(res.data.total || 0);
     } catch {
       setError('Failed to fetch users');
     } finally {
@@ -68,6 +66,8 @@ const UsersTab: React.FC = () => {
       phone.includes(search))
     );
   });
+
+  const userCount = filteredUsers.length;
 
   // Debounced search function
   const debouncedFetchUsers = useMemo(() => debounce(fetchUsers, 300), []);
@@ -129,7 +129,7 @@ const UsersTab: React.FC = () => {
       )}
       <div className="bg-card rounded-xl shadow p-8 mb-8">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold text-text">Users ({totalUsers})</h2>
+          <h2 className="text-3xl font-bold text-text">Users ({userCount})</h2>
           <div className="flex gap-2">
             <input
               type="text"

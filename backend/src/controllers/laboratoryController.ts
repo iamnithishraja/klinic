@@ -280,27 +280,22 @@ const markAsRead = async (req: CustomRequest, res: Response) => {
             return;
         }
 
-        // Check if both report details and PDFs are uploaded
-        const hasReportDetails = appointment.reportResult && appointment.reportResult.trim() !== '';
-        const hasPdfs = appointment.testReportPdfs && appointment.testReportPdfs.length > 0;
-        
-        if (!hasReportDetails || !hasPdfs) {
-            res.status(400).json({ 
-                message: "Both report details and test PDFs must be uploaded before marking as read",
-                hasReportDetails,
-                hasPdfs
-            });
-            return;
-        }
+        console.log('Mark as read - Collection type:', appointment.collectionType);
+        console.log('Mark as read - Current isPaid status:', appointment.isPaid);
 
-        // Mark appointment as marked-as-read (moves to recent tests)
+        // Update appointment status to marked-as-read
         appointment.status = 'marked-as-read';
-        // Request feedback from patient
-        appointment.feedbackRequested = true;
+        
+        // For lab visits, automatically mark as paid since payment is collected at the time of service
+        if (appointment.collectionType === 'lab' && !appointment.isPaid) {
+            appointment.isPaid = true;
+            console.log('Mark as read - Marked lab visit as paid');
+        }
+        
         await appointment.save();
 
         res.status(200).json({ 
-            message: "Appointment marked as completed",
+            message: "Appointment marked as read successfully",
             appointment: {
                 ...appointment.toObject(),
                 timeSlotDisplay: formatDateToDisplayString(appointment.timeSlot)
@@ -308,46 +303,6 @@ const markAsRead = async (req: CustomRequest, res: Response) => {
         });
     } catch (error) {
         console.error('Mark as read error:', error);
-        res.status(500).json({ message: "Internal server error", error });
-    }
-};
-
-const updatePaymentCollection = async (req: CustomRequest, res: Response) => {
-    try {
-        const laboratoryId = req.user._id;
-        const { appointmentId } = req.params;
-        const { paymentCollected } = req.body;
-
-        // Verify appointment belongs to this laboratory
-        const appointment = await LabAppointment.findOne({
-            _id: appointmentId,
-            lab: laboratoryId
-        });
-
-        if (!appointment) {
-            res.status(404).json({ message: "Appointment not found or access denied" });
-            return;
-        }
-
-        // Check if it's a lab visit consultation
-        if (appointment.collectionType !== 'lab') {
-            res.status(400).json({ message: "Payment collection is only applicable for lab visit consultations" });
-            return;
-        }
-
-        // Update payment collection status
-        appointment.paymentCollected = paymentCollected;
-        await appointment.save();
-
-        res.status(200).json({ 
-            message: `Payment ${paymentCollected ? 'marked as collected' : 'marked as not collected'} successfully`,
-            appointment: {
-                ...appointment.toObject(),
-                timeSlotDisplay: formatDateToDisplayString(appointment.timeSlot)
-            }
-        });
-    } catch (error) {
-        console.error('Update payment collection error:', error);
         res.status(500).json({ message: "Internal server error", error });
     }
 };
@@ -426,6 +381,10 @@ const updateAppointmentStatus = async (req: CustomRequest, res: Response) => {
             return;
         }
 
+        console.log('Update appointment status - Collection type:', appointment.collectionType);
+        console.log('Update appointment status - Current isPaid status:', appointment.isPaid);
+        console.log('Update appointment status - New status:', status);
+
         // Map old status values to new ones
         let newStatus = status;
         if (status === 'upcoming') newStatus = 'pending';
@@ -433,6 +392,15 @@ const updateAppointmentStatus = async (req: CustomRequest, res: Response) => {
 
         // Update appointment status
         appointment.status = newStatus;
+        
+        // For lab visits, automatically mark as paid when marking as completed since payment is collected at the time of service
+        if ((newStatus === 'completed' || newStatus === 'marked-as-read') && 
+            appointment.collectionType === 'lab' && 
+            !appointment.isPaid) {
+            appointment.isPaid = true;
+            console.log('Update appointment status - Marked lab visit as paid');
+        }
+        
         await appointment.save();
 
         res.status(200).json({ 
@@ -521,11 +489,10 @@ export {
     getLaboratoryDashboard, 
     addLabReport, 
     deleteLabReport,
+    markAsRead,
     getAppointmentDetails, 
     updateAppointmentStatus,
     getLaboratoryServices,
     testLaboratoryEndpoint,
-    markAsRead,
-    updatePaymentCollection,
     markSampleCollected
 }; 

@@ -40,9 +40,6 @@ interface Appointment {
   collectionType?: 'lab' | 'home';
   status: 'upcoming' | 'collected' | 'completed';
   isPaid: boolean;
-  paymentId?: string;
-  paymentOrderId?: string;
-  paymentStatus?: 'pending' | 'captured' | 'failed';
   reportResult?: string;
   createdAt: string;
   updatedAt: string;
@@ -737,11 +734,6 @@ const LaboratoriesTab: React.FC = () => {
                               }`}>
                                 {appt.isPaid ? '✅ Paid' : '❌ Pending'}
                               </span>
-                              {appt.paymentStatus && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {appt.paymentStatus}
-                                </div>
-                              )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap min-w-[120px]">
                               <div className="text-sm text-gray-900 truncate">

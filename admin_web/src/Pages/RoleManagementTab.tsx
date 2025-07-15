@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { FaUserShield, FaUser, FaUserMd, FaFlask, FaTruck, FaEdit, FaTrash, FaSpinner, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
+import { FaUserShield, FaUser, FaUserMd, FaFlask, FaTruck, FaEdit, FaTrash, FaSpinner, FaExclamationTriangle, FaCheckCircle, FaBan, FaUserTimes, FaUserCheck } from 'react-icons/fa';
+import SuspensionModal from '../components/SuspensionModal';
 
 interface User {
   _id: string;
@@ -16,6 +17,22 @@ interface User {
 interface RoleStats {
   _id: string;
   count: number;
+}
+
+interface SuspensionDetails {
+  _id: string;
+  email?: string;
+  phone?: string;
+  reason: string;
+  suspendedBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  suspendedAt: string;
+  expiresAt?: string;
+  isActive: boolean;
+  notes?: string;
 }
 
 const RoleManagementTab: React.FC = () => {
@@ -37,6 +54,9 @@ const RoleManagementTab: React.FC = () => {
   const [updatingRole, setUpdatingRole] = useState(false);
   const [showRemoveAdminModal, setShowRemoveAdminModal] = useState(false);
   const [removingAdmin, setRemovingAdmin] = useState(false);
+  const [suspensionStatus, setSuspensionStatus] = useState<Record<string, { isSuspended: boolean; details: SuspensionDetails | null }>>({});
+  const [showSuspensionModal, setShowSuspensionModal] = useState(false);
+  const [suspensionUser, setSuspensionUser] = useState<User | null>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   const fetchUsers = async () => {
@@ -52,7 +72,7 @@ const RoleManagementTab: React.FC = () => {
       setRoleStats(res.data.roleStats || []);
       setTotalUsers(res.data.total || 0);
       setTotalPages(res.data.totalPages || 1);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching users:', error);
       setError('Failed to fetch users');
     } finally {
@@ -111,7 +131,7 @@ const RoleManagementTab: React.FC = () => {
       setUsers(prevUsers => 
         prevUsers.map(user => 
           user._id === selectedUser._id 
-            ? { ...user, role: newRole as any }
+            ? { ...user, role: newRole as User['role'] }
             : user
         )
       );
@@ -120,9 +140,10 @@ const RoleManagementTab: React.FC = () => {
       setSelectedUser(null);
       setNewRole('');
       alert(res.data.message);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating role:', error);
-      alert(error.response?.data?.message || 'Failed to update role');
+      const err = error as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message || 'Failed to update role');
     } finally {
       setUpdatingRole(false);
     }
@@ -143,7 +164,7 @@ const RoleManagementTab: React.FC = () => {
       setUsers(prevUsers => 
         prevUsers.map(user => 
           user._id === selectedUser._id 
-            ? { ...user, role: 'user' as any }
+            ? { ...user, role: 'user' as User['role'] }
             : user
         )
       );
@@ -151,12 +172,36 @@ const RoleManagementTab: React.FC = () => {
       setShowRemoveAdminModal(false);
       setSelectedUser(null);
       alert(res.data.message);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing admin role:', error);
-      alert(error.response?.data?.message || 'Failed to remove admin role');
+      const err = error as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message || 'Failed to remove admin role');
     } finally {
       setRemovingAdmin(false);
     }
+  };
+
+  const handleSuspensionChange = async () => {
+    // Refresh suspension status for all users
+    const token = localStorage.getItem('admin_token');
+    const statusObj: Record<string, { isSuspended: boolean; details: SuspensionDetails | null }> = { ...suspensionStatus };
+    if (suspensionUser) {
+      try {
+        const apiUrl = (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/users/${suspensionUser._id}/suspension-status`;
+        const response = await axios.get(apiUrl, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        statusObj[suspensionUser._id] = {
+          isSuspended: response.data.isSuspended,
+          details: response.data.suspension || null,
+        };
+      } catch {
+        statusObj[suspensionUser._id] = { isSuspended: false, details: null };
+      }
+      setSuspensionStatus(statusObj);
+    }
+    setSuspensionUser(null);
+    setShowSuspensionModal(false);
   };
 
   const openRoleModal = (user: User) => {
@@ -199,6 +244,30 @@ const RoleManagementTab: React.FC = () => {
       mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [currentPage]);
+
+  // Fetch suspension status for all users
+  useEffect(() => {
+    const fetchSuspensions = async () => {
+      const token = localStorage.getItem('admin_token');
+      const statusObj: Record<string, { isSuspended: boolean; details: SuspensionDetails | null }> = {};
+      await Promise.all(users.map(async (user) => {
+        try {
+          const apiUrl = (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/users/${user._id}/suspension-status`;
+          const response = await axios.get(apiUrl, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          statusObj[user._id] = {
+            isSuspended: response.data.isSuspended,
+            details: response.data.suspension || null,
+          };
+        } catch {
+          statusObj[user._id] = { isSuspended: false, details: null };
+        }
+      }));
+      setSuspensionStatus(statusObj);
+    };
+    if (users.length > 0) fetchSuspensions();
+  }, [users]);
 
   const filteredUsers = users.filter((user) => {
     const name = user.name?.toLowerCase() || '';
@@ -291,7 +360,10 @@ const RoleManagementTab: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {filteredUsers.length > 0 ? (
-              filteredUsers.map((user) => (
+              filteredUsers.map((user) => {
+                const isSuspended = suspensionStatus[user._id]?.isSuspended;
+                const suspensionDetails = suspensionStatus[user._id]?.details;
+                return (
                 <div key={user._id} className="bg-white rounded-lg p-6 shadow border hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -303,20 +375,31 @@ const RoleManagementTab: React.FC = () => {
                         <p className="text-gray-600">{user.email}</p>
                         <p className="text-sm text-gray-500">{user.phone}</p>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getRoleBadgeColor(user.role)}`}>
-                            {getRoleIcon(user.role)}
-                            {user.role}
-                          </span>
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getRoleBadgeColor(user.role)}`}>{getRoleIcon(user.role)}{user.role}</span>
                           {user.isPhoneEmailVerified && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              <FaCheckCircle />
-                              Verified
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"><FaCheckCircle />Verified</span>
+                            )}
+                            {isSuspended && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                <FaBan />
+                                {suspensionDetails?.expiresAt ? 'Temp Suspended' : 'Suspended'}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setSuspensionUser(user); setShowSuspensionModal(true); }}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                            isSuspended 
+                              ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg' 
+                              : 'bg-red-600 text-white hover:bg-red-700 shadow-lg'
+                          }`}
+                        >
+                          {isSuspended ? <FaUserCheck className="text-lg" /> : <FaUserTimes className="text-lg" />}
+                          {isSuspended ? 'Unsuspend' : 'Suspend'}
+                        </button>
                       <button
                         onClick={() => openRoleModal(user)}
                         className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
@@ -336,7 +419,8 @@ const RoleManagementTab: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-12">
                 <p className="text-gray-600">No users found matching your criteria.</p>
@@ -453,6 +537,20 @@ const RoleManagementTab: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Suspension Modal */}
+      {showSuspensionModal && suspensionUser && (
+        <SuspensionModal
+          isOpen={showSuspensionModal}
+          onClose={() => { setShowSuspensionModal(false); setSuspensionUser(null); }}
+          userId={suspensionUser._id}
+          userName={suspensionUser.name}
+          userEmail={suspensionUser.email}
+          userPhone={suspensionUser.phone}
+          isCurrentlySuspended={!!suspensionStatus[suspensionUser._id]?.isSuspended}
+          onSuspensionChange={handleSuspensionChange}
+        />
       )}
     </div>
   );

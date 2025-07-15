@@ -23,6 +23,10 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         enum: ['in-person', 'online', 'both'],
         default: null,
     },
+    consultationFee: {
+        type: Number,
+        default: null,
+    },
     prescription: {
         type: String,
         default: null,
@@ -37,23 +41,6 @@ const doctorAppointmentsSchema = new mongoose.Schema({
         default: 'upcoming',
     },
     isPaid: {
-        type: Boolean,
-        default: false,
-    },
-    paymentId: {
-        type: String,
-        default: null,
-    },
-    paymentOrderId: {
-        type: String,
-        default: null,
-    },
-    paymentStatus: {
-        type: String,
-        enum: ['pending', 'captured', 'failed'],
-        default: 'pending',
-    },
-    paymentCollected: {
         type: Boolean,
         default: false,
     },

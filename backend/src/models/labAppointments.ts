@@ -36,23 +36,6 @@ const labAppointmentsSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    paymentId: {
-        type: String,
-        default: null,
-    },
-    paymentOrderId: {
-        type: String,
-        default: null,
-    },
-    paymentStatus: {
-        type: String,
-        enum: ['pending', 'captured', 'failed'],
-        default: 'pending',
-    },
-    paymentCollected: {
-        type: Boolean,
-        default: false,
-    },
     reportResult: {
         type: String,
         default: null,
@@ -72,6 +55,10 @@ const labAppointmentsSchema = new mongoose.Schema({
     feedbackRequested: {
         type: Boolean,
         default: false,
+    },
+    serviceFee: {
+        type: Number,
+        default: null,
     },
     createdAt: {
         type: Date,

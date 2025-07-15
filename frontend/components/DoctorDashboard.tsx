@@ -45,8 +45,6 @@ interface DoctorAppointment {
   };
   notes?: string;
   isPaid: boolean;
-  paymentStatus?: 'pending' | 'captured' | 'failed';
-  paymentCollected?: boolean;
   feedbackRequested?: boolean;
   createdAt: string;
 }
@@ -265,44 +263,7 @@ const DoctorDashboard: React.FC = () => {
     });
   };
 
-  const handlePaymentCollection = async (appointment: DoctorAppointment, collected: boolean) => {
-    const action = collected ? 'mark as collected' : 'mark as not collected';
-    
-    showAlert({
-      title: 'Update Payment Status',
-      message: `Are you sure you want to ${action} for ${appointment.patient.name}?`,
-      type: 'info',
-      buttons: [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: collected ? 'Mark Collected' : 'Mark Not Collected', 
-          style: 'primary',
-          onPress: async () => {
-            try {
-              await apiClient.patch(`/api/v1/doctor/appointments/${appointment._id}/payment-collection`, {
-                paymentCollected: collected
-              });
 
-              showAlert({
-                title: 'Success',
-                message: `Payment ${action} successfully`,
-                type: 'success'
-              });
-
-              // Refresh dashboard data
-              await fetchDashboardData();
-            } catch (error: any) {
-              showAlert({
-                title: 'Error',
-                message: `Failed to update payment status: ${error.response?.data?.message || error.message}`,
-                type: 'error'
-              });
-            }
-          }
-        }
-      ]
-    });
-  };
 
   const formatAppointmentTime = (timeSlot: string, timeSlotDisplay: string) => {
     try {
@@ -561,8 +522,7 @@ const DoctorDashboard: React.FC = () => {
           </Pressable>
         </View>
 
-        {/* Payment Status - Only show for online consultations */}
-        {item.consultationType === 'online' && (
+        {/* Payment Status - Show for all consultation types */}
           <View className="mt-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
             <View className="flex-row justify-between items-center">
               <Text className="text-xs font-medium text-gray-600">Payment Status</Text>
@@ -575,17 +535,14 @@ const DoctorDashboard: React.FC = () => {
                 <Text className={`text-xs font-medium ${
                   item.isPaid ? 'text-green-700' : 'text-red-700'
                 }`}>
-                  {item.isPaid ? 'Paid Online' : 'Payment Pending'}
+                {item.isPaid 
+                  ? (item.consultationType === 'online' ? 'Paid Online' : 'Payment Collected') 
+                  : (item.consultationType === 'online' ? 'Payment Pending' : 'Payment Not Collected')
+                }
                 </Text>
               </View>
             </View>
-            {item.paymentStatus && (
-              <Text className="text-xs text-gray-500 mt-0.5">
-                Online Status: {item.paymentStatus}
-              </Text>
-            )}
           </View>
-        )}
       </View>
     </View>
   );
@@ -627,6 +584,28 @@ const DoctorDashboard: React.FC = () => {
                 }`}
               >
                 {item.feedbackRequested ? 'Feedback Requested' : 'No Feedback Requested'}
+              </Text>
+            </View>
+          </View>
+          
+          {/* Payment Status */}
+          <View className="mt-2 flex-row items-center justify-center">
+            <View 
+              className={`px-2 py-1 rounded-full ${
+                item.isPaid 
+                  ? 'bg-green-100 border border-green-200' 
+                  : 'bg-red-100 border border-red-200'
+              }`}
+            >
+              <Text 
+                className={`text-xs font-medium ${
+                  item.isPaid ? 'text-green-700' : 'text-red-700'
+                }`}
+              >
+                {item.isPaid 
+                  ? (item.consultationType === 'online' ? 'Paid Online' : 'Payment Collected') 
+                  : (item.consultationType === 'online' ? 'Payment Pending' : 'Payment Not Collected')
+                }
               </Text>
             </View>
           </View>
@@ -844,28 +823,7 @@ const DoctorDashboard: React.FC = () => {
                         <Text className="text-gray-500 text-sm">{selectedAppointment.patient.phone}</Text>
                       </View>
                       
-                      {/* Payment Collection Button - Only for in-person consultations */}
-                      {selectedAppointment.consultationType === 'in-person' && (
-                        <Pressable
-                          onPress={() => handlePaymentCollection(selectedAppointment, !selectedAppointment.paymentCollected)}
-                          className={`ml-2 px-2 py-1 rounded-lg items-center border ${
-                            selectedAppointment.paymentCollected 
-                              ? 'bg-green-100 border-green-300' 
-                              : 'bg-red-100 border-red-300'
-                          }`}
-                        >
-                          <FontAwesome 
-                            name={selectedAppointment.paymentCollected ? "check" : "times"} 
-                            size={12} 
-                            color={selectedAppointment.paymentCollected ? "#10B981" : "#EF4444"} 
-                          />
-                          <Text className={`text-xs font-medium mt-0.5 ${
-                            selectedAppointment.paymentCollected ? 'text-green-700' : 'text-red-700'
-                          }`}>
-                            {selectedAppointment.paymentCollected ? 'Collected' : 'Not Collected'}
-                          </Text>
-                        </Pressable>
-                      )}
+
                     </View>
 
                     {/* Personal Information */}

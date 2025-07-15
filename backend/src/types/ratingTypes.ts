@@ -40,10 +40,6 @@ export interface ILabAppointment {
   collectionType: 'lab' | 'home';
   status: 'pending' | 'processing' | 'completed' | 'upcoming' | 'collected' | 'marked-as-read';
   isPaid: boolean;
-  paymentId?: string;
-  paymentOrderId?: string;
-  paymentStatus: 'pending' | 'captured' | 'failed';
-  paymentCollected?: boolean;
   reportResult?: string;
   testReportPdfs: string[];
   reportsUploaded: boolean;

@@ -5,6 +5,7 @@ import { sendOtp } from '../utils/verification';
 import userSchema from '../schemas/userSchema';
 import bcrypt from 'bcrypt';
 import type { CustomRequest } from '../types/userTypes';
+import SuspendedUser from '../models/suspendedUserModel';
 
 const registerUser = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -18,6 +19,32 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
         
         const { name, email, phone, password, role } = userSchema.parse(req.body);
         console.log('Parsed data:', { name, email, phone, role });
+        
+        // Check if email is suspended
+        const isEmailSuspended = await SuspendedUser.isSuspended(email);
+        if (isEmailSuspended) {
+            const suspensionDetails = await SuspendedUser.getSuspensionDetails(email);
+            res.status(403).json({ 
+                message: 'Email address is suspended',
+                reason: suspensionDetails?.reason || 'Email suspended by administrator',
+                suspendedAt: suspensionDetails?.suspendedAt,
+                expiresAt: suspensionDetails?.expiresAt
+            });
+            return;
+        }
+
+        // Check if phone is suspended
+        const isPhoneSuspended = await SuspendedUser.isSuspended(undefined, phone);
+        if (isPhoneSuspended) {
+            const suspensionDetails = await SuspendedUser.getSuspensionDetails(undefined, phone);
+            res.status(403).json({ 
+                message: 'Phone number is suspended',
+                reason: suspensionDetails?.reason || 'Phone suspended by administrator',
+                suspendedAt: suspensionDetails?.suspendedAt,
+                expiresAt: suspensionDetails?.expiresAt
+            });
+            return;
+        }
         
         // Check if user already exists by email
         const existingUserByEmail = await User.findOne({ email });
@@ -105,6 +132,25 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
 const loginUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const { email, password } = req.body;
+        
+        if (!email || !password) {
+            res.status(400).json({ message: 'Email and password are required' });
+            return;
+        }
+
+        // Check if user is suspended
+        const isSuspended = await SuspendedUser.isSuspended(email);
+        if (isSuspended) {
+            const suspensionDetails = await SuspendedUser.getSuspensionDetails(email);
+            res.status(403).json({ 
+                message: 'Account suspended',
+                reason: suspensionDetails?.reason || 'Account suspended by administrator',
+                suspendedAt: suspensionDetails?.suspendedAt,
+                expiresAt: suspensionDetails?.expiresAt
+            });
+            return;
+        }
+
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
             res.status(401).json({ message: 'Invalid email or password' });
@@ -179,4 +225,5 @@ const changeEmailPhone = async (req: CustomRequest, res: Response): Promise<void
         res.status(500).json({ message: 'Internal server error' });
     }
 }
+
 export { registerUser, loginUser, resendOtp, getUser, verifyOtp, changeEmailPhone }; 
