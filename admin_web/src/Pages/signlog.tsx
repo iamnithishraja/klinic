@@ -124,9 +124,6 @@ const SignLog: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="flex justify-end mt-2 mb-4">
-            <a href="#" className="text-xs text-blue-500 hover:underline">Forgot password?</a>
-          </div>
           <button
             type="submit"
             className="w-full mt-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
