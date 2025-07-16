@@ -16,7 +16,7 @@ interface UseProfileApi {
   fetchData: () => Promise<any>;
   updateData: (data: any) => Promise<boolean>;
   updateDataSilent: (data: any) => Promise<boolean>;
-  uploadFile: (fileType: string, fileName: string, fileUri: string) => Promise<string | null>;
+  uploadFile: (fileType: string, fileName: string, fileUri: string, isCoverImage?: boolean) => Promise<string | null>;
 }
 
 const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UseProfileApi => {
@@ -110,15 +110,18 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
     }
   };
 
-  const uploadFile = async (fileType: string, fileName: string, fileUri: string): Promise<string | null> => {
+  const uploadFile = async (fileType: string, fileName: string, fileUri: string, isCoverImage: boolean = false): Promise<string | null> => {
     try {
+      // Ensure the filename indicates if it's a cover image
+      const finalFileName = isCoverImage ? `cover_${fileName}` : fileName;
+      
       // Get upload URL from the correct endpoint
-      const urlResponse = await apiClient.post('/api/v1/profile/upload-url', {
+      const urlResponse = await apiClient.post('/api/v1/upload-url', {
         fileType,
-        fileName
+        fileName: finalFileName
       });
       
-      const { uploadUrl } = urlResponse.data;
+      const { uploadUrl, publicUrl } = urlResponse.data;
       
       // Upload file
       const response = await fetch(fileUri);
@@ -132,12 +135,8 @@ const useProfileApi = ({ endpoint, onSuccess, onError }: ProfileApiProps): UsePr
         },
       });
       
-      const urlWithoutQuery = uploadUrl.split('?')[0];
-      const parts = urlWithoutQuery.split('.com/');
-      const key = parts[1];
-      
-      const s3Url = `https://pub-0f703feb53794f768ba649b826a64db4.r2.dev/${key}`;
-      return s3Url;
+      // Return the public URL provided by the backend
+      return publicUrl;
     } catch (err) {
       console.error('Error uploading file:', err);
       Alert.alert('Error', 'Failed to upload file');

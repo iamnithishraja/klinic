@@ -226,4 +226,13 @@ const changeEmailPhone = async (req: CustomRequest, res: Response): Promise<void
     }
 }
 
-export { registerUser, loginUser, resendOtp, getUser, verifyOtp, changeEmailPhone }; 
+const updateUserBasicInfo = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { name, email, phone, profilePicture } = req.body;
+        const user = await User.findByIdAndUpdate(req.user._id, { name, email, phone, profilePicture }, { new: true });
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+export { registerUser, loginUser, resendOtp, getUser, verifyOtp, changeEmailPhone, updateUserBasicInfo }; 

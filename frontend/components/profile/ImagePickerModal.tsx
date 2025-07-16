@@ -1,18 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { Modal, View, Text, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface ImagePickerModalProps {
   visible: boolean;
   onClose: () => void;
-  onTakePhoto: () => void;
   onChooseFromGallery: () => void;
 }
 
 const ImagePickerModal = ({ 
   visible, 
   onClose, 
-  onTakePhoto, 
   onChooseFromGallery 
 }: ImagePickerModalProps) => {
   return (
@@ -29,16 +27,8 @@ const ImagePickerModal = ({
       >
         <View className="bg-white rounded-t-3xl absolute bottom-0 w-full px-4 py-6">
           <Text className="text-text-primary text-center font-semibold text-lg mb-6">
-            Upload Profile Picture
+            Upload Picture
           </Text>
-          
-          <TouchableOpacity 
-            onPress={onTakePhoto}
-            className="flex-row items-center p-4 border-b border-divider"
-          >
-            <MaterialCommunityIcons name="camera" size={24} color="#6366F1" />
-            <Text className="text-text-primary ml-4 text-lg">Take Photo</Text>
-          </TouchableOpacity>
           
           <TouchableOpacity 
             onPress={onChooseFromGallery}

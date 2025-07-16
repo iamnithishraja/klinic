@@ -447,16 +447,23 @@ const createUpdateLaboratoryProfile = async (req: CustomRequest, res: Response):
 // Request file upload URL
 const getUploadUrl = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-        const { fileType, fileName } = req.body;
+        const { fileType, fileName, isPermanent } = req.body;
 
         if (!fileType || !fileName) {
             res.status(400).json({ message: 'File type and name are required' });
             return;
         }
-        // Generate a presigned URL for uploading
-        const uploadUrl = await generateUploadUrlProfile(fileType, fileName, req.user.role, req.user._id.toString());
 
-        res.status(200).json({ uploadUrl });
+        // Generate a presigned URL for uploading
+        const { uploadUrl, publicUrl } = await generateUploadUrlProfile(
+            fileType,
+            fileName,
+            req.user.role,
+            req.user._id.toString(),
+            isPermanent || fileType === 'application/pdf' // Always set PDFs as permanent
+        );
+
+        res.status(200).json({ uploadUrl, publicUrl });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });

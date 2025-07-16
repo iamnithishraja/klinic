@@ -7,10 +7,6 @@ const userProfileSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
-    profilePicture: {
-        type: String,
-        default: null,
-    },
     age: {
         type: Number,
         default: null,
@@ -235,10 +231,6 @@ const deliveryBoyProfileSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
-    },
-    profilePicture: {
-        type: String,
-        default: null,
     },
     age: {
         type: Number,

@@ -634,25 +634,6 @@ const DoctorDashboard: React.FC = () => {
               {item.prescription ? 'Edit' : 'Add Prescription'}
             </Text>
           </Pressable>
-          
-          {/* Feedback Request Button */}
-          {!item.feedbackRequested ? (
-            <Pressable
-              onPress={() => handleRequestFeedback(item)}
-              className="bg-yellow-50 px-2.5 py-1.5 rounded-lg border border-yellow-200 items-center"
-            >
-              <FontAwesome name="star" size={10} color="#F59E0B" style={{ marginBottom: 1 }} />
-              <Text className="text-yellow-700 text-xs font-medium">Request Feedback</Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => handleCancelFeedbackRequest(item)}
-              className="bg-red-50 px-2.5 py-1.5 rounded-lg border border-red-200 items-center"
-            >
-              <FontAwesome name="times" size={10} color="#EF4444" style={{ marginBottom: 1 }} />
-              <Text className="text-red-700 text-xs font-medium">Cancel Request</Text>
-            </Pressable>
-          )}
         </View>
       </View>
     </View>

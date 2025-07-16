@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, Text, ScrollView, View, Platform, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
+import { ActivityIndicator, Text, ScrollView, View, Platform, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // @ts-ignore
 import { useRouter } from 'expo-router';
@@ -23,6 +23,7 @@ import DoctorProfileForm from '@/components/profile/DoctorProfileForm';
 import LaboratoryProfileForm from '@/components/profile/LaboratoryProfileForm';
 import SaveButton from '@/components/profile/SaveButton';
 import ImagePickerModal from '@/components/profile/ImagePickerModal';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const Profile = () => {
   const router = useRouter();
@@ -37,6 +38,12 @@ const Profile = () => {
   // Local state for UI
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [filteredCities, setFilteredCities] = useState<string[]>([]);
+  const [isEditingBasicInfo, setIsEditingBasicInfo] = useState(false);
+  const [basicInfo, setBasicInfo] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  });
 
   // For tracking file picks
   const [cameraCaptureUri, setCameraCaptureUri] = useState<string | null>(null);
@@ -71,6 +78,17 @@ const Profile = () => {
 
   // Setup keyboard listener
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    // Initialize basic info from user data
+    if (user) {
+      setBasicInfo({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || ''
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     const keyboardWillShowListener = Keyboard.addListener(
@@ -234,120 +252,95 @@ const Profile = () => {
     }
   };
 
-  // Image picker handlers
-  const openCamera = async () => {
+  // Handle basic info update
+  const handleUpdateBasicInfo = async () => {
     try {
-      uiStore.setUploadingImage(true);
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+      uiStore.setUpdating(true);
+      
+      // Update user basic info
+      const response = await apiClient.post('/api/v1/update-user-basic-info', {
+        name: basicInfo.name,
+        email: basicInfo.email,
+        phone: basicInfo.phone,
+        profilePicture: user?.profilePicture
       });
 
-      if (!result.canceled) {
-        setCameraCaptureUri(result.assets[0].uri);
-        await uploadImage(result.assets[0].uri);
+      if (response.data) {
+        // Update local user state
+        setUser(response.data);
+        setIsEditingBasicInfo(false);
+        alert('Basic info updated successfully');
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
-      alert('Failed to take photo');
-      // Reset flags in case of error
-      uiStore.setUploadingImage(false);
-      uiStore.setUploadingCoverImage(false);
+      console.error('Error updating basic info:', error);
+      alert('Failed to update basic info');
     } finally {
-      // Only reset showImageOptions here, uploadingImage and uploadingCoverImage 
-      // are reset in uploadImage
-      uiStore.setShowImageOptions(false);
+      uiStore.setUpdating(false);
     }
   };
 
+  // Handle profile picture upload
+  const handleProfilePicturePress = () => {
+    uiStore.setShowImageOptions(true);
+  };
+
+  // Image picker handler - only gallery
   const openGallery = async () => {
     try {
       uiStore.setUploadingImage(true);
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [4, 3],
+        aspect: [1, 1],
         quality: 0.8,
       });
 
       if (!result.canceled) {
-        setGalleryCaptureUri(result.assets[0].uri);
-        await uploadImage(result.assets[0].uri);
+        await uploadProfilePicture(result.assets[0].uri);
       }
     } catch (error) {
       console.error('Error picking image:', error);
       alert('Failed to pick image');
-      // Reset flags in case of error
-      uiStore.setUploadingImage(false);
-      uiStore.setUploadingCoverImage(false);
     } finally {
-      // Only reset showImageOptions here, uploadingImage and uploadingCoverImage 
-      // are reset in uploadImage
+      uiStore.setUploadingImage(false);
       uiStore.setShowImageOptions(false);
     }
   };
 
-  const uploadImage = async (imageUri: string) => {
+  const uploadProfilePicture = async (imageUri: string) => {
     try {
-      console.log('Uploading image from:', imageUri);
+      console.log('Uploading profile picture from:', imageUri);
 
-      // Determine file details
-      const fileName = `profile-image-${Date.now()}.jpg`;
+      // Get file details
+      const fileName = `profile-picture-${Date.now()}.jpg`;
       const fileType = 'image/jpeg';
 
-      // Use the appropriate API hook based on user role
-      let imageUrl = null;
-      if (user?.role === UserRole.USER) {
-        imageUrl = await userProfileApi.uploadFile(fileType, fileName, imageUri);
-      } else if (user?.role === UserRole.DOCTOR) {
-        imageUrl = await doctorProfileApi.uploadFile(fileType, fileName, imageUri);
-      } else if (user?.role === UserRole.LABORATORY) {
-        imageUrl = await laboratoryProfileApi.uploadFile(fileType, fileName, imageUri);
-      }
+      // Get presigned URL and upload image
+      const imageUrl = await userProfileApi.uploadFile(fileType, fileName, imageUri, false);
 
       if (imageUrl) {
-        console.log('Image uploaded successfully, URL:', imageUrl);
+        console.log('Profile picture uploaded successfully, URL:', imageUrl);
 
-        // Update state with the new image URL
-        if (user?.role === UserRole.USER) {
-          userProfileStore.setProfilePicture(imageUrl);
-        } else if (user?.role === UserRole.DOCTOR) {
-          doctorProfileStore.setCoverImage(imageUrl);
-        } else if (user?.role === UserRole.LABORATORY) {
-          // Check if this is a service cover image or laboratory cover image
-          if (activeServiceId) {
-            console.log(`Updating cover image for service ID: ${activeServiceId}`);
-            
-            // Update the service in the store with the new cover image
-            laboratoryProfileStore.updateLaboratoryService(activeServiceId, {
-              coverImage: imageUrl
-            });
-            
-            // Auto-save the changes
-            console.log('Auto-saving laboratory profile after cover image update...');
-            const profileData = laboratoryProfileStore.prepareProfileData();
-            await laboratoryProfileApi.updateDataSilent(profileData);
-            
-            // Reset the active service ID
-            setActiveServiceId(null);
-          } else {
-            laboratoryProfileStore.setCoverImage(imageUrl);
-          }
+        // Update user basic info with new profile picture
+        const response = await apiClient.post('/api/v1/update-user-basic-info', {
+          name: user?.name,
+          email: user?.email,
+          phone: user?.phone,
+          profilePicture: imageUrl
+        });
+
+        if (response.data) {
+          // Update local user state
+          setUser(response.data);
         }
       } else {
-        console.error('Failed to get URL for the uploaded image');
-        alert('Failed to upload image');
+        throw new Error('Failed to get URL for the uploaded image');
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Failed to upload image');
+      console.error('Error uploading profile picture:', error);
+      alert('Failed to upload profile picture');
     } finally {
-      // Always reset the uploading flags and active IDs regardless of success or failure
       uiStore.setUploadingImage(false);
-      uiStore.setUploadingCoverImage(false);
-      setActiveServiceId(null);
     }
   };
 
@@ -376,7 +369,7 @@ const Profile = () => {
           console.log('PDF uploaded successfully, URL:', pdfUrl);
 
           // Add new PDF to the array in store
-          const updatedPdfs = [...userProfileStore.medicalHistoryPdfs, pdfUrl];
+          const updatedPdfs = [...(userProfileStore.medicalHistoryPdfs || []), pdfUrl];
           userProfileStore.setMedicalHistoryPdfs(updatedPdfs);
 
           // Auto-save the PDF change
@@ -412,8 +405,7 @@ const Profile = () => {
             alert('PDF uploaded but failed to save. Please try saving manually.');
           }
         } else {
-          console.error('Failed to get URL for the uploaded PDF');
-          alert('Failed to upload PDF file');
+          throw new Error('Failed to get URL for the uploaded PDF');
         }
       }
     } catch (error) {
@@ -477,12 +469,34 @@ const Profile = () => {
   const handleCoverImagePick = async () => {
     try {
       uiStore.setUploadingCoverImage(true);
-      handleImagePick();
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        // Get file details
+        const fileName = `cover-image-${Date.now()}.jpg`;
+        const fileType = 'image/jpeg';
+
+        // Get presigned URL and upload image
+        const imageUrl = await doctorProfileApi.uploadFile(fileType, fileName, result.assets[0].uri, true);
+
+        if (imageUrl) {
+          console.log('Cover image uploaded successfully, URL:', imageUrl);
+          doctorProfileStore.setCoverImage(imageUrl);
+        } else {
+          throw new Error('Failed to get URL for the uploaded image');
+        }
+      }
     } catch (error) {
-      console.error('Error setting up cover image pick:', error);
+      console.error('Error uploading cover image:', error);
+      alert('Failed to upload cover image');
     } finally {
-      // Note: actual uploading will happen in openCamera or openGallery functions
-      // which will call uploadImage, so we don't set uploadingCoverImage to false here
+      uiStore.setUploadingCoverImage(false);
+      uiStore.setShowImageOptions(false);
     }
   };
 
@@ -748,7 +762,7 @@ const Profile = () => {
     try {
       uiStore.setUpdating(true);
 
-      // Get prepared profile data from store
+      // Get prepared profile data
       const profileData = laboratoryProfileStore.prepareProfileData();
 
       console.log('Submitting laboratory profile data:', JSON.stringify(profileData, null, 2));
@@ -768,7 +782,10 @@ const Profile = () => {
           laboratoryCity: laboratoryProfileStore.laboratoryCity,
           laboratoryGoogleMapsLink: laboratoryProfileStore.laboratoryGoogleMapsLink,
           laboratoryServices: laboratoryProfileStore.laboratoryServices,
-          coverImage: laboratoryProfileStore.coverImage
+          coverImage: laboratoryProfileStore.coverImage,
+          isAvailable: laboratoryProfileStore.isAvailable,
+          availableDays: laboratoryProfileStore.availableDays,
+          availableSlots: laboratoryProfileStore.availableSlots
         });
       }
     } catch (error) {
@@ -941,41 +958,6 @@ const Profile = () => {
       }
     } catch (error) {
       console.error('Error auto-saving doctor gender:', error);
-      // Don't show alert to avoid disrupting user experience
-    }
-  };
-
-  // Handle doctor city change with immediate save
-  const handleDoctorCityChange = async (newCity: string) => {
-    try {
-      // If there are no clinics, add one
-      if (doctorProfileStore.clinics.length === 0) {
-        doctorProfileStore.addClinic();
-      }
-
-      // Update the first clinic's city
-      doctorProfileStore.updateClinic(0, 'clinicCity', newCity);
-
-      // Prepare profile data
-      const profileData = doctorProfileStore.prepareProfileData();
-
-      // Override city with new value
-      profileData.city = newCity;
-
-      // Silent update
-      console.log('Auto-saving doctor city change...');
-      const success = await doctorProfileApi.updateDataSilent(profileData);
-
-      if (success) {
-        console.log('Doctor city updated successfully');
-        // Update saved values
-        doctorProfileStore.setSavedValues({
-          ...doctorProfileStore.savedValues,
-          clinics: doctorProfileStore.clinics
-        });
-      }
-    } catch (error) {
-      console.error('Error auto-saving doctor city:', error);
       // Don't show alert to avoid disrupting user experience
     }
   };
@@ -1175,7 +1157,73 @@ const Profile = () => {
           <ProfileHeader
             userData={user}
             onLogout={handleLogout}
+            onProfilePicturePress={handleProfilePicturePress}
           />
+          {isEditingBasicInfo ? (
+            <View className="mb-8 bg-white p-4 rounded-xl shadow-sm">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-lg font-semibold text-gray-800">Edit Basic Info</Text>
+                <TouchableOpacity 
+                  onPress={() => setIsEditingBasicInfo(false)}
+                  className="p-2"
+                >
+                  <MaterialCommunityIcons name="close" size={24} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-gray-700 font-medium mb-2">Name</Text>
+                <TextInput
+                  value={basicInfo.name}
+                  onChangeText={(text) => setBasicInfo(prev => ({ ...prev, name: text }))}
+                  placeholder="Enter your name"
+                  className="border border-gray-200 rounded-xl px-4 py-3 bg-white"
+                />
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-gray-700 font-medium mb-2">Email</Text>
+                <TextInput
+                  value={basicInfo.email}
+                  onChangeText={(text) => setBasicInfo(prev => ({ ...prev, email: text }))}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  className="border border-gray-200 rounded-xl px-4 py-3 bg-white"
+                />
+              </View>
+
+              <View className="mb-6">
+                <Text className="text-gray-700 font-medium mb-2">Phone</Text>
+                <TextInput
+                  value={basicInfo.phone}
+                  onChangeText={(text) => setBasicInfo(prev => ({ ...prev, phone: text }))}
+                  placeholder="Enter your phone number"
+                  keyboardType="phone-pad"
+                  className="border border-gray-200 rounded-xl px-4 py-3 bg-white"
+                />
+              </View>
+
+              <TouchableOpacity
+                onPress={handleUpdateBasicInfo}
+                disabled={uiStore.updating}
+                className="bg-primary rounded-xl py-3 items-center"
+              >
+                {uiStore.updating ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white font-medium">Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => setIsEditingBasicInfo(true)}
+              className="mb-8 flex-row items-center justify-center bg-primary/10 rounded-xl py-3"
+            >
+              <MaterialCommunityIcons name="account-edit" size={24} color="#6366F1" />
+              <Text className="text-primary font-medium ml-2">Edit Basic Info</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Dynamic Form Section based on role */}
           {renderProfileForm()}
@@ -1190,7 +1238,6 @@ const Profile = () => {
         <ImagePickerModal
           visible={uiStore.showImageOptions}
           onClose={() => uiStore.setShowImageOptions(false)}
-          onTakePhoto={openCamera}
           onChooseFromGallery={openGallery}
         />
       </SafeAreaView>

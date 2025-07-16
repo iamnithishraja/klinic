@@ -16,11 +16,29 @@ const s3Client = new S3Client({
 const BUCKET_NAME = process.env.R2_BUCKET_NAME || 'klinic-bucket';
 
 // Generate a presigned URL for file upload
-export const generateUploadUrlProfile = async (fileType: string, fileName: string, role: string, userId: string): Promise<string> => {
+export const generateUploadUrlProfile = async (
+    fileType: string, 
+    fileName: string, 
+    role: string, 
+    userId: string, 
+    isPermanent: boolean = false
+): Promise<{ uploadUrl: string; publicUrl: string }> => {
     try {
         const fileExtension = fileName.split('.').pop();
         const uniqueFileName = `${uuidv4()}.${fileExtension}`;
-        const key = `${role}/${userId}/${uniqueFileName}`;
+        
+        // Determine the appropriate path based on file type and role
+        let key: string;
+        if (fileType === 'application/pdf') {
+            // PDFs go into a separate folder
+            key = `${role}/${userId}/pdfs/${uniqueFileName}`;
+        } else if (fileName.toLowerCase().includes('cover')) {
+            // Cover images go into a separate folder
+            key = `${role}/${userId}/cover/${uniqueFileName}`;
+        } else {
+            // Profile pictures go into the root of the user's folder
+            key = `${role}/${userId}/profile/${uniqueFileName}`;
+        }
 
         const command = new PutObjectCommand({
             Bucket: BUCKET_NAME,
@@ -29,7 +47,11 @@ export const generateUploadUrlProfile = async (fileType: string, fileName: strin
         });
 
         const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // URL expires in 1 hour
-        return uploadUrl;
+        
+        // Generate the public URL that will be accessible after upload
+        const publicUrl = `https://pub-0f703feb53794f768ba649b826a64db4.r2.dev/${key}`;
+        
+        return { uploadUrl, publicUrl };
     } catch (error) {
         console.error('Error generating upload URL:', error);
         throw new Error('Failed to generate upload URL');
