@@ -8,7 +8,8 @@ import {
     getLaboratoryServices,
     testLaboratoryEndpoint,
     markAsRead,
-    markSampleCollected
+    markSampleCollected,
+    getLaboratoryAvailability
 } from '../controllers/laboratoryController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
 import { UserRole } from '../types/userTypes';
@@ -17,7 +18,6 @@ const laboratoryRouter = Router();
 
 // All routes require authentication and laboratory role
 laboratoryRouter.use(isAuthenticatedUser);
-laboratoryRouter.use(async (req, res, next) => await checkRole(req, res, next, [UserRole.LABORATORY]));
 
 // Test endpoint
 laboratoryRouter.get('/test', testLaboratoryEndpoint);
@@ -35,5 +35,8 @@ laboratoryRouter.delete('/appointments/:appointmentId/report', deleteLabReport);
 laboratoryRouter.patch('/appointments/:appointmentId/status', updateAppointmentStatus);
 laboratoryRouter.patch('/appointments/:appointmentId/mark-as-read', markAsRead);
 laboratoryRouter.patch('/appointments/:appointmentId/sample-collected', markSampleCollected);
+
+// Availability
+laboratoryRouter.get('/:laboratoryId/availability', getLaboratoryAvailability);
 
 export default laboratoryRouter; 

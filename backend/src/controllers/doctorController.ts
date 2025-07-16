@@ -370,11 +370,31 @@ const testDoctorEndpoint = async (req: CustomRequest, res: Response) => {
     }
 };
 
+const getDoctorAvailability = async (req: CustomRequest, res: Response) => {
+    try {
+        const { doctorId } = req.params;
+        const doctorProfile = await DoctorProfile.findOne({ user: doctorId });
+        
+        if (!doctorProfile) {
+            return res.status(404).json({ message: "Doctor profile not found" });
+        }
+        console.log('Doctor availability:', doctorProfile.availableDays, doctorProfile.availableSlots);
+        res.status(200).json({
+            availableDays: doctorProfile.availableDays || [],
+            availableSlots: doctorProfile.availableSlots || []
+        });
+    } catch (error) {
+        console.error('Error fetching doctor availability:', error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 export { 
     getDoctorDashboard, 
     addPrescription, 
     deletePrescription,
     getAppointmentDetails, 
     updateAppointmentStatus,
-    testDoctorEndpoint
+    testDoctorEndpoint,
+    getDoctorAvailability
 }; 

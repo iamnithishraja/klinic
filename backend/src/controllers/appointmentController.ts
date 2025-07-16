@@ -157,4 +157,87 @@ const bookLabAppointment = async (req: CustomRequest, res: Response) => {
     }
 };
 
-export { bookAppointmentDoctor, bookLabAppointment };
+const cancelAppointment = async (req: CustomRequest, res: Response) => {
+    try {
+        const { appointmentId, appointmentType } = req.params;
+        const userId = req.user._id;
+
+        let appointment;
+        if (appointmentType === 'doctor') {
+            appointment = await DoctorAppointment.findOne({
+                _id: appointmentId,
+                patient: userId,
+                status: 'upcoming'
+            });
+        } else if (appointmentType === 'laboratory') {
+            appointment = await LabAppointment.findOne({
+                _id: appointmentId,
+                patient: userId,
+                status: { $in: ['pending', 'upcoming'] }
+            });
+        }
+
+        if (!appointment) {
+            return res.status(404).json({ message: "Appointment not found or cannot be cancelled" });
+        }
+
+        // Delete the appointment
+        if (appointmentType === 'doctor') {
+            await DoctorAppointment.deleteOne({ _id: appointmentId });
+        } else {
+            await LabAppointment.deleteOne({ _id: appointmentId });
+        }
+
+        res.status(200).json({ message: "Appointment cancelled successfully" });
+    } catch (error) {
+        console.error('Cancel appointment error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
+const rescheduleAppointment = async (req: CustomRequest, res: Response) => {
+    try {
+        const { appointmentId, appointmentType } = req.params;
+        const { timeSlot } = req.body;
+        const userId = req.user._id;
+
+        // Convert string timeSlot to Date object in IST
+        const appointmentDateTime = parseTimeSlotToISTDate(timeSlot);
+
+        let appointment;
+        if (appointmentType === 'doctor') {
+            appointment = await DoctorAppointment.findOne({
+                _id: appointmentId,
+                patient: userId,
+                status: 'upcoming'
+            });
+        } else if (appointmentType === 'laboratory') {
+            appointment = await LabAppointment.findOne({
+                _id: appointmentId,
+                patient: userId,
+                status: { $in: ['pending', 'upcoming'] }
+            });
+        }
+
+        if (!appointment) {
+            return res.status(404).json({ message: "Appointment not found or cannot be rescheduled" });
+        }
+
+        // Update the appointment time
+        appointment.timeSlot = appointmentDateTime;
+        await appointment.save();
+
+        // Schedule new reminders
+        await scheduleAppointmentReminders(appointment._id.toString(), appointmentDateTime.toISOString(), appointmentType === 'doctor' ? 'doctor' : 'lab');
+
+        res.status(200).json({ 
+            message: "Appointment rescheduled successfully",
+            appointment
+        });
+    } catch (error) {
+        console.error('Reschedule appointment error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
+export { bookAppointmentDoctor, bookLabAppointment, cancelAppointment, rescheduleAppointment };

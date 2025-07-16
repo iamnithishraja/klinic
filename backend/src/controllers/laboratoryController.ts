@@ -485,6 +485,25 @@ const markSampleCollected = async (req: CustomRequest, res: Response) => {
     }
 };
 
+const getLaboratoryAvailability = async (req: CustomRequest, res: Response) => {
+    try {
+        const { laboratoryId } = req.params;
+        const laboratoryProfile = await LaboratoryProfile.findOne({ user: laboratoryId });
+        
+        if (!laboratoryProfile) {
+            return res.status(404).json({ message: "Laboratory profile not found" });
+        }
+
+        res.status(200).json({
+            availableDays: laboratoryProfile.availableDays || [],
+            availableSlots: laboratoryProfile.availableSlots || []
+        });
+    } catch (error) {
+        console.error('Error fetching laboratory availability:', error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 export { 
     getLaboratoryDashboard, 
     addLabReport, 
@@ -494,5 +513,6 @@ export {
     updateAppointmentStatus,
     getLaboratoryServices,
     testLaboratoryEndpoint,
-    markSampleCollected
+    markSampleCollected,
+    getLaboratoryAvailability
 }; 

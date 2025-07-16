@@ -5,7 +5,8 @@ import {
     deletePrescription,
     getAppointmentDetails, 
     updateAppointmentStatus,
-    testDoctorEndpoint
+    testDoctorEndpoint,
+    getDoctorAvailability
 } from '../controllers/doctorController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
 import { UserRole } from '../types/userTypes';
@@ -14,7 +15,6 @@ const doctorRouter = Router();
 
 // All routes require authentication and doctor role
 doctorRouter.use(isAuthenticatedUser);
-doctorRouter.use(async (req, res, next) => await checkRole(req, res, next, [UserRole.DOCTOR]));
 
 // Test endpoint
 doctorRouter.get('/test', testDoctorEndpoint);
@@ -24,8 +24,9 @@ doctorRouter.get('/dashboard', getDoctorDashboard);
 
 // Appointment management
 doctorRouter.get('/appointments/:appointmentId', getAppointmentDetails);
-doctorRouter.post('/appointments/:appointmentId/prescription', addPrescription);
-doctorRouter.delete('/appointments/:appointmentId/prescription', deletePrescription);
-doctorRouter.patch('/appointments/:appointmentId/status', updateAppointmentStatus);
+doctorRouter.put('/appointments/:appointmentId/status', updateAppointmentStatus);
+
+// Availability
+doctorRouter.get('/:doctorId/availability', getDoctorAvailability);
 
 export default doctorRouter; 

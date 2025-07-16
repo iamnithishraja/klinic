@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   Pressable,
-  Image
+  Image,
+  Alert
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Appointment, DashboardData } from './types';
+import client from '../../api/client';
+import TimeSlotPicker from '../TimeSlotPicker';
 
 interface UpcomingAppointmentsProps {
   dashboardData: DashboardData | null;
@@ -17,6 +20,7 @@ interface UpcomingAppointmentsProps {
   formatAppointmentTime: (timeSlot: string, timeSlotDisplay: string) => string;
   getAppointmentStatusColor: (appointment: Appointment) => string;
   canJoinNow: (timeSlot: string) => boolean;
+  onAppointmentCancelled: () => void;
 }
 
 const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({
@@ -25,8 +29,12 @@ const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({
   onGetDirections,
   formatAppointmentTime,
   getAppointmentStatusColor,
-  canJoinNow
+  canJoinNow,
+  onAppointmentCancelled
 }) => {
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+
   const handleNavigateToSection = (section: 'doctors' | 'laboratories') => {
     try {
       if (section === 'doctors') {
@@ -36,6 +44,55 @@ const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({
       }
     } catch (error) {
       console.log('Navigation error:', error);
+    }
+  };
+
+  const handleCancelAppointment = async (appointment: Appointment) => {
+    Alert.alert(
+      "Cancel Appointment",
+      "Are you sure you want to cancel this appointment?",
+      [
+        {
+          text: "No",
+          style: "cancel"
+        },
+        {
+          text: "Yes",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const appointmentType = appointment.type === 'doctor' ? 'doctor' : 'laboratory';
+              await client.delete(`/api/v1/${appointmentType}/${appointment._id}`);
+              onAppointmentCancelled();
+            } catch (error) {
+              console.error('Error cancelling appointment:', error);
+              Alert.alert('Error', 'Failed to cancel appointment. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleRescheduleAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setShowRescheduleModal(true);
+  };
+
+  const handleRescheduleConfirm = async (newTimeSlot: string) => {
+    if (!selectedAppointment) return;
+
+    try {
+      const appointmentType = selectedAppointment.type === 'doctor' ? 'doctor' : 'laboratory';
+      await client.put(`/api/v1/${appointmentType}/${selectedAppointment._id}/reschedule`, {
+        timeSlot: newTimeSlot
+      });
+      setShowRescheduleModal(false);
+      setSelectedAppointment(null);
+      onAppointmentCancelled(); // This will refresh the appointments list
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+      Alert.alert('Error', 'Failed to reschedule appointment. Please try again.');
     }
   };
 
@@ -159,6 +216,34 @@ const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({
               <Text className="text-orange-700 font-medium">Home Collection Scheduled</Text>
             </View>
           )}
+
+          {/* Action Buttons */}
+          <View className="flex-row space-x-2">
+            <Pressable
+              onPress={() => handleRescheduleAppointment(item)}
+              className="flex-1 py-3 px-4 rounded-xl flex-row items-center justify-center bg-amber-500"
+            >
+              <FontAwesome 
+                name="calendar" 
+                size={16} 
+                color="white" 
+                style={{ marginRight: 8 }} 
+              />
+              <Text className="text-white font-medium">Reschedule</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => handleCancelAppointment(item)}
+              className="flex-1 py-3 px-4 rounded-xl flex-row items-center justify-center bg-red-500"
+            >
+              <FontAwesome 
+                name="times" 
+                size={16} 
+                color="white" 
+                style={{ marginRight: 8 }} 
+              />
+              <Text className="text-white font-medium">Cancel</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>
@@ -205,6 +290,20 @@ const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({
             </Pressable>
           </View>
         </View>
+      )}
+
+      {/* Reschedule Modal */}
+      {showRescheduleModal && selectedAppointment && (
+        <TimeSlotPicker
+          visible={showRescheduleModal}
+          onClose={() => {
+            setShowRescheduleModal(false);
+            setSelectedAppointment(null);
+          }}
+          onSelectTimeSlot={handleRescheduleConfirm}
+          providerId={selectedAppointment.type === 'doctor' ? selectedAppointment.doctor?._id : selectedAppointment.lab?._id}
+          providerType={selectedAppointment.type}
+        />
       )}
     </View>
   );

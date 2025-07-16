@@ -402,6 +402,7 @@ const UserDashboard: React.FC = () => {
               formatAppointmentTime={formatAppointmentTime}
               getAppointmentStatusColor={getAppointmentStatusColor}
               canJoinNow={canJoinNow}
+              onAppointmentCancelled={handleRefresh}
             />
 
             {/* Previous Appointments */}
