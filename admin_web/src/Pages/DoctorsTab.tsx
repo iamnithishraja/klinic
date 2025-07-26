@@ -311,7 +311,7 @@ const DoctorsTab: React.FC = () => {
     try {
       const token = localStorage.getItem('admin_token');
       const apiUrl = (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/profiles/${doctorId}/reject`;
-      const res = await axios.put(apiUrl, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      await axios.put(apiUrl, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       setDoctors(prevDoctors => prevDoctors.map(doctor => doctor._id === doctorId ? { ...doctor, isVerified: false, status: 'rejected' } : doctor));
       if (selectedDoctorProfile && selectedDoctorProfile._id === doctorId) {
         setSelectedDoctorProfile({ ...selectedDoctorProfile, isVerified: false, status: 'rejected' });
