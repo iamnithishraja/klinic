@@ -4,13 +4,16 @@ import { UserProfile, DoctorProfile, LaboratoryProfile, DeliveryBoyProfile } fro
 import DoctorAppointments from '../models/doctorAppointments';
 import LabAppointments from '../models/labAppointments';
 import SuspendedUser from '../models/suspendedUserModel';
+import Product from '../models/productModel';
+import Order from '../models/ordersModel';
+import mongoose from 'mongoose';
 
 export const getAllData = async (req: Request, res: Response): Promise<void> => {
   try {
     const { type = 'users', role, page = 1, limit = 20, search = '' } = req.query;
 
     // Validate input parameters
-    const validTypes = ['users', 'doctors', 'laboratories', 'deliverypartners'];
+    const validTypes = ['users', 'doctors', 'laboratories', 'deliverypartners', 'products', 'orders'];
     if (!validTypes.includes(type as string)) {
       res.status(400).json({ message: 'Invalid type', validTypes });
       return;
@@ -61,7 +64,9 @@ export const getAllData = async (req: Request, res: Response): Promise<void> => 
             { 'user.name': { $regex: searchStr, $options: 'i' } },
             { 'user.email': { $regex: searchStr, $options: 'i' } },
             { laboratoryName: { $regex: searchStr, $options: 'i' } },
-            { city: { $regex: searchStr, $options: 'i' } }
+            { city: { $regex: searchStr, $options: 'i' } },
+            { laboratoryEmail: { $regex: searchStr, $options: 'i' } },
+            { laboratoryPhone: { $regex: searchStr, $options: 'i' } }
           ];
         }
         break;
@@ -79,8 +84,36 @@ export const getAllData = async (req: Request, res: Response): Promise<void> => 
         }
         break;
 
+      case 'products':
+        Model = Product;
+        if (search) {
+          const searchStr = typeof search === 'string' ? search : '';
+          filter.$or = [
+            { name: { $regex: searchStr, $options: 'i' } },
+            { description: { $regex: searchStr, $options: 'i' } }
+          ];
+        }
+        break;
+
+      case 'orders':
+        Model = Order;
+        populateOptions = [
+          { path: 'orderedBy', select: 'name email phone' },
+          { path: 'laboratoryUser', select: 'name email phone' },
+          { path: 'products.product', select: 'name price imageUrl' }
+        ];
+        if (search) {
+          const searchStr = typeof search === 'string' ? search : '';
+          filter.$or = [
+            { orderId: { $regex: searchStr, $options: 'i' } },
+            { 'orderedBy.name': { $regex: searchStr, $options: 'i' } },
+            { 'orderedBy.email': { $regex: searchStr, $options: 'i' } }
+          ];
+        }
+        break;
+
       default:
-        res.status(400).json({ message: 'Invalid type. Use: users, doctors, laboratories, or deliverypartners' });
+        res.status(400).json({ message: 'Invalid type. Use: users, doctors, laboratories, deliverypartners, products, or orders' });
         return;
     }
 
@@ -90,7 +123,15 @@ export const getAllData = async (req: Request, res: Response): Promise<void> => 
       .sort({ createdAt: -1 });
 
     if (populateOptions) {
-      query = query.populate(populateOptions);
+      if (Array.isArray(populateOptions)) {
+        // Handle multiple populate options (for orders)
+        populateOptions.forEach((populateOption: any) => {
+          query = query.populate(populateOption);
+        });
+      } else {
+        // Handle single populate option (for other types)
+        query = query.populate(populateOptions);
+      }
     }
 
     const data = await query.exec();
@@ -99,6 +140,10 @@ export const getAllData = async (req: Request, res: Response): Promise<void> => 
     // Return appropriate response format
     if (type === 'users') {
       res.json({ users: data, total });
+    } else if (type === 'products') {
+      res.json({ products: data, total });
+    } else if (type === 'orders') {
+      res.json({ orders: data, total });
     } else {
       res.json({ profiles: data, total });
     }
@@ -875,20 +920,384 @@ export const getRevenueDetails = async (req: Request, res: Response): Promise<vo
 export const rejectDoctorProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const { reason } = req.body;
+
     if (!id || id.length !== 24) {
-      res.status(400).json({ message: 'Invalid doctor profile ID format' });
+      res.status(400).json({ message: 'Invalid profile ID format' });
       return;
     }
-    const doctor = await DoctorProfile.findById(id);
-    if (!doctor) {
+
+    const profile = await DoctorProfile.findByIdAndUpdate(
+      id,
+      { 
+        status: 'rejected',
+        rejectionReason: reason || 'Profile rejected by admin'
+      },
+      { new: true }
+    ).populate('user', 'name email phone role');
+
+    if (!profile) {
       res.status(404).json({ message: 'Doctor profile not found' });
       return;
     }
-    doctor.status = 'rejected';
-    doctor.isVerified = false;
-    await doctor.save();
-    res.json({ message: 'Doctor profile rejected successfully', profile: doctor });
+
+    res.json({ 
+      message: 'Doctor profile rejected successfully',
+      profile 
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err instanceof Error ? err.message : err });
+  }
+};
+
+// Admin endpoints for products
+export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { search, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+    
+    const filters: any = {};
+    if (search) {
+      filters.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (minPrice) {
+      filters.price = { $gte: Number(minPrice) };
+    }
+    if (maxPrice) {
+      filters.price = { ...filters.price, $lte: Number(maxPrice) };
+    }
+
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+
+    const products = await Product.find(filters)
+      .populate('user', 'name email phone')
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .sort({ createdAt: -1 });
+
+    const total = await Product.countDocuments(filters);
+
+    res.json({
+      success: true,
+      data: {
+        products,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+};
+
+export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { productId } = req.params;
+
+    if (!productId || productId.length !== 24) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Invalid product ID format' 
+      });
+      return;
+    }
+
+    const product = await Product.findByIdAndDelete(productId);
+
+    if (!product) {
+      res.status(404).json({ 
+        success: false, 
+        error: 'Product not found' 
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'Product deleted successfully'
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+};
+
+// Admin endpoints for orders
+export const getAllOrders = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { search, status, needAssignment, page = 1, limit = 10 } = req.query;
+    
+    const filters: any = {};
+    if (search) {
+      filters.$or = [
+        { orderId: { $regex: search, $options: 'i' } },
+        { 'orderedBy.name': { $regex: search, $options: 'i' } },
+        { 'orderedBy.email': { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (status) {
+      filters.status = status;
+    }
+    if (needAssignment === 'true') {
+      filters.needAssignment = true;
+    }
+
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+
+    const orders = await Order.find(filters)
+      .populate('orderedBy', 'name email phone')
+      .populate('laboratoryUser', 'name email phone')
+      .populate('products.product', 'name price imageUrl user')
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .sort({ createdAt: -1 });
+
+    // Transform orders to include comprehensive information
+    const transformedOrders = orders.map(order => {
+      const orderObj = order.toObject();
+      
+      // Add user information
+      orderObj.user = orderObj.orderedBy;
+      
+      // Add laboratory information
+      if (orderObj.laboratoryUser) {
+        orderObj.assignedLab = {
+          _id: orderObj.laboratoryUser._id,
+          name: orderObj.laboratoryUser.name,
+          email: orderObj.laboratoryUser.email,
+          phone: orderObj.laboratoryUser.phone
+        };
+      }
+      
+      // Transform products to include laboratory information
+      if (orderObj.products && orderObj.products.length > 0) {
+        orderObj.products = orderObj.products.map((item: any) => ({
+          _id: item.product._id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+          imageUrl: item.product.imageUrl,
+          laboratory: item.product.user ? {
+            _id: item.product.user._id,
+            name: item.product.user.name,
+            email: item.product.user.email,
+            phone: item.product.user.phone
+          } : null
+        }));
+      }
+      
+      return orderObj;
+    });
+
+    const total = await Order.countDocuments(filters);
+
+    res.json({
+      success: true,
+      data: {
+        orders: transformedOrders,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+};
+
+export const getOrderDetails = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Order ID is required' 
+      });
+      return;
+    }
+
+    const order = await Order.findById(orderId)
+      .populate('orderedBy', 'name email phone')
+      .populate('laboratoryUser', 'name email phone')
+      .populate('products.product', 'name price imageUrl user')
+      .populate('deliveryPartner', 'name email phone');
+
+    if (!order) {
+      res.status(404).json({ 
+        success: false, 
+        error: 'Order not found' 
+      });
+      return;
+    }
+
+    const orderObj = order.toObject();
+    
+    // Add comprehensive user information
+    orderObj.user = {
+      _id: orderObj.orderedBy._id,
+      name: orderObj.orderedBy.name,
+      email: orderObj.orderedBy.email,
+      phone: orderObj.orderedBy.phone
+    };
+    
+    // Add comprehensive laboratory information
+    if (orderObj.laboratoryUser) {
+      orderObj.assignedLab = {
+        _id: orderObj.laboratoryUser._id,
+        name: orderObj.laboratoryUser.name,
+        email: orderObj.laboratoryUser.email,
+        phone: orderObj.laboratoryUser.phone
+      };
+    }
+    
+    // Transform products to include laboratory information
+    if (orderObj.products && orderObj.products.length > 0) {
+      orderObj.products = orderObj.products.map((item: any) => ({
+        _id: item.product._id,
+        name: item.product.name,
+        price: item.product.price,
+        quantity: item.quantity,
+        imageUrl: item.product.imageUrl,
+        laboratory: item.product.user ? {
+          _id: item.product.user._id,
+          name: item.product.user.name,
+          email: item.product.user.email,
+          phone: item.product.user.phone
+        } : null
+      }));
+    }
+
+    res.json({
+      success: true,
+      data: orderObj
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+};
+
+export const getOrderStats = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Simple aggregation to get all stats in one query
+    const stats = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: '$totalPrice' },
+          pendingOrders: {
+            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+          },
+          outForDelivery: {
+            $sum: { $cond: [{ $eq: ['$status', 'out_for_delivery'] }, 1, 0] }
+          },
+          delivered: {
+            $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] }
+          },
+          needsAssignment: {
+            $sum: { $cond: [{ $eq: ['$needAssignment', true] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    // Get today's delivered orders
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const completedToday = await Order.countDocuments({ 
+      status: 'delivered', 
+      updatedAt: { $gte: today } 
+    });
+
+    const result = stats[0] || {
+      totalOrders: 0,
+      totalRevenue: 0,
+      pendingOrders: 0,
+      outForDelivery: 0,
+      delivered: 0,
+      needsAssignment: 0
+    };
+
+    res.json({
+      success: true,
+      data: {
+        totalOrders: result.totalOrders,
+        pendingOrders: result.pendingOrders,
+        completedToday,
+        outForDelivery: result.outForDelivery,
+        needsAssignment: result.needsAssignment,
+        totalRevenue: result.totalRevenue
+      }
+    });
+  } catch (err) {
+    console.error('Error in getOrderStats:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error',
+      details: err instanceof Error ? err.message : 'Unknown error'
+    });
+  }
+};
+
+export const assignLabToOrder = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { orderId } = req.params;
+    const { labId } = req.body;
+
+    // First check if order exists
+    const existingOrder = await Order.findById(orderId);
+    if (!existingOrder) {
+      res.status(404).json({ 
+        success: false, 
+        error: 'Order not found' 
+      });
+      return;
+    }
+
+    const labObjectId = new mongoose.Types.ObjectId(labId);
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      { 
+        laboratoryUser: labObjectId,
+        needAssignment: false
+      },
+      { new: true }
+    ).populate('orderedBy', 'name email phone')
+     .populate('laboratoryUser', 'name email phone')
+     .populate('products.product', 'name price imageUrl');
+
+    res.json({
+      success: true,
+      data: order,
+      message: 'Laboratory assigned to order successfully'
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
   }
 };

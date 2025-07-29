@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import UserCard from '../components/userCard';
 import { FaCalendarAlt } from 'react-icons/fa';
+import { FaBox } from 'react-icons/fa';
+import LabProductsManagementModal from '../components/LabProductsManagementModal';
 
 interface Laboratory {
   _id: string;
@@ -86,6 +88,8 @@ const LaboratoriesTab: React.FC = () => {
   const [selectedLabProfile, setSelectedLabProfile] = useState<LaboratoryProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
+  const [showProductsModal, setShowProductsModal] = useState(false);
+  const [selectedLabForProducts, setSelectedLabForProducts] = useState<Laboratory | null>(null);
   
   // Filter states
   const [verificationFilter, setVerificationFilter] = useState<'all' | 'verified' | 'unverified'>('all');
@@ -482,6 +486,14 @@ const LaboratoriesTab: React.FC = () => {
                     }} disableModal={true} />
                 </div>
                   <button
+                    onClick={() => { setSelectedLabForProducts(lab); setShowProductsModal(true); }}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-base font-semibold shadow-lg hover:from-purple-600 hover:to-indigo-600 hover:scale-105 transition-all flex items-center gap-2 ml-2"
+                    style={{ minWidth: 180 }}
+                  >
+                    <FaBox className="text-lg" />
+                    Manage Products
+                  </button>
+                  <button
                     onClick={() => handleLabCardClick(lab)}
                     className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-xl text-base font-semibold shadow-lg hover:from-green-500 hover:to-blue-600 hover:scale-105 transition-all flex items-center gap-2 ml-2"
                     style={{ minWidth: 180 }}
@@ -863,6 +875,13 @@ const LaboratoriesTab: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showProductsModal && selectedLabForProducts && (
+        <LabProductsManagementModal
+          lab={selectedLabForProducts}
+          onClose={() => setShowProductsModal(false)}
+        />
       )}
     </div>
   );

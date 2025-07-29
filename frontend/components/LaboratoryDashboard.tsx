@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, SafeAreaView, Image, TextInput, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Image, TextInput, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
+import { useRouter } from 'expo-router';
 import apiClient from '@/api/client';
 import { useCustomAlert } from '@/components/CustomAlert';
 
@@ -73,6 +75,7 @@ interface DashboardData {
 }
 
 const LaboratoryDashboard: React.FC = () => {
+  const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1637,9 +1640,34 @@ const LaboratoryDashboard: React.FC = () => {
 
           <AlertComponent />
         </ScrollView>
+
+        {/* Floating Action Button for Product Management */}
+        <View className="absolute bottom-10 right-6 items-end w-full px-2">
+          <Pressable
+            onPress={() => router.push('/laboratory/product-management')}
+            className="w-16 h-16 bg-blue-500 rounded-full items-center justify-center shadow-lg"
+            style={{
+              shadowColor: '#3B82F6',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.35,
+              shadowRadius: 16,
+              elevation: 12,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingBottom: 0,
+              borderWidth: 2,
+              borderColor: '#2563EB',
+              marginBottom: 15,
+              marginRight: 0, // Add margin to avoid touching the navigation bar
+            }}
+          >
+            <FontAwesome name="plus" size={28} color="white" />
+          </Pressable>
+          <Text className="mt-2 text-xs text-blue-700 font-medium">Manage Products</Text>
+        </View>
       </SafeAreaView>
     </SafeAreaProvider>
   );
 };
 
-export default LaboratoryDashboard; 
+export default LaboratoryDashboard;

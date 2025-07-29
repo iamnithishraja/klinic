@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaChartBar, FaUsers, FaUserMd, FaFlask, FaSignInAlt, FaTruck, FaUserShield } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaUserMd, FaFlask, FaSignInAlt, FaTruck, FaUserShield, FaClipboardList, FaBox } from 'react-icons/fa';
 
 const Sidebar: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -63,6 +63,18 @@ const Sidebar: React.FC = () => {
       label: 'Delivery Partners', 
       icon: <FaTruck className="text-lg" />,
       description: 'Delivery Staff'
+    },
+    { 
+      path: '/orders', 
+      label: 'Orders', 
+      icon: <FaClipboardList className="text-lg" />, // or FaBoxOpen for package
+      description: 'Medicine Orders'
+    },
+    { 
+      path: '/products', 
+      label: 'Products', 
+      icon: <FaBox className="text-lg" />,
+      description: 'Medicine Products'
     },
     { 
       path: '/role-management', 

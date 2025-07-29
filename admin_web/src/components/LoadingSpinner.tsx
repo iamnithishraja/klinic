@@ -1,8 +1,7 @@
 import React from 'react';
-import { FaSpinner } from 'react-icons/fa';
 
 interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg';
   text?: string;
   className?: string;
 }
@@ -13,20 +12,17 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   className = '' 
 }) => {
   const sizeClasses = {
-    sm: 'text-2xl',
-    md: 'text-3xl',
-    lg: 'text-5xl',
-    xl: 'text-7xl'
+    sm: 'w-4 h-4',
+    md: 'w-8 h-8',
+    lg: 'w-12 h-12'
   };
 
   return (
-    <div className={`flex flex-col items-center justify-center py-8 ${className}`}>
-      <FaSpinner className={`animate-spin text-tint ${sizeClasses[size]}`} />
-      {text && (
-        <p className="mt-4 text-icon text-sm font-medium" style={{ color: '#687076' }}>
-          {text}
-        </p>
-      )}
+    <div className={`flex items-center justify-center ${className}`}>
+      <div className="flex items-center gap-3">
+        <div className={`${sizeClasses[size]} animate-spin rounded-full border-2 border-gray-300 border-t-blue-600`} />
+        {text && <span className="text-gray-600">{text}</span>}
+      </div>
     </div>
   );
 };

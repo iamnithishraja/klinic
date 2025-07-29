@@ -5,9 +5,12 @@ import {
   ScrollView,
   RefreshControl,
   Linking,
+  TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/Colors';
 import apiClient from '@/api/client';
 import RatingModal from './RatingModal';
 import VideoCallModal from './VideoCallModal';
@@ -30,6 +33,7 @@ import {
 } from './dashboard';
 
 const UserDashboard: React.FC = () => {
+  const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [previousAppointments, setPreviousAppointments] = useState<PreviousData | null>(null);
   const [previousLabTests, setPreviousLabTests] = useState<PreviousData | null>(null);
@@ -369,18 +373,15 @@ const UserDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaProvider>
-        <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
-          <FontAwesome name="spinner" size={24} color="#6B7280" />
-          <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+        <FontAwesome name="spinner" size={24} color="#6B7280" />
+        <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-50">
         <ScrollView 
           className="flex-1"
           refreshControl={
@@ -390,7 +391,16 @@ const UserDashboard: React.FC = () => {
           <View className="p-6">
             {/* Header */}
             <View className="mb-6">
-              <Text className="text-3xl font-bold text-gray-900 mb-2">Your Health Dashboard</Text>
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="text-2xl font-bold text-gray-900">Your Health Dashboard</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/orders')}
+                  className="bg-blue-600 px-4 py-2 rounded-lg flex-row items-center"
+                >
+                  <FontAwesome name="shopping-cart" size={16} color="white" />
+                  <Text className="text-white font-semibold ml-2">Orders</Text>
+                </TouchableOpacity>
+              </View>
               <Text className="text-gray-600">Stay on top of your appointments and health records</Text>
             </View>
 
@@ -492,7 +502,6 @@ const UserDashboard: React.FC = () => {
 
         <AlertComponent />
       </SafeAreaView>
-    </SafeAreaProvider>
   );
 };
 

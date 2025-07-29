@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, SafeAreaView, Image, TextInput, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Image, TextInput, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
@@ -1198,4 +1199,4 @@ const DoctorDashboard: React.FC = () => {
   );
 };
 
-export default DoctorDashboard; 
+export default DoctorDashboard;

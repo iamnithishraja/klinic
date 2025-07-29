@@ -1,7 +1,7 @@
 import { store } from "@/utils";
 import axios from "axios";
 
-export const baseUrl = process.env.EXPO_PUBLIC_TEST_BE_URL;
+export const baseUrl = process.env.EXPO_PUBLIC_TEST_BE_URL || 'http://localhost:3000';
 const apiClient = axios.create({
     baseURL: baseUrl,
 });
@@ -14,7 +14,7 @@ apiClient.interceptors.request.use(async (config) => {
     
     // Add ngrok bypass header to skip the warning page
     // This is needed when using ngrok's free tier
-    config.headers['ngrok-skip-browser-warning'] = 'true';
+    // config.headers['ngrok-skip-browser-warning'] = 'true';
     
     return config;
 });

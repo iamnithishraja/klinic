@@ -8,6 +8,12 @@ module.exports = {
     scheme: 'klinic',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
+    splash: {
+      image: './assets/images/splash-icon.png',
+      imageWidth: 200,
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
+    },
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.klinic.kliinic',

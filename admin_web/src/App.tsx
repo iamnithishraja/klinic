@@ -8,6 +8,8 @@ import LaboratoriesTab from './Pages/LaboratoriesTab';
 import SignLog from './Pages/signlog';
 import DeliveryPartnersTab from './Pages/DeliveryPartnersTab';
 import RoleManagementTab from './Pages/RoleManagementTab';
+import Orders from './Pages/Orders';
+import ProductsTab from './Pages/ProductsTab';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -77,6 +79,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   // Only check authentication on mount and on storage/auth-success events
   useEffect(() => {
@@ -97,14 +100,23 @@ function App() {
       checkAuth();
     };
 
+    // Listen for route changes
+    const handleRouteChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('auth-success', handleAuthSuccess);
+    window.addEventListener('popstate', handleRouteChange);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('auth-success', handleAuthSuccess);
+      window.removeEventListener('popstate', handleRouteChange);
     };
   }, []);
+
+  console.log('Current path:', currentPath, 'Is authenticated:', isAuthenticated);
 
   return (
     <>
@@ -131,32 +143,42 @@ function App() {
                 {/* Protected Routes */}
                 <Route path="/home" element={
                   <ProtectedRoute>
-                    <Home />
+                    <Home key="home" />
                   </ProtectedRoute>
                 } />
                 <Route path="/users" element={
                   <ProtectedRoute>
-                    <UsersTab />
+                    <UsersTab key="users" />
                   </ProtectedRoute>
                 } />
                 <Route path="/doctors" element={
                   <ProtectedRoute>
-                    <DoctorsTab />
+                    <DoctorsTab key="doctors" />
                   </ProtectedRoute>
                 } />
                 <Route path="/laboratories" element={
                   <ProtectedRoute>
-                    <LaboratoriesTab />
+                    <LaboratoriesTab key="laboratories" />
                   </ProtectedRoute>
                 } />
                 <Route path="/delivery-partners" element={
                   <ProtectedRoute>
-                    <DeliveryPartnersTab />
+                    <DeliveryPartnersTab key="delivery-partners" />
                   </ProtectedRoute>
                 } />
                 <Route path="/role-management" element={
                   <ProtectedRoute>
-                    <RoleManagementTab />
+                    <RoleManagementTab key="role-management" />
+                  </ProtectedRoute>
+                } />
+                <Route path="/orders" element={
+                  <ProtectedRoute>
+                    <Orders key="orders" />
+                  </ProtectedRoute>
+                } />
+                <Route path="/products" element={
+                  <ProtectedRoute>
+                    <ProductsTab key="products" />
                   </ProtectedRoute>
                 } />
                                 

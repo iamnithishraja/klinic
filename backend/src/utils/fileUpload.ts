@@ -35,6 +35,9 @@ export const generateUploadUrlProfile = async (
         } else if (fileName.toLowerCase().includes('cover')) {
             // Cover images go into a separate folder
             key = `${role}/${userId}/cover/${uniqueFileName}`;
+        } else if (fileName.toLowerCase().includes('product')) {
+            // Product images go into a separate folder
+            key = `${role}/${userId}/products/${uniqueFileName}`;
         } else {
             // Profile pictures go into the root of the user's folder
             key = `${role}/${userId}/profile/${uniqueFileName}`;

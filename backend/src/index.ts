@@ -17,6 +17,8 @@ import videoCallRouter from "./routes/videoCallRoutes";
 import ratingRouter from "./routes/ratingRoutes";
 
 import aiRouter from "./routes/aiRoutes";
+import productRouter from "./routes/productRoutes";
+import orderRouter from "./routes/orderRoutes";
 dotenv.config();
 const app = express();
 
@@ -45,6 +47,8 @@ app.use('/api/v1/', profileRouter);
 app.use('/api/v1/', searchRouter);
 app.use('/api/v1/', appointmentRouter);
 app.use('/api/v1/', paymentRouter);
+app.use('/api/v1/', productRouter);
+app.use('/api/v1/', orderRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/user', dashboardRouter);
 app.use('/api/v1/doctor', doctorRouter);
@@ -53,6 +57,16 @@ app.use('/api/v1/video-call', videoCallRouter);
 app.use('/api/v1/ratings', ratingRouter);
 
 app.use('/api/v1/ai', aiRouter);
+
+// Health check endpoint
+app.get('/api/v1/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server is running on port ${process.env.PORT || 3000}`);
