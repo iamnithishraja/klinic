@@ -158,10 +158,7 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
             res.status(401).json({ message: 'Invalid email or password' });
             return;
         }
-        if (user.role !== 'admin') {
-            res.status(403).json({ message: 'Only admin users can login.' });
-            return;
-        }
+
         const token = generateToken(user._id.toString());
         user.password = '';
         res.status(200).json({ user, token });
