@@ -1060,6 +1060,7 @@ export const getAllOrders = async (req: Request, res: Response): Promise<void> =
     const orders = await Order.find(filters)
       .populate('orderedBy', 'name email phone')
       .populate('laboratoryUser', 'name email phone')
+      .populate('deliveryPartner', 'name email phone')
       .populate('products.product', 'name price imageUrl user')
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
@@ -1079,6 +1080,16 @@ export const getAllOrders = async (req: Request, res: Response): Promise<void> =
           name: orderObj.laboratoryUser.name,
           email: orderObj.laboratoryUser.email,
           phone: orderObj.laboratoryUser.phone
+        };
+      }
+      
+      // Add delivery partner information
+      if (orderObj.deliveryPartner) {
+        orderObj.assignedDeliveryPartner = {
+          _id: orderObj.deliveryPartner._id,
+          name: orderObj.deliveryPartner.name,
+          email: orderObj.deliveryPartner.email,
+          phone: orderObj.deliveryPartner.phone
         };
       }
       
@@ -1139,8 +1150,8 @@ export const getOrderDetails = async (req: Request, res: Response): Promise<void
     const order = await Order.findById(orderId)
       .populate('orderedBy', 'name email phone')
       .populate('laboratoryUser', 'name email phone')
-      .populate('products.product', 'name price imageUrl user')
-      .populate('deliveryPartner', 'name email phone');
+      .populate('deliveryPartner', 'name email phone')
+      .populate('products.product', 'name price imageUrl user');
 
     if (!order) {
       res.status(404).json({ 
@@ -1167,6 +1178,16 @@ export const getOrderDetails = async (req: Request, res: Response): Promise<void
         name: orderObj.laboratoryUser.name,
         email: orderObj.laboratoryUser.email,
         phone: orderObj.laboratoryUser.phone
+      };
+    }
+    
+    // Add comprehensive delivery partner information
+    if (orderObj.deliveryPartner) {
+      orderObj.assignedDeliveryPartner = {
+        _id: orderObj.deliveryPartner._id,
+        name: orderObj.deliveryPartner.name,
+        email: orderObj.deliveryPartner.email,
+        phone: orderObj.deliveryPartner.phone
       };
     }
     
@@ -1267,6 +1288,8 @@ export const assignLabToOrder = async (req: Request, res: Response): Promise<voi
     const { orderId } = req.params;
     const { labId } = req.body;
 
+    console.log('Assigning lab to order:', { orderId, labId });
+
     // First check if order exists
     const existingOrder = await Order.findById(orderId);
     if (!existingOrder) {
@@ -1277,17 +1300,50 @@ export const assignLabToOrder = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const labObjectId = new mongoose.Types.ObjectId(labId);
+    // Check if labId is a profile ID or user ID
+    let labUserId = labId;
+    
+    // First try to find if it's a profile ID
+    const { LaboratoryProfile } = await import('../models/profileModel');
+    const labProfile = await LaboratoryProfile.findById(labId).populate('user', '_id name email phone role');
+    
+    if (labProfile && labProfile.user) {
+      // It's a profile ID, get the user ID
+      labUserId = labProfile.user._id.toString();
+      console.log('Found lab profile, using user ID:', labUserId);
+    } else {
+      // Check if it's already a user ID
+      const labUser = await User.findById(labId);
+      if (!labUser || labUser.role !== 'laboratory') {
+        res.status(404).json({ 
+          success: false, 
+          error: 'Laboratory not found or invalid role' 
+        });
+        return;
+      }
+      console.log('Using provided ID as user ID:', labUserId);
+    }
+
+    const labObjectId = new mongoose.Types.ObjectId(labUserId);
+    
+    // Update the order
     const order = await Order.findByIdAndUpdate(
       orderId,
       { 
         laboratoryUser: labObjectId,
-        needAssignment: false
+        needAssignment: false,
+        updatedAt: new Date()
       },
       { new: true }
     ).populate('orderedBy', 'name email phone')
      .populate('laboratoryUser', 'name email phone')
      .populate('products.product', 'name price imageUrl');
+
+    console.log('Order updated successfully:', {
+      orderId: order?._id,
+      laboratoryUser: order?.laboratoryUser,
+      needAssignment: order?.needAssignment
+    });
 
     res.json({
       success: true,
@@ -1295,6 +1351,168 @@ export const assignLabToOrder = async (req: Request, res: Response): Promise<voi
       message: 'Laboratory assigned to order successfully'
     });
   } catch (err) {
+    console.error('Error assigning lab to order:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+};
+
+export const assignDeliveryPartnerToOrder = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { orderId } = req.params;
+    const { deliveryPartnerId } = req.body;
+
+    // First check if order exists
+    const existingOrder = await Order.findById(orderId);
+    if (!existingOrder) {
+      res.status(404).json({ 
+        success: false, 
+        error: 'Order not found' 
+      });
+      return;
+    }
+
+    // Check if delivery partner exists
+    const deliveryPartner = await User.findById(deliveryPartnerId);
+    if (!deliveryPartner || deliveryPartner.role !== 'deliverypartner') {
+      res.status(404).json({ 
+        success: false, 
+        error: 'Delivery partner not found' 
+      });
+      return;
+    }
+
+    const deliveryPartnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      { 
+        deliveryPartner: deliveryPartnerObjectId,
+        status: 'assigned_to_delivery',
+        assignedAt: new Date(),
+        updatedAt: new Date()
+      },
+      { new: true }
+    ).populate('orderedBy', 'name email phone')
+     .populate('laboratoryUser', 'name email phone')
+     .populate('deliveryPartner', 'name email phone')
+     .populate('products.product', 'name price imageUrl');
+
+    res.json({
+      success: true,
+      data: order,
+      message: 'Delivery partner assigned to order successfully'
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+};
+
+export const getAvailableDeliveryPartners = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const deliveryPartners = await User.find({ 
+      role: 'deliverypartner',
+      isPhoneEmailVerified: true
+    }).select('name email phone');
+
+    // If no verified delivery partners, try to get all delivery partners
+    let partners = deliveryPartners;
+    if (deliveryPartners.length === 0) {
+      partners = await User.find({ 
+        role: 'deliverypartner'
+      }).select('name email phone');
+    }
+
+    res.json({
+      success: true,
+      data: partners
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+};
+
+export const getDeliveryPartnerDetails = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { partnerId } = req.params;
+
+    if (!partnerId) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Delivery partner ID is required' 
+      });
+      return;
+    }
+
+    // Find the delivery partner profile
+    const deliveryPartnerProfile = await DeliveryBoyProfile.findById(partnerId)
+      .populate('user', 'name email phone role isPhoneEmailVerified createdAt updatedAt');
+
+    if (!deliveryPartnerProfile) {
+      res.status(404).json({ 
+        success: false, 
+        error: 'Delivery partner not found' 
+      });
+      return;
+    }
+
+    // Get delivery partner statistics
+    const stats = await Order.aggregate([
+      {
+        $match: {
+          deliveryPartner: deliveryPartnerProfile.user._id,
+          status: { $in: ['delivered', 'out_for_delivery', 'delivery_accepted', 'assigned_to_delivery'] }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          completedOrders: {
+            $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] }
+          },
+          pendingOrders: {
+            $sum: { $cond: [{ $in: ['$status', ['assigned_to_delivery', 'delivery_accepted', 'out_for_delivery']] }, 1, 0] }
+          },
+          totalRevenue: { $sum: '$totalPrice' }
+        }
+      }
+    ]);
+
+    // Get recent orders
+    const recentOrders = await Order.find({ 
+      deliveryPartner: deliveryPartnerProfile.user._id 
+    })
+      .populate('orderedBy', 'name email phone')
+      .populate('laboratoryUser', 'name email phone')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    const partnerData = {
+      profile: deliveryPartnerProfile,
+      user: deliveryPartnerProfile.user,
+      stats: stats[0] || {
+        totalOrders: 0,
+        completedOrders: 0,
+        pendingOrders: 0,
+        totalRevenue: 0
+      },
+      recentOrders: recentOrders
+    };
+
+    res.json({
+      success: true,
+      data: partnerData
+    });
+  } catch (err) {
+    console.error('Error getting delivery partner details:', err);
     res.status(500).json({ 
       success: false, 
       error: 'Internal server error' 

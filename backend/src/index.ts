@@ -15,6 +15,7 @@ import doctorRouter from "./routes/doctorRoutes";
 import laboratoryRouter from "./routes/laboratoryRoutes";
 import videoCallRouter from "./routes/videoCallRoutes";
 import ratingRouter from "./routes/ratingRoutes";
+import deliveryRouter from "./routes/deliveryRoutes";
 
 import aiRouter from "./routes/aiRoutes";
 import productRouter from "./routes/productRoutes";
@@ -49,6 +50,7 @@ app.use('/api/v1/', appointmentRouter);
 app.use('/api/v1/', paymentRouter);
 app.use('/api/v1/', productRouter);
 app.use('/api/v1/', orderRouter);
+app.use('/api/v1/', deliveryRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/user', dashboardRouter);
 app.use('/api/v1/doctor', doctorRouter);

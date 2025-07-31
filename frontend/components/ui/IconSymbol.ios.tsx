@@ -30,3 +30,5 @@ export function IconSymbol({
     />
   );
 }
+
+IconSymbol.displayName = 'IconSymbol';

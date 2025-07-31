@@ -10,11 +10,18 @@ export interface Product {
   quantity?: number;
 }
 
+export interface User {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
 export interface Order {
   _id: string;
-  orderedBy: string;
-  laboratoryUser?: string;
-  deliveryPartner?: string;
+  orderedBy: User;
+  laboratoryUser?: User;
+  deliveryPartner?: User;
   products?: Array<{
     product: Product;
     quantity: number;
@@ -62,13 +69,18 @@ export interface CreateOrderData {
   laboratoryUser?: string;
 }
 
+export interface CreateOrderResponse {
+  data: Order | Order[]; // Can be single order or array of orders for multi-lab
+  message: string;
+}
+
 export const orderService = {
-  createOrder: async (orderData: CreateOrderData): Promise<Order> => {
+  createOrder: async (orderData: CreateOrderData): Promise<CreateOrderResponse> => {
     try {
       console.log('Creating order with data:', orderData);
       const response = await apiClient.post('/api/v1/orders', orderData);
       console.log('Order created successfully:', response.data);
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       console.error('Error creating order:', error);
       console.error('Error response:', error.response?.data);

@@ -38,7 +38,10 @@ export default function MedicinesScreen() {
         <CartModal
           visible={cartModalVisible}
           onClose={() => setCartModalVisible(false)}
-          onSuccess={handleOrderSuccess}
+          onBrowseItems={() => {
+            setCartModalVisible(false);
+            // The user is already on the medicines tab, so just close the modal
+          }}
         />
 
         {/* Prescription Upload Modal */}

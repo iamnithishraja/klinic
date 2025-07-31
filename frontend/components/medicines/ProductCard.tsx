@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useProductStore } from '@/store/productStore';
-import { Product } from '@/types/medicineTypes';
+import { useCartStore } from '@/store/cartStore';
+import { Product } from '@/services/productService';
 import { Colors } from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
@@ -20,8 +21,8 @@ interface ProductCardProps {
   product: Product;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { addToCart, getCartItem } = useProductStore();
+const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const { addToCart, getCartItem } = useCartStore();
   const [isAdding, setIsAdding] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(1));
 
@@ -312,4 +313,7 @@ const styles = StyleSheet.create({
     color: '#065F46',
     fontWeight: '600',
   },
-}); 
+});
+
+ProductCard.displayName = 'ProductCard';
+export { ProductCard }; 

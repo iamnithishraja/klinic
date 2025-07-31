@@ -446,8 +446,7 @@ const DoctorsTab: React.FC = () => {
               />
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
-              >
+                className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-semibold hover:from-green-600 hover:to-emerald-600 transition-all duration-200 flex items-center gap-3 shadow-lg border-0 transform hover:scale-105 active:scale-95"              >
                 <span>Filters</span>
                 <span className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}>▼</span>
               </button>

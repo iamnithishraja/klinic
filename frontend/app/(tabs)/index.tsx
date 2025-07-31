@@ -1,12 +1,13 @@
 import { View, Text, ScrollView } from 'react-native';
 import { useEffect, useState } from 'react';
 import { FontAwesome } from '@expo/vector-icons';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '@/store/userStore';
 import { UserRole } from '@/types/userTypes';
 import UserDashboard from '@/components/UserDashboard';
 import DoctorDashboard from '@/components/DoctorDashboard';
 import LaboratoryDashboard from '@/components/LaboratoryDashboard';
+import DeliveryDashboard from '@/components/delivery/DeliveryDashboard';
 
 export default function HomeScreen() {
   const { user } = useUserStore();
@@ -23,12 +24,10 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <SafeAreaProvider>
-        <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
         <FontAwesome name="spinner" size={24} color="#6B7280" />
         <Text className="text-gray-600 mt-2">Loading...</Text>
-        </SafeAreaView>
-      </SafeAreaProvider>
+      </SafeAreaView>
     );
   }
 
@@ -45,7 +44,11 @@ export default function HomeScreen() {
     return <LaboratoryDashboard />;
   }
 
-  // Show different content for other roles (admin, delivery, etc.)
+  if (user?.role === UserRole.DELIVERY_BOY) {
+    return <DeliveryDashboard />;
+  }
+
+  // Show different content for other roles (admin, etc.)
   const getRoleSpecificContent = () => {
     switch (user?.role) {
       
@@ -60,22 +63,6 @@ export default function HomeScreen() {
               <FontAwesome name="cogs" size={48} color="#059669" />
               <Text className="text-gray-600 mt-4 text-center">
                 Admin features coming soon!
-              </Text>
-            </View>
-          </View>
-        );
-      
-      case UserRole.DELIVERY_BOY:
-        return (
-          <View className="p-6">
-            <Text className="text-3xl font-roboto-bold text-primary mb-4">Delivery Dashboard</Text>
-            <Text className="text-lg font-opensans text-text-primary mb-6">
-              Manage your deliveries and routes.
-            </Text>
-            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 items-center">
-              <FontAwesome name="truck" size={48} color="#F59E0B" />
-              <Text className="text-gray-600 mt-4 text-center">
-                Delivery features coming soon!
               </Text>
             </View>
           </View>
@@ -100,12 +87,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <ScrollView className="flex-1">
-      {getRoleSpecificContent()}
-    </ScrollView>
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <ScrollView className="flex-1">
+        {getRoleSpecificContent()}
+      </ScrollView>
+    </SafeAreaView>
   );
 }

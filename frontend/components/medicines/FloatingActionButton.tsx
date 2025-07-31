@@ -20,11 +20,11 @@ interface FloatingActionButtonProps {
   onPrescriptionPress: () => void;
 }
 
-export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
+const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   onCartPress,
   onPrescriptionPress,
 }) => {
-  const { getCartItemCount } = useProductStore();
+  const { getCartItemCount } = useCartStore();
   const { isExpanded, toggleFAB } = useCartStore();
   const [localExpanded, setLocalExpanded] = useState(false);
 
@@ -341,4 +341,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+FloatingActionButton.displayName = 'FloatingActionButton';
+export { FloatingActionButton };
 

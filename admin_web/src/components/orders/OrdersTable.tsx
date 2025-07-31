@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaEye, FaDownload, FaUser, FaFlask, FaBox, FaRupeeSign, FaClipboardList, FaSpinner } from 'react-icons/fa';
+import { FaEye, FaDownload, FaUser, FaFlask, FaBox, FaRupeeSign, FaClipboardList, FaSpinner, FaTruck } from 'react-icons/fa';
 import OrderStatusBadge from './OrderStatusBadge';
 import OrderDetailsModal from './OrderDetailsModal';
 import LabAssignmentModal from './LabAssignmentModal';
+import DeliveryAssignmentModal from './DeliveryAssignmentModal';
 import axios from 'axios';
 
 export interface Order {
@@ -45,6 +46,12 @@ export interface Order {
     email: string;
     phone: string;
   };
+  deliveryPartner?: {
+    _id: string;
+    name: string;
+    email: string;
+    phone: string;
+  };
   prescription?: string;
   createdAt: string;
   updatedAt: string;
@@ -71,7 +78,9 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ filters = {} }) => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showDeliveryAssignmentModal, setShowDeliveryAssignmentModal] = useState(false);
   const [orderToAssign, setOrderToAssign] = useState<Order | null>(null);
+  const [orderToAssignDelivery, setOrderToAssignDelivery] = useState<Order | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -98,22 +107,22 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ filters = {} }) => {
       const token = localStorage.getItem('admin_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
-      console.log('Fetching orders from:', apiUrl);
+      // console.log('Fetching orders from:', apiUrl);
       const response = await axios.get(apiUrl, { headers });
-      console.log('Orders response:', response.data);
+      // console.log('Orders response:', response.data);
       
       if (response.data.success && response.data.data?.orders) {
         setOrders(response.data.data.orders);
         setTotalPages(response.data.data.pagination?.totalPages || 1);
         setPage(response.data.data.pagination?.page || 1);
       } else {
-        console.warn('No orders found or invalid response structure');
+        // console.warn('No orders found or invalid response structure');
         setOrders([]);
         setTotalPages(1);
         setPage(1);
       }
-    } catch (err) {
-      console.error('Failed to fetch orders:', err);
+    } catch {
+      // console.error('Failed to fetch orders:', err);
       setError('Failed to load orders. Please try again.');
       setOrders([]);
       setTotalPages(1);
@@ -159,29 +168,70 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ filters = {} }) => {
     setShowAssignmentModal(true);
   };
 
+  const handleAssignDelivery = (order: Order) => {
+    setOrderToAssignDelivery(order);
+    setShowDeliveryAssignmentModal(true);
+  };
+
   const handleLabAssigned = async (labId: string) => {
     if (!orderToAssign) return;
     
     try {
+      console.log('Assigning lab to order:', { orderId: orderToAssign._id, labId });
+      
       const apiUrl = (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/orders/${orderToAssign._id}/assign-lab`;
       
       // Get auth token
       const token = localStorage.getItem('admin_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
-      await axios.put(apiUrl, { labId }, { headers });
+      const response = await axios.put(apiUrl, { labId }, { headers });
+      
+      console.log('Lab assignment response:', response.data);
       
       // Refresh orders to show updated data
       await fetchOrders();
       
       // Show success notification
       setToast(`Laboratory assigned successfully to order ${orderToAssign.orderId}!`);
-      
-      setShowAssignmentModal(false);
-      setOrderToAssign(null);
-    } catch (error) {
+
+      // Delay closing modal to show check
+      setTimeout(() => {
+        setShowAssignmentModal(false);
+        setOrderToAssign(null);
+      }, 1200);
+    } catch (error: unknown) {
       console.error('Failed to assign laboratory:', error);
-      setToast('Failed to assign laboratory. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to assign laboratory. Please try again.';
+      setToast(errorMessage);
+    } finally {
+      setTimeout(() => setToast(null), 2500);
+    }
+  };
+
+  const handleDeliveryAssigned = async (deliveryPartnerId: string) => {
+    if (!orderToAssignDelivery) return;
+    
+    try {
+      const apiUrl = (import.meta.env.VITE_FRONTEND_API_KEY || 'http://localhost:3000') + `/api/v1/admin/orders/${orderToAssignDelivery._id}/assign-delivery`;
+      
+      // Get auth token
+      const token = localStorage.getItem('admin_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      await axios.put(apiUrl, { deliveryPartnerId }, { headers });
+      
+      // Refresh orders to show updated data
+      await fetchOrders();
+      
+      // Show success notification
+      setToast(`Delivery partner assigned successfully to order ${orderToAssignDelivery.orderId}!`);
+      
+      setShowDeliveryAssignmentModal(false);
+      setOrderToAssignDelivery(null);
+    } catch {
+      // console.error('Failed to assign delivery partner:', error);
+      setToast('Failed to assign delivery partner. Please try again.');
     } finally {
       setTimeout(() => setToast(null), 2500);
     }
@@ -301,6 +351,13 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ filters = {} }) => {
                         </span>
                       )}
                     </div>
+                  ) : order.needAssignment ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-600 text-sm font-medium">Needs Assignment</span>
+                      <span className="px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full">
+                        Urgent
+                      </span>
+                    </div>
                   ) : (
                     <div>
                       <p className="text-xs text-gray-500">Product Order</p>
@@ -311,6 +368,19 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ filters = {} }) => {
                   )}
                 </div>
               </div>
+
+              {/* Delivery Partner Info */}
+              {order.deliveryPartner && (
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <FaTruck className="text-green-600 text-sm" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{order.deliveryPartner.name}</p>
+                    <p className="text-xs text-gray-500">{order.deliveryPartner.email}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Order Details */}
@@ -380,6 +450,23 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ filters = {} }) => {
                     Assign Lab
                   </button>
                 )}
+                {!order.prescription && order.needAssignment && (
+                  <button
+                    onClick={() => handleAssignLab(order)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                  >
+                    Need Assignment
+                  </button>
+                )}
+                {order.assignedLab && !order.deliveryPartner && (
+                  <button
+                    onClick={() => handleAssignDelivery(order)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                  >
+                    <FaTruck className="text-sm mr-1" />
+                    Assign Delivery
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -407,9 +494,19 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ filters = {} }) => {
       {/* Lab Assignment Modal */}
       <LabAssignmentModal
         isOpen={showAssignmentModal}
-        onClose={() => setShowAssignmentModal(false)}
+        onClose={() => {
+          setShowAssignmentModal(false);
+        }}
         orderId={orderToAssign?.orderId || ''}
         onAssign={handleLabAssigned}
+      />
+
+      {/* Delivery Assignment Modal */}
+      <DeliveryAssignmentModal
+        isOpen={showDeliveryAssignmentModal}
+        onClose={() => setShowDeliveryAssignmentModal(false)}
+        orderId={orderToAssignDelivery?._id || ''}
+        onAssign={handleDeliveryAssigned}
       />
       {toast && (
         <div className="fixed top-6 right-6 z-50 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in-out" role="alert">{toast}</div>

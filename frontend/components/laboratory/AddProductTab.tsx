@@ -171,7 +171,7 @@ export const AddProductTab: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={true}>
       <View style={styles.form}>
         {/* Product Name */}
         <View style={styles.inputGroup}>

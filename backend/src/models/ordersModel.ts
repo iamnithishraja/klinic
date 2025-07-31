@@ -9,6 +9,7 @@ const orderSchema = new mongoose.Schema({
     laboratoryUser: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+        required: false, // Make it optional
     },
     deliveryPartner: {
         type: mongoose.Schema.Types.ObjectId,
@@ -18,9 +19,11 @@ const orderSchema = new mongoose.Schema({
         product: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Product',
+            required: false, // Make it optional
         },
         quantity: {
             type: Number,
+            required: false, // Make it optional
         },
     }],
     prescription: {
@@ -28,7 +31,8 @@ const orderSchema = new mongoose.Schema({
     },
     totalPrice: {
         type: Number,
-        required: true,
+        required: false, // Make it optional
+        default: 0,
     },
     isPaid: {
         type: Boolean,
@@ -40,8 +44,34 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled'],
+        enum: ['pending', 'confirmed', 'assigned_to_delivery', 'delivery_accepted', 'out_for_delivery', 'delivered', 'delivery_rejected', 'cancelled'],
         default: 'pending',
+    },
+    // Customer address for delivery
+    customerAddress: {
+        type: String,
+        default: null,
+    },
+    // Delivery tracking timestamps
+    assignedAt: {
+        type: Date,
+        default: null,
+    },
+    acceptedAt: {
+        type: Date,
+        default: null,
+    },
+    outForDeliveryAt: {
+        type: Date,
+        default: null,
+    },
+    deliveredAt: {
+        type: Date,
+        default: null,
+    },
+    rejectionReason: {
+        type: String,
+        default: null,
     },
     createdAt: {
         type: Date,
@@ -53,26 +83,10 @@ const orderSchema = new mongoose.Schema({
     },
 });
 
-// Custom validation to ensure either products or prescription is provided
-orderSchema.pre('save', function(next) {
-    const hasProducts = this.products && this.products.length > 0;
-    const hasPrescription = this.prescription && this.prescription.trim().length > 0;
-    
-    if (!hasProducts && !hasPrescription) {
-        return next(new Error('Order must have either products or prescription'));
-    }
-    
-    // If products exist, validate each product
-    if (hasProducts) {
-        for (const productItem of this.products) {
-            if (!productItem.product || !productItem.quantity || productItem.quantity <= 0) {
-                return next(new Error('Each product must have a valid product ID and quantity'));
-            }
-        }
-    }
-    
-    next();
-});
+// Removed validation to allow flexible order creation
+// orderSchema.pre('save', function(next) {
+//     next();
+// });
 
 const Order = mongoose.model('Order', orderSchema);
 

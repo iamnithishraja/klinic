@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { AddProductTab } from '@/components/laboratory/AddProductTab';
-import { OrderManagementTab } from '@/components/laboratory/OrderManagementTab';
+import OrderManagementTab from '@/components/laboratory/OrderManagementTab';
 import { MyProductsTab } from '@/components/laboratory/MyProductsTab';
 import { Colors } from '@/constants/Colors';
 

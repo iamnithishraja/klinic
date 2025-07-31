@@ -77,6 +77,7 @@ const LabAssignmentModal: React.FC<LabAssignmentModalProps> = ({
     
     setIsAssigning(true);
     try {
+      console.log('Assigning lab:', selectedLab);
       // Call the onAssign function with the selected laboratory ID
       onAssign(selectedLab._id);
       onClose();

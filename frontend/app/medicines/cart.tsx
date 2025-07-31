@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useProductStore } from '@/store/productStore';
-import { orderService } from '@/services/orderService';
+import { orderService, Order } from '@/services/orderService';
 import { CartItem } from '@/components/medicines/CartItem';
 import { PrescriptionUpload } from '@/components/medicines/PrescriptionUpload';
 import { CartItem as CartItemType } from '@/types/medicineTypes';
@@ -53,28 +53,35 @@ export default function CartScreen() {
           product: item.product._id,
           quantity: item.quantity,
         })),
-        prescription: prescriptionUrl,
+        prescription: prescriptionUrl || undefined,
         totalPrice: getCartTotal(),
         needAssignment: false,
       };
 
       const result = await orderService.createOrder(orderData);
       
-      // orderService.createOrder returns the order directly, not a response object
-        Alert.alert(
-          'Order Placed Successfully',
-          'Your order has been placed and will be processed soon.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                clearCart();
-                setPrescriptionUrl(null);
-                router.back();
-              },
+      // Check if multiple orders were created (multi-lab scenario)
+      const isMultiLabOrder = Array.isArray(result.data);
+      const orderCount = isMultiLabOrder ? (result.data as Order[]).length : 1;
+      
+      const message = isMultiLabOrder 
+        ? `Your order has been split into ${orderCount} separate orders and will be processed by different laboratories.`
+        : 'Your order has been placed and will be processed soon.';
+      
+      Alert.alert(
+        'Order Placed Successfully',
+        message,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              clearCart();
+              setPrescriptionUrl(null);
+              router.back();
             },
-          ]
-        );
+          },
+        ]
+      );
     } catch (error) {
       Alert.alert('Error', 'Failed to place order. Please try again.');
     }

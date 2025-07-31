@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Image, TextInput, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import apiClient from '@/api/client';
 import { useCustomAlert } from '@/components/CustomAlert';
 import VideoCallModal from '@/components/VideoCallModal';
@@ -642,395 +642,392 @@ const DoctorDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaProvider>
-        <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
-          <FontAwesome name="spinner" size={24} color="#6B7280" />
-          <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+        <FontAwesome name="spinner" size={24} color="#6B7280" />
+        <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <ScrollView 
-          className="flex-1"
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={handleRefresh}
-              colors={['#3B82F6', '#10B981', '#F59E0B']}
-              tintColor="#3B82F6"
-              title="Pull to refresh"
-              titleColor="#6B7280"
-            />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="p-6 pt-2">
-            {/* Header */}
-            <View className="mb-6">
-              <Text className="text-3xl font-bold text-gray-900 mb-2">Doctor Dashboard</Text>
-              <Text className="text-gray-600">Manage your appointments and patients</Text>
-            </View>
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <ScrollView 
+        className="flex-1"
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            colors={['#3B82F6', '#10B981', '#F59E0B']}
+            tintColor="#3B82F6"
+            title="Pull to refresh"
+            titleColor="#6B7280"
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="p-6 pt-2">
+          {/* Header */}
+          <View className="mb-6">
+            <Text className="text-3xl font-bold text-gray-900 mb-2">Doctor Dashboard</Text>
+            <Text className="text-gray-600">Manage your appointments and patients</Text>
+          </View>
 
-            {/* Stats Cards */}
-            <View className="flex-row space-x-4 mb-8">
-              <View className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <View className="flex-row items-center">
-                  <View className="bg-blue-100 rounded-full mr-3">
-                    <FontAwesome name="calendar" size={15} color="#3B82F6" />
-                  </View>
-                  <View>
-                    <Text className="text-xl font-bold text-gray-900">{dashboardData?.totalAppointments || 0}</Text>
-                    <Text className="text-sm text-gray-600">Total</Text>
-                  </View>
+          {/* Stats Cards */}
+          <View className="flex-row space-x-4 mb-8">
+            <View className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+              <View className="flex-row items-center">
+                <View className="bg-blue-100 rounded-full mr-3">
+                  <FontAwesome name="calendar" size={15} color="#3B82F6" />
                 </View>
-              </View>
-              
-              <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <View className="flex-row items-center">
-                  <View className="bg-orange-100 rounded-full  mr-3">
-                    <FontAwesome name="clock-o" size={17} color="#F97316" />
-                  </View>
-                  <View>
-                    <Text className="text-2xl font-bold text-gray-900">{dashboardData?.totalPending || 0}</Text>
-                    <Text className="text-sm text-gray-600">Pending</Text>
-                  </View>
-                </View>
-              </View>
-              
-              <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <View className="flex-row items-center">
-                  <View className="bg-green-100 rounded-full  mr-3">
-                    <FontAwesome name="check-circle" size={18} color="#10B981" />
-                  </View>
-                  <View>
-                    <Text className="text-2xl font-bold text-gray-900">{dashboardData?.totalCompleted || 0}</Text>
-                    <Text className="text-sm text-gray-600">Completed</Text>
-                  </View>
+                <View>
+                  <Text className="text-xl font-bold text-gray-900">{dashboardData?.totalAppointments || 0}</Text>
+                  <Text className="text-sm text-gray-600">Total</Text>
                 </View>
               </View>
             </View>
-
-            {/* Pending Appointments */}
-            <View className="mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-4">
-                Pending Appointments ({dashboardData?.totalPending || 0})
-              </Text>
-              
-              {filterAppointments(dashboardData?.pendingAppointments).length > 0 ? (
-                <FlatList
-                  data={filterAppointments(dashboardData?.pendingAppointments).sort((a: DoctorAppointment, b: DoctorAppointment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
-                  renderItem={renderUpcomingAppointment}
-                  scrollEnabled={false}
-                />
-              ) : (
-                <View className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-3xl p-8 shadow-sm border border-orange-100 items-center">
-                  <View className="bg-orange-100 rounded-full p-4 mb-4">
-                    <FontAwesome name="clock-o" size={40} color="#F97316" />
-                  </View>
-                  <Text className="text-xl font-bold text-gray-900 mb-2">No pending appointments</Text>
-                  <Text className="text-gray-600 text-center leading-relaxed">
-                    Your pending appointments will appear here. Patients can book consultations with you.
-                  </Text>
+            
+            <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <View className="flex-row items-center">
+                <View className="bg-orange-100 rounded-full  mr-3">
+                  <FontAwesome name="clock-o" size={17} color="#F97316" />
                 </View>
-              )}
+                <View>
+                  <Text className="text-2xl font-bold text-gray-900">{dashboardData?.totalPending || 0}</Text>
+                  <Text className="text-sm text-gray-600">Pending</Text>
+                </View>
+              </View>
             </View>
-
-            {/* Completed Appointments */}
-            <View className="mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-4">Recent Consultations</Text>
-              
-              {filterAppointments(dashboardData?.completedAppointments).length > 0 ? (
-                <FlatList
-                  data={filterAppointments(dashboardData?.completedAppointments).sort((a: DoctorAppointment, b: DoctorAppointment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
-                  renderItem={renderCompletedAppointment}
-                  scrollEnabled={false}
-                />
-              ) : (
-                <View className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border border-green-100 items-center">
-                  <View className="bg-green-100 rounded-full p-3 mb-3">
-                    <FontAwesome name="check-circle" size={28} color="#059669" />
-                  </View>
-                  <Text className="text-lg font-semibold text-gray-900 mb-1">No completed consultations</Text>
-                  <Text className="text-gray-600 text-center text-sm">
-                    Completed consultations and prescriptions will appear here
-                  </Text>
+            
+            <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <View className="flex-row items-center">
+                <View className="bg-green-100 rounded-full  mr-3">
+                  <FontAwesome name="check-circle" size={18} color="#10B981" />
                 </View>
-              )}
+                <View>
+                  <Text className="text-2xl font-bold text-gray-900">{dashboardData?.totalCompleted || 0}</Text>
+                  <Text className="text-sm text-gray-600">Completed</Text>
+                </View>
+              </View>
             </View>
           </View>
 
-          {/* Patient Details Modal */}
-          <Modal
-            visible={showPatientModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowPatientModal(false)}
-          >
-            <View className="flex-1 bg-black/50 justify-center items-center p-4" style={{ zIndex: 1000 }}>
-              <View className="bg-white rounded-2xl w-full max-w-lg h-[95%]" style={{ zIndex: 1001 }}>
-                {/* Header */}
-                <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
-                  <Text className="text-xl font-bold text-gray-900">Patient Profile</Text>
-                  <Pressable onPress={() => setShowPatientModal(false)}>
-                    <FontAwesome name="times" size={24} color="#6B7280" />
-                  </Pressable>
+          {/* Pending Appointments */}
+          <View className="mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-4">
+              Pending Appointments ({dashboardData?.totalPending || 0})
+            </Text>
+            
+            {filterAppointments(dashboardData?.pendingAppointments).length > 0 ? (
+              <FlatList
+                data={filterAppointments(dashboardData?.pendingAppointments).sort((a: DoctorAppointment, b: DoctorAppointment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+                renderItem={renderUpcomingAppointment}
+                scrollEnabled={false}
+              />
+            ) : (
+              <View className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-3xl p-8 shadow-sm border border-orange-100 items-center">
+                <View className="bg-orange-100 rounded-full p-4 mb-4">
+                  <FontAwesome name="clock-o" size={40} color="#F97316" />
                 </View>
-                
-                {selectedAppointment && (
-                  <ScrollView 
-                    className="flex-1 p-6"
-                    showsVerticalScrollIndicator={true}
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                  >
-                    {/* Patient Header */}
-                    <View className="flex-row items-center mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
-                      {selectedAppointment.patient.profilePicture ? (
-                        <Image
-                          source={{ uri: selectedAppointment.patient.profilePicture }}
-                          className="w-20 h-20 rounded-full mr-4"
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View className="w-20 h-20 rounded-full bg-blue-100 items-center justify-center mr-4">
-                          <FontAwesome name="user" size={32} color="#6366F1" />
-                        </View>
-                      )}
-                      <View className="flex-1">
-                        <Text className="text-xl font-bold text-gray-900 mb-1">{selectedAppointment.patient.name}</Text>
-                        <Text className="text-gray-600 mb-1">{selectedAppointment.patient.email}</Text>
-                        <Text className="text-gray-500 text-sm">{selectedAppointment.patient.phone}</Text>
+                <Text className="text-xl font-bold text-gray-900 mb-2">No pending appointments</Text>
+                <Text className="text-gray-600 text-center leading-relaxed">
+                  Your pending appointments will appear here. Patients can book consultations with you.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Completed Appointments */}
+          <View className="mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-4">Recent Consultations</Text>
+            
+            {filterAppointments(dashboardData?.completedAppointments).length > 0 ? (
+              <FlatList
+                data={filterAppointments(dashboardData?.completedAppointments).sort((a: DoctorAppointment, b: DoctorAppointment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+                renderItem={renderCompletedAppointment}
+                scrollEnabled={false}
+              />
+            ) : (
+              <View className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border border-green-100 items-center">
+                <View className="bg-green-100 rounded-full p-3 mb-3">
+                  <FontAwesome name="check-circle" size={28} color="#059669" />
+                </View>
+                <Text className="text-lg font-semibold text-gray-900 mb-1">No completed consultations</Text>
+                <Text className="text-gray-600 text-center text-sm">
+                  Completed consultations and prescriptions will appear here
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Patient Details Modal */}
+        <Modal
+          visible={showPatientModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowPatientModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-center items-center p-4" style={{ zIndex: 1000 }}>
+            <View className="bg-white rounded-2xl w-full max-w-lg h-[95%]" style={{ zIndex: 1001 }}>
+              {/* Header */}
+              <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
+                <Text className="text-xl font-bold text-gray-900">Patient Profile</Text>
+                <Pressable onPress={() => setShowPatientModal(false)}>
+                  <FontAwesome name="times" size={24} color="#6B7280" />
+                </Pressable>
+              </View>
+              
+              {selectedAppointment && (
+                <ScrollView 
+                  className="flex-1 p-6"
+                  showsVerticalScrollIndicator={true}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                  {/* Patient Header */}
+                  <View className="flex-row items-center mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
+                    {selectedAppointment.patient.profilePicture ? (
+                      <Image
+                        source={{ uri: selectedAppointment.patient.profilePicture }}
+                        className="w-20 h-20 rounded-full mr-4"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-20 h-20 rounded-full bg-blue-100 items-center justify-center mr-4">
+                        <FontAwesome name="user" size={32} color="#6366F1" />
+                      </View>
+                    )}
+                    <View className="flex-1">
+                      <Text className="text-xl font-bold text-gray-900 mb-1">{selectedAppointment.patient.name}</Text>
+                      <Text className="text-gray-600 mb-1">{selectedAppointment.patient.email}</Text>
+                      <Text className="text-gray-500 text-sm">{selectedAppointment.patient.phone}</Text>
+                    </View>
+                    
+
+                  </View>
+
+                  {/* Personal Information */}
+                  <View className="mb-6">
+                    <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                      <FontAwesome name="user-circle" size={18} color="#6366F1" style={{ marginRight: 8 }} />
+                      Personal Information
+                    </Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Age</Text>
+                        <Text className="text-gray-900">
+                          {selectedAppointment.patient.age ? `${selectedAppointment.patient.age} years` : 'Not specified'}
+                        </Text>
                       </View>
                       
-
-                    </View>
-
-                    {/* Personal Information */}
-                    <View className="mb-6">
-                      <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                        <FontAwesome name="user-circle" size={18} color="#6366F1" style={{ marginRight: 8 }} />
-                        Personal Information
-                      </Text>
-                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Age</Text>
-                          <Text className="text-gray-900">
-                            {selectedAppointment.patient.age ? `${selectedAppointment.patient.age} years` : 'Not specified'}
-                          </Text>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Gender</Text>
-                          <Text className="text-gray-900 capitalize">
-                            {selectedAppointment.patient.gender || 'Not specified'}
-                          </Text>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">City</Text>
-                          <Text className="text-gray-900">
-                            {selectedAppointment.patient.city || 'Not specified'}
-                          </Text>
-                        </View>
-                        
-                        <View>
-                          <Text className="text-sm font-medium text-gray-700 mb-1">Address</Text>
-                          {selectedAppointment.patient.address?.address ? (
-                            <>
-                              <Text className="text-gray-900 text-sm">{selectedAppointment.patient.address.address}</Text>
-                              {selectedAppointment.patient.address.pinCode && (
-                                <Text className="text-gray-500 text-sm">PIN: {selectedAppointment.patient.address.pinCode}</Text>
-                              )}
-                              {(selectedAppointment.patient.address.latitude && selectedAppointment.patient.address.longitude) && (
-                                <Text className="text-gray-500 text-sm">
-                                  Location: {selectedAppointment.patient.address.latitude.toFixed(4)}, {selectedAppointment.patient.address.longitude.toFixed(4)}
-                                </Text>
-                              )}
-                            </>
-                          ) : (
-                            <Text className="text-gray-500 text-sm">Not specified</Text>
-                          )}
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Medical Information */}
-                    {(selectedAppointment.patient.medicalHistory || selectedAppointment.patient.medicalHistoryPdfs?.length) && (
-                      <View className="mb-6">
-                        <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                          <FontAwesome name="heartbeat" size={18} color="#EF4444" style={{ marginRight: 8 }} />
-                          Medical History
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Gender</Text>
+                        <Text className="text-gray-900 capitalize">
+                          {selectedAppointment.patient.gender || 'Not specified'}
                         </Text>
-                        <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
-                          {selectedAppointment.patient.medicalHistory && (
-                            <View>
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Medical Notes</Text>
-                              <Text className="text-gray-900 text-sm leading-relaxed">
-                                {selectedAppointment.patient.medicalHistory}
-                              </Text>
-                            </View>
-                          )}
-                          
-                          {selectedAppointment.patient.medicalHistoryPdfs && selectedAppointment.patient.medicalHistoryPdfs.length > 0 && (
-                            <View>
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Medical Documents</Text>
-                              <View className="space-y-2">
-                                {selectedAppointment.patient.medicalHistoryPdfs.map((pdf, index) => (
-                                  <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
-                                    <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
-                                    <View className="flex-1">
-                                      <Text className="text-sm text-gray-700 font-medium">Medical Document {index + 1}</Text>
-                                      <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
-                                        {pdf.length > 50 ? pdf.substring(0, 50) + '...' : pdf}
-                                      </Text>
-                                    </View>
-                                    <Pressable 
-                                      onPress={() => handleViewDocument(pdf, `Medical Document ${index + 1}`)}
-                                      className="bg-blue-500 px-3 py-2 rounded-lg"
-                                    >
-                                      <Text className="text-white text-xs font-medium">View</Text>
-                                    </Pressable>
-                                  </View>
-                                ))}
-                              </View>
-                            </View>
-                          )}
-                        </View>
                       </View>
-                    )}
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">City</Text>
+                        <Text className="text-gray-900">
+                          {selectedAppointment.patient.city || 'Not specified'}
+                        </Text>
+                      </View>
+                      
+                      <View>
+                        <Text className="text-sm font-medium text-gray-700 mb-1">Address</Text>
+                        {selectedAppointment.patient.address?.address ? (
+                          <>
+                            <Text className="text-gray-900 text-sm">{selectedAppointment.patient.address.address}</Text>
+                            {selectedAppointment.patient.address.pinCode && (
+                              <Text className="text-gray-500 text-sm">PIN: {selectedAppointment.patient.address.pinCode}</Text>
+                            )}
+                            {(selectedAppointment.patient.address.latitude && selectedAppointment.patient.address.longitude) && (
+                              <Text className="text-gray-500 text-sm">
+                                Location: {selectedAppointment.patient.address.latitude.toFixed(4)}, {selectedAppointment.patient.address.longitude.toFixed(4)}
+                              </Text>
+                            )}
+                          </>
+                        ) : (
+                          <Text className="text-gray-500 text-sm">Not specified</Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
 
-                    {/* Appointment Information */}
+                  {/* Medical Information */}
+                  {(selectedAppointment.patient.medicalHistory || selectedAppointment.patient.medicalHistoryPdfs?.length) && (
                     <View className="mb-6">
                       <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                        <FontAwesome name="calendar" size={18} color="#10B981" style={{ marginRight: 8 }} />
-                        Appointment Details
+                        <FontAwesome name="heartbeat" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+                        Medical History
                       </Text>
-                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Appointment Time</Text>
-                          <Text className="text-gray-900">{formatAppointmentTime(selectedAppointment.timeSlot, selectedAppointment.timeSlotDisplay)}</Text>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Consultation Type</Text>
-                          <View className="flex-row items-center">
-                            <View 
-                              className="w-2 h-2 rounded-full mr-2"
-                              style={{ 
-                                backgroundColor: selectedAppointment.consultationType === 'online' ? '#10B981' : '#3B82F6' 
-                              }}
-                            />
-                            <Text className="text-gray-900 capitalize">{selectedAppointment.consultationType}</Text>
+                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+                        {selectedAppointment.patient.medicalHistory && (
+                          <View>
+                            <Text className="text-sm font-medium text-gray-700 mb-2">Medical Notes</Text>
+                            <Text className="text-gray-900 text-sm leading-relaxed">
+                              {selectedAppointment.patient.medicalHistory}
+                            </Text>
                           </View>
-                        </View>
+                        )}
                         
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Status</Text>
+                        {selectedAppointment.patient.medicalHistoryPdfs && selectedAppointment.patient.medicalHistoryPdfs.length > 0 && (
+                          <View>
+                            <Text className="text-sm font-medium text-gray-700 mb-2">Medical Documents</Text>
+                            <View className="space-y-2">
+                              {selectedAppointment.patient.medicalHistoryPdfs.map((pdf, index) => (
+                                <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                                  <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
+                                  <View className="flex-1">
+                                    <Text className="text-sm text-gray-700 font-medium">Medical Document {index + 1}</Text>
+                                    <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
+                                      {pdf.length > 50 ? pdf.substring(0, 50) + '...' : pdf}
+                                    </Text>
+                                  </View>
+                                  <Pressable 
+                                    onPress={() => handleViewDocument(pdf, `Medical Document ${index + 1}`)}
+                                    className="bg-blue-500 px-3 py-2 rounded-lg"
+                                  >
+                                    <Text className="text-white text-xs font-medium">View</Text>
+                                  </Pressable>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Appointment Information */}
+                  <View className="mb-6">
+                    <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                      <FontAwesome name="calendar" size={18} color="#10B981" style={{ marginRight: 8 }} />
+                      Appointment Details
+                    </Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Appointment Time</Text>
+                        <Text className="text-gray-900">{formatAppointmentTime(selectedAppointment.timeSlot, selectedAppointment.timeSlotDisplay)}</Text>
+                      </View>
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Consultation Type</Text>
+                        <View className="flex-row items-center">
                           <View 
-                            className="px-3 py-1 rounded-full"
+                            className="w-2 h-2 rounded-full mr-2"
                             style={{ 
-                              backgroundColor: selectedAppointment.status === 'upcoming' ? '#FEF3C7' : '#D1FAE5' 
+                              backgroundColor: selectedAppointment.consultationType === 'online' ? '#10B981' : '#3B82F6' 
+                            }}
+                          />
+                          <Text className="text-gray-900 capitalize">{selectedAppointment.consultationType}</Text>
+                        </View>
+                      </View>
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Status</Text>
+                        <View 
+                          className="px-3 py-1 rounded-full"
+                          style={{ 
+                            backgroundColor: selectedAppointment.status === 'upcoming' ? '#FEF3C7' : '#D1FAE5' 
+                          }}
+                        >
+                          <Text 
+                            className="text-xs font-medium"
+                            style={{ 
+                              color: selectedAppointment.status === 'upcoming' ? '#D97706' : '#059669' 
                             }}
                           >
-                            <Text 
-                              className="text-xs font-medium"
-                              style={{ 
-                                color: selectedAppointment.status === 'upcoming' ? '#D97706' : '#059669' 
-                              }}
-                            >
-                              {selectedAppointment.status === 'upcoming' ? 'Upcoming' : 'Completed'}
-                            </Text>
-                          </View>
+                            {selectedAppointment.status === 'upcoming' ? 'Upcoming' : 'Completed'}
+                          </Text>
                         </View>
                       </View>
                     </View>
+                  </View>
 
-                    {/* Clinic Information for In-Person */}
-                    {selectedAppointment.consultationType === 'in-person' && selectedAppointment.clinic && (
-                      <View className="mb-6">
-                        <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                          <FontAwesome name="hospital-o" size={18} color="#8B5CF6" style={{ marginRight: 8 }} />
-                          Clinic Information
-                        </Text>
-                        <View className="bg-white border border-gray-200 rounded-xl p-4">
-                          <Text className="text-lg font-semibold text-gray-900 mb-2">{selectedAppointment.clinic.clinicName}</Text>
-                          <Text className="text-gray-600 text-sm">{selectedAppointment.clinic.clinicAddress.address}</Text>
-                          <Text className="text-gray-500 text-sm">PIN: {selectedAppointment.clinic.clinicAddress.pinCode}</Text>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Profile Information */}
+                  {/* Clinic Information for In-Person */}
+                  {selectedAppointment.consultationType === 'in-person' && selectedAppointment.clinic && (
                     <View className="mb-6">
                       <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                        <FontAwesome name="clock-o" size={18} color="#6B7280" style={{ marginRight: 8 }} />
-                        Profile Information
+                        <FontAwesome name="hospital-o" size={18} color="#8B5CF6" style={{ marginRight: 8 }} />
+                        Clinic Information
                       </Text>
-                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                        {selectedAppointment.patient.createdAt && (
-                          <View className="flex-row justify-between">
-                            <Text className="text-sm font-medium text-gray-700">Patient Since</Text>
-                            <Text className="text-gray-900">
-                              {new Date(selectedAppointment.patient.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </Text>
-                          </View>
-                        )}
-                        
-                        {selectedAppointment.patient.updatedAt && (
-                          <View className="flex-row justify-between">
-                            <Text className="text-sm font-medium text-gray-700">Last Updated</Text>
-                            <Text className="text-gray-900">
-                              {new Date(selectedAppointment.patient.updatedAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </Text>
-                          </View>
-                        )}
-                        
+                      <View className="bg-white border border-gray-200 rounded-xl p-4">
+                        <Text className="text-lg font-semibold text-gray-900 mb-2">{selectedAppointment.clinic.clinicName}</Text>
+                        <Text className="text-gray-600 text-sm">{selectedAppointment.clinic.clinicAddress.address}</Text>
+                        <Text className="text-gray-500 text-sm">PIN: {selectedAppointment.clinic.clinicAddress.pinCode}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Profile Information */}
+                  <View className="mb-6">
+                    <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                      <FontAwesome name="clock-o" size={18} color="#6B7280" style={{ marginRight: 8 }} />
+                      Profile Information
+                    </Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                      {selectedAppointment.patient.createdAt && (
                         <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Profile Status</Text>
-                          <View className="flex-row items-center">
-                            <View className={`w-2 h-2 rounded-full mr-2 ${
-                              selectedAppointment.patient.age && selectedAppointment.patient.gender && selectedAppointment.patient.city 
-                                ? 'bg-green-500' : 'bg-yellow-500'
-                            }`} />
-                            <Text className="text-gray-900 text-sm">
-                              {selectedAppointment.patient.age && selectedAppointment.patient.gender && selectedAppointment.patient.city 
-                                ? 'Complete' : 'Incomplete'}
-                            </Text>
-                          </View>
+                          <Text className="text-sm font-medium text-gray-700">Patient Since</Text>
+                          <Text className="text-gray-900">
+                            {new Date(selectedAppointment.patient.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </Text>
+                        </View>
+                      )}
+                      
+                      {selectedAppointment.patient.updatedAt && (
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm font-medium text-gray-700">Last Updated</Text>
+                          <Text className="text-gray-900">
+                            {new Date(selectedAppointment.patient.updatedAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </Text>
+                        </View>
+                      )}
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Profile Status</Text>
+                        <View className="flex-row items-center">
+                          <View className={`w-2 h-2 rounded-full mr-2 ${
+                            selectedAppointment.patient.age && selectedAppointment.patient.gender && selectedAppointment.patient.city 
+                              ? 'bg-green-500' : 'bg-yellow-500'
+                          }`} />
+                          <Text className="text-gray-900 text-sm">
+                            {selectedAppointment.patient.age && selectedAppointment.patient.gender && selectedAppointment.patient.city 
+                              ? 'Complete' : 'Incomplete'}
+                          </Text>
                         </View>
                       </View>
                     </View>
+                  </View>
 
-                    {/* Quick Actions */}
-                    <View className="mb-6">
+                  {/* Quick Actions */}
+                  <View className="mb-6">
                   
-                      <View className="flex-row space-x-3">
-                        <Pressable
-                          onPress={() => {
-                            setShowPatientModal(false);
-                            handleAddPrescription(selectedAppointment);
-                          }}
-                          className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
-                        >
-                          <FontAwesome name="stethoscope" size={16} color="white" style={{ marginBottom: 4 }} />
-                          <Text className="text-white font-medium text-sm">Add Prescription</Text>
-                        </Pressable>
-                      </View>
+                    <View className="flex-row space-x-3">
+                      <Pressable
+                        onPress={() => {
+                          setShowPatientModal(false);
+                          handleAddPrescription(selectedAppointment);
+                        }}
+                        className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
+                      >
+                        <FontAwesome name="stethoscope" size={16} color="white" style={{ marginBottom: 4 }} />
+                        <Text className="text-white font-medium text-sm">Add Prescription</Text>
+                      </Pressable>
                     </View>
-                  </ScrollView>
-                )}
-              </View>
+                  </View>
+                </ScrollView>
+              )}
+            </View>
             </View>
           </Modal>
 
@@ -1195,8 +1192,7 @@ const DoctorDashboard: React.FC = () => {
           <AlertComponent />
         </ScrollView>
       </SafeAreaView>
-    </SafeAreaProvider>
-  );
-};
+    );
+  };
 
-export default DoctorDashboard;
+  export default DoctorDashboard;

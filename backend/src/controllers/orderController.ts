@@ -17,7 +17,8 @@ const createOrder = async (req: CustomRequest, res: Response): Promise<void> => 
             laboratoryUser
         });
 
-        const order = await orderService.createOrder({
+        // Create order without validation - always use multi-lab approach
+        const orders = await orderService.createMultiLabOrders({
             orderedBy: userId.toString(),
             laboratoryUser: laboratoryUser || undefined,
             products: products || undefined,
@@ -28,8 +29,8 @@ const createOrder = async (req: CustomRequest, res: Response): Promise<void> => 
 
         res.status(201).json({
             success: true,
-            data: order,
-            message: 'Order created successfully'
+            data: orders,
+            message: `Orders created successfully for ${orders.length} laboratories`
         });
     } catch (error: any) {
         console.error('Create order error:', error);
@@ -121,24 +122,23 @@ const getLabOrders = async (req: CustomRequest, res: Response): Promise<void> =>
     }
 };
 
-// Update Order Status (Public access)
+// Update order status (public access)
 const updateOrderStatus = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const { orderId } = req.params;
         const { status } = req.body;
 
-        console.log('Updating order status:', { orderId, status });
-
-        const validStatuses = ['pending', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled'];
-        if (!validStatuses.includes(status)) {
+        if (!orderId) {
             res.status(400).json({
                 success: false,
-                error: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+                error: 'Order ID is required'
             });
             return;
         }
 
-        const updatedOrder = await orderService.updateOrderStatus(orderId, status);
+        console.log('Updating order status:', { orderId, status });
+
+        const updatedOrder = await orderService.updateOrderStatusWithValidation(orderId, status, req.user._id.toString());
 
         if (!updatedOrder) {
             res.status(404).json({
@@ -162,19 +162,27 @@ const updateOrderStatus = async (req: CustomRequest, res: Response): Promise<voi
     }
 };
 
-// Get Order Details (Public access)
+// Get order details (public access)
 const getOrderDetails = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const { orderId } = req.params;
+
+        if (!orderId) {
+            res.status(400).json({
+                success: false,
+                error: 'Order ID is required'
+            });
+            return;
+        }
 
         console.log('Getting order details for:', orderId);
 
         const order = await orderService.getOrderById(orderId);
 
         if (!order) {
-            res.status(404).json({ 
-                success: false, 
-                error: 'Order not found' 
+            res.status(404).json({
+                success: false,
+                error: 'Order not found'
             });
             return;
         }
@@ -230,11 +238,19 @@ const getOrderById = async (req: CustomRequest, res: Response): Promise<void> =>
     }
 };
 
-// Claim Order for Laboratory (Lab User)
+// Claim order for laboratory (Lab User)
 const claimOrder = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const { orderId } = req.params;
         const userId = req.user._id;
+
+        if (!orderId) {
+            res.status(400).json({
+                success: false,
+                error: 'Order ID is required'
+            });
+            return;
+        }
 
         console.log('Claiming order:', { orderId, userId: userId.toString() });
 
@@ -247,10 +263,10 @@ const claimOrder = async (req: CustomRequest, res: Response): Promise<void> => {
             return;
         }
 
-        if (!existingOrder.needAssignment) {
+        if (existingOrder.laboratoryUser) {
             res.status(400).json({
                 success: false,
-                error: 'Order does not need assignment or has already been assigned'
+                error: 'Order is already assigned to a laboratory'
             });
             return;
         }
@@ -271,6 +287,268 @@ const claimOrder = async (req: CustomRequest, res: Response): Promise<void> => {
     }
 };
 
+// Assign delivery partner to order (Lab User)
+const assignDeliveryPartner = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { orderId } = req.params;
+        const { deliveryPartnerId } = req.body;
+        const userId = req.user._id;
+
+        console.log('=== ASSIGN DELIVERY PARTNER DEBUG ===');
+        console.log('Request user:', {
+            id: req.user._id,
+            role: req.user.role,
+            email: req.user.email
+        });
+        console.log('Request params:', { orderId, deliveryPartnerId });
+
+        if (!orderId || !deliveryPartnerId) {
+            res.status(400).json({
+                success: false,
+                error: 'Order ID and delivery partner ID are required'
+            });
+            return;
+        }
+
+        console.log('Assigning delivery partner to order:', { orderId, deliveryPartnerId, userId: userId.toString() });
+
+        const existingOrder = await orderService.getOrderById(orderId);
+        if (!existingOrder) {
+            res.status(404).json({
+                success: false,
+                error: 'Order not found'
+            });
+            return;
+        }
+
+        console.log('Order found:', {
+            orderId: existingOrder._id,
+            status: existingOrder.status,
+            laboratoryUser: existingOrder.laboratoryUser,
+            laboratoryUserType: typeof existingOrder.laboratoryUser,
+            needAssignment: existingOrder.needAssignment
+        });
+
+        console.log('Order lab assignment check:', {
+            orderLabId: existingOrder.laboratoryUser?.toString(),
+            currentUserId: userId.toString(),
+            orderLabIdType: typeof existingOrder.laboratoryUser,
+            currentUserIdType: typeof userId,
+            match: existingOrder.laboratoryUser?.toString() === userId.toString()
+        });
+
+        // Handle both ObjectId and string comparisons
+        const orderLabId = existingOrder.laboratoryUser?._id?.toString() || existingOrder.laboratoryUser?.toString();
+        const currentUserId = userId.toString();
+        
+        console.log('Detailed lab assignment check:', {
+            orderLabId,
+            currentUserId,
+            orderLabIdType: typeof orderLabId,
+            currentUserIdType: typeof currentUserId,
+            orderLabUserObject: existingOrder.laboratoryUser,
+            orderLabUserId: existingOrder.laboratoryUser?._id,
+            orderLabUserString: existingOrder.laboratoryUser?.toString()
+        });
+        
+        // Check if order has laboratory assignment
+        if (!existingOrder.laboratoryUser) {
+            console.log('Order has no laboratory assignment');
+            res.status(403).json({
+                success: false,
+                error: 'Order not assigned to any laboratory'
+            });
+            return;
+        }
+        
+        // For populated objects, compare the _id field
+        const isAssignedToCurrentLab = existingOrder.laboratoryUser._id?.toString() === currentUserId;
+        
+        if (!isAssignedToCurrentLab) {
+            console.log('Lab assignment mismatch:', {
+                orderLabId: existingOrder.laboratoryUser._id?.toString(),
+                currentUserId,
+                orderLabIdType: typeof existingOrder.laboratoryUser._id,
+                currentUserIdType: typeof currentUserId
+            });
+            res.status(403).json({
+                success: false,
+                error: 'Order not assigned to your laboratory'
+            });
+            return;
+        }
+
+        if (existingOrder.status !== 'confirmed' && existingOrder.status !== 'pending') {
+            res.status(400).json({
+                success: false,
+                error: 'Order must be in confirmed or pending status to assign delivery partner'
+            });
+            return;
+        }
+
+        console.log('Authorization passed, proceeding with assignment...');
+
+        const updatedOrder = await orderService.assignOrderToDeliveryPartner(orderId, deliveryPartnerId);
+
+        console.log('Assignment successful:', {
+            orderId: updatedOrder?._id,
+            deliveryPartner: updatedOrder?.deliveryPartner,
+            status: updatedOrder?.status
+        });
+
+        res.status(200).json({
+            success: true,
+            data: updatedOrder,
+            message: 'Delivery partner assigned successfully'
+        });
+    } catch (error: any) {
+        console.error('Assign delivery partner error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
+// Get available delivery partners (Lab User)
+const getAvailableDeliveryPartners = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        console.log('Getting available delivery partners');
+        console.log('User making request:', {
+            userId: req.user._id,
+            userRole: req.user.role,
+            userEmail: req.user.email
+        });
+
+        const deliveryPartners = await orderService.getAvailableDeliveryPartners();
+
+        console.log(`Returning ${deliveryPartners.length} delivery partners to lab user`);
+
+        res.status(200).json({
+            success: true,
+            data: deliveryPartners
+        });
+    } catch (error: any) {
+        console.error('Get available delivery partners error:', error);
+        console.error('Error details:', {
+            message: error?.message || 'Unknown error',
+            stack: error?.stack || 'No stack trace'
+        });
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
+// Get lab orders with customer addresses
+const getLabOrdersWithAddresses = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user._id;
+        const { status, page = 1, limit = 10, assignedOnly, unassignedOnly } = req.query;
+
+        console.log('Getting lab orders with addresses for user:', userId.toString());
+
+        const filters = {
+            status: status ? String(status) : undefined,
+            assignedOnly: assignedOnly === 'true',
+            unassignedOnly: unassignedOnly === 'true',
+        };
+
+        const pagination = {
+            page: Math.max(1, Number(page)),
+            limit: Math.min(100, Math.max(1, Number(limit)))
+        };
+
+        console.log('Final filters:', filters);
+        console.log('Pagination:', pagination);
+
+        let result;
+        try {
+            result = await orderService.getOrdersByLab(userId.toString(), filters as any, pagination);
+            console.log(`Retrieved ${result.orders.length} orders from service`);
+        } catch (serviceError) {
+            console.error('Error calling orderService.getOrdersByLab:', serviceError);
+            res.status(500).json({ 
+                success: false, 
+                error: 'Failed to retrieve orders' 
+            });
+            return;
+        }
+
+        // Import UserProfile at the top level to avoid dynamic import issues
+        let UserProfile;
+        try {
+            const profileModule = await import('../models/profileModel');
+            UserProfile = profileModule.UserProfile;
+        } catch (importError) {
+            console.error('Error importing UserProfile model:', importError);
+            // Continue without address population
+            const ordersWithAddresses = result.orders.map(order => ({
+                ...order.toObject(),
+                customerAddress: 'Address not available'
+            }));
+            
+            console.log(`Found ${ordersWithAddresses.length} lab orders without addresses`);
+            
+            res.status(200).json({
+                success: true,
+                data: {
+                    orders: ordersWithAddresses,
+                    pagination: result.pagination
+                }
+            });
+            return;
+        }
+        
+        // Populate customer addresses from user profiles
+        const ordersWithAddresses = await Promise.all(
+            result.orders.map(async (order) => {
+                try {
+                    // Convert ObjectId to string if needed
+                    const userId = typeof order.orderedBy === 'object' && order.orderedBy._id 
+                        ? order.orderedBy._id.toString() 
+                        : order.orderedBy.toString();
+                    
+                    const userProfile = await UserProfile.findOne({ user: userId }).select('address city');
+                    
+                    return {
+                        ...order.toObject(),
+                        customerAddress: userProfile?.address?.address || userProfile?.city || 'Address not available'
+                    };
+                } catch (error) {
+                    console.error('Error fetching user profile for order:', order._id, error);
+                    return {
+                        ...order.toObject(),
+                        customerAddress: 'Address not available'
+                    };
+                }
+            })
+        );
+
+        console.log(`Found ${ordersWithAddresses.length} lab orders with addresses`);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                orders: ordersWithAddresses,
+                pagination: result.pagination
+            }
+        });
+    } catch (error: any) {
+        console.error('Get lab orders with addresses error:', error);
+        console.error('Error details:', {
+            message: error?.message || 'Unknown error',
+            stack: error?.stack || 'No stack trace',
+            name: error?.name || 'Unknown error type'
+        });
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
 export {
     createOrder,
     getMyOrders,
@@ -278,5 +556,8 @@ export {
     updateOrderStatus,
     getOrderDetails,
     getOrderById,
-    claimOrder
+    claimOrder,
+    assignDeliveryPartner,
+    getAvailableDeliveryPartners,
+    getLabOrdersWithAddresses
 };

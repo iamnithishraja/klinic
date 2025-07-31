@@ -6,7 +6,10 @@ import {
     updateOrderStatus, 
     getOrderDetails,
     getOrderById,
-    claimOrder
+    claimOrder,
+    assignDeliveryPartner,
+    getAvailableDeliveryPartners,
+    getLabOrdersWithAddresses
 } from '../controllers/orderController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
 import { UserRole } from '../types/userTypes';
@@ -32,7 +35,22 @@ orderRouter.get('/orders/my-orders',
 // Get lab's assigned orders
 orderRouter.get('/orders/lab-orders', 
     isAuthenticatedUser, 
+    (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
     getLabOrders
+);
+
+// Get lab orders with customer addresses
+orderRouter.get('/orders/lab-orders-with-addresses', 
+    isAuthenticatedUser, 
+    (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
+    getLabOrdersWithAddresses
+);
+
+// Get available delivery partners (Lab User) - MUST BE BEFORE /:orderId route
+orderRouter.get('/orders/available-delivery-partners', 
+    isAuthenticatedUser, 
+    (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
+    getAvailableDeliveryPartners
 );
 
 // Get order details (public access)
@@ -54,8 +72,15 @@ orderRouter.put('/orders/:orderId/status',
 // Claim order for laboratory (Lab User)
 orderRouter.post('/orders/:orderId/claim', 
     isAuthenticatedUser, 
+    (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
     claimOrder
 );
 
+// Assign delivery partner to order (Lab User)
+orderRouter.post('/orders/:orderId/assign-delivery', 
+    isAuthenticatedUser, 
+    (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
+    assignDeliveryPartner
+);
 
 export default orderRouter; 

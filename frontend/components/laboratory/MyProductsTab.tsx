@@ -12,7 +12,6 @@ import {
   FlatList,
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { productService, Product } from '@/services/productService';
@@ -46,9 +45,10 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ visible, prod
       animationType="slide"
       transparent={true}
       onRequestClose={onClose}
+      presentationStyle="fullScreen"
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, { height: '100%', width: '100%' }]}>
           {/* Modal Header */}
           <View style={styles.modalHeader}>
             <View style={styles.modalHeaderLeft}>
@@ -60,7 +60,7 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ visible, prod
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
             {/* Product Image */}
             <View style={styles.imageContainer}>
               {product.imageUrl ? (

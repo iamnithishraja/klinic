@@ -7,7 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { useProductStore } from '@/store/productStore';
+import { useCartStore } from '@/store/cartStore';
 import { CartItem as CartItemType } from '@/types/medicineTypes';
 import { Colors } from '@/constants/Colors';
 
@@ -17,14 +17,14 @@ interface CartItemProps {
   onRemove: (productId: string) => void;
 }
 
-export const CartItem: React.FC<CartItemProps> = ({ item, onQuantityChange, onRemove }) => {
-  const { updateCartQuantity, removeFromCart } = useProductStore();
+const CartItem: React.FC<CartItemProps> = ({ item, onQuantityChange, onRemove }) => {
+  const { updateQuantity, removeFromCart } = useCartStore();
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity <= 0) {
       removeFromCart(item.product._id);
     } else {
-      updateCartQuantity(item.product._id, newQuantity);
+      updateQuantity(item.product._id, newQuantity);
     }
   };
 
@@ -212,4 +212,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FECACA',
   },
-}); 
+});
+
+CartItem.displayName = 'CartItem';
+export { CartItem }; 

@@ -1,11 +1,9 @@
 import { create } from 'zustand';
 import { productService, Product, ProductSearchFilters, ProductSearchResponse } from '../services/productService';
-import { CartItem } from '../services/orderService';
 
 interface ProductStore {
   // State
   products: Product[];
-  cart: CartItem[];
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -24,15 +22,6 @@ interface ProductStore {
   loadMore: () => Promise<void>;
   setFilters: (newFilters: Partial<ProductSearchFilters>) => void;
   resetFilters: () => void;
-  
-  // Cart actions
-  addToCart: (product: Product, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateCartQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
-  getCartTotal: () => number;
-  getCartItemCount: () => number;
-  getCartItem: (productId: string) => CartItem | undefined;
 }
 
 const initialFilters: ProductSearchFilters = {
@@ -42,7 +31,6 @@ const initialFilters: ProductSearchFilters = {
 
 const initialState = {
   products: [],
-  cart: [],
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -69,7 +57,6 @@ export const useProductStore = create<ProductStore>((set, get) => ({
       if (isRefreshing) {
         set({
           ...initialState,
-          cart: get().cart, // Preserve cart
           filters: get().filters,
           isLoading: true,
         });
@@ -143,92 +130,5 @@ export const useProductStore = create<ProductStore>((set, get) => ({
 
   resetFilters: () => {
     set({ filters: initialFilters });
-  },
-
-  // Cart actions
-  addToCart: (product: Product, quantity: number = 1) => {
-    console.log('ProductStore - Adding to cart:', {
-      productName: product.name,
-      productId: product._id,
-      quantity,
-      currentCartSize: get().cart.length
-    });
-    
-    set(state => {
-      const existingItem = state.cart.find(item => item.product._id === product._id);
-      
-      if (existingItem) {
-        // Update existing item quantity
-        const updatedCart = state.cart.map(item =>
-          item.product._id === product._id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-        console.log('ProductStore - Updated existing item in cart. New quantity:', existingItem.quantity + quantity);
-        return { cart: updatedCart };
-      } else {
-        // Add new item to cart
-        const newItem: CartItem = {
-          product,
-          quantity,
-        };
-        console.log('ProductStore - Added new item to cart. Total items:', state.cart.length + 1);
-        return { cart: [...state.cart, newItem] };
-      }
-    });
-    
-    // Log final cart state
-    setTimeout(() => {
-      const finalCart = get().cart;
-      console.log('ProductStore - Final cart state:', {
-        totalItems: finalCart.length,
-        totalQuantity: finalCart.reduce((sum, item) => sum + item.quantity, 0),
-        items: finalCart.map(item => ({
-          name: item.product.name,
-          quantity: item.quantity,
-          price: item.product.price
-        }))
-      });
-    }, 0);
-  },
-
-  removeFromCart: (productId: string) => {
-    set(state => ({
-      cart: state.cart.filter(item => item.product._id !== productId)
-    }));
-  },
-
-  updateCartQuantity: (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      get().removeFromCart(productId);
-      return;
-    }
-
-    set(state => ({
-      cart: state.cart.map(item =>
-        item.product._id === productId
-          ? { ...item, quantity }
-          : item
-      )
-    }));
-  },
-
-  clearCart: () => {
-    set({ cart: [] });
-  },
-
-  getCartTotal: () => {
-    const { cart } = get();
-    return cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
-  },
-
-  getCartItemCount: () => {
-    const { cart } = get();
-    return cart.reduce((count, item) => count + item.quantity, 0);
-  },
-
-  getCartItem: (productId: string) => {
-    const { cart } = get();
-    return cart.find(item => item.product._id === productId);
   },
 })); 

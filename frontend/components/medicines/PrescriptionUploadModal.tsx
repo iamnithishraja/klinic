@@ -24,7 +24,7 @@ interface PrescriptionUploadModalProps {
   onSuccess: () => void;
 }
 
-export const PrescriptionUploadModal: React.FC<PrescriptionUploadModalProps> = ({
+const PrescriptionUploadModal: React.FC<PrescriptionUploadModalProps> = ({
   visible,
   onClose,
   onSuccess,
@@ -159,7 +159,7 @@ export const PrescriptionUploadModal: React.FC<PrescriptionUploadModalProps> = (
           <View style={styles.placeholder} />
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
           {/* Instructions */}
           <View style={styles.instructionsContainer}>
             <View style={styles.instructionsHeader}>
@@ -500,4 +500,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
   },
-}); 
+});
+
+PrescriptionUploadModal.displayName = 'PrescriptionUploadModal';
+export { PrescriptionUploadModal }; 

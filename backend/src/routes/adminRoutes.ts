@@ -25,7 +25,10 @@ import {
   getAllOrders,
   getOrderDetails,
   getOrderStats,
-  assignLabToOrder
+  assignLabToOrder,
+  assignDeliveryPartnerToOrder,
+  getAvailableDeliveryPartners,
+  getDeliveryPartnerDetails
 } from '../controllers/adminController';
 import { deleteProduct as deleteProductController } from '../controllers/productController';
 
@@ -73,5 +76,10 @@ adminRouter.get('/orders', isAuthenticatedUser, isAdmin, getAllOrders);
 adminRouter.get('/orders/stats', isAuthenticatedUser, isAdmin, getOrderStats);
 adminRouter.get('/orders/:orderId', isAuthenticatedUser, isAdmin, getOrderDetails);
 adminRouter.put('/orders/:orderId/assign-lab', isAuthenticatedUser, isAdmin, assignLabToOrder);
+adminRouter.put('/orders/:orderId/assign-delivery', isAuthenticatedUser, isAdmin, assignDeliveryPartnerToOrder);
+adminRouter.get('/delivery-partners', isAuthenticatedUser, isAdmin, getAvailableDeliveryPartners);
+
+// Delivery partner management routes
+adminRouter.get('/delivery-partners/:partnerId', isAuthenticatedUser, isAdmin, getDeliveryPartnerDetails);
 
 export default adminRouter; 

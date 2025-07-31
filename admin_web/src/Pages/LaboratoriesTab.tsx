@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import UserCard from '../components/userCard';
-import { FaCalendarAlt } from 'react-icons/fa';
-import { FaBox } from 'react-icons/fa';
-import LabProductsManagementModal from '../components/LabProductsManagementModal';
+import { FaCalendarAlt, FaBox, FaFilter } from 'react-icons/fa';
+
 
 interface Laboratory {
   _id: string;
@@ -88,8 +87,6 @@ const LaboratoriesTab: React.FC = () => {
   const [selectedLabProfile, setSelectedLabProfile] = useState<LaboratoryProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
-  const [showProductsModal, setShowProductsModal] = useState(false);
-  const [selectedLabForProducts, setSelectedLabForProducts] = useState<Laboratory | null>(null);
   
   // Filter states
   const [verificationFilter, setVerificationFilter] = useState<'all' | 'verified' | 'unverified'>('all');
@@ -378,22 +375,35 @@ const LaboratoriesTab: React.FC = () => {
       </div>
       {activeTab === 'laboratories' && (
         <div className="bg-card rounded-xl shadow p-8">
-          <div className="mb-8 flex justify-between items-center">
-            <h1 className="text-3xl font-bold">Laboratories</h1>
-            <div className="flex items-center gap-4">
+          <div className="mb-8 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <FaBox className="text-green-600 text-xl" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Laboratories</h1>
+                <p className="text-sm text-gray-500">{filteredLabs.length} laboratories found</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search */}
               <input
                 type="text"
-                placeholder="Search by name, email, or phone"
+                placeholder="Search by name, email, phone, or lab name"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="border rounded-lg px-4 py-2 w-80 focus:outline-none focus:ring-2 focus:ring-primary transition"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
+              
+              {/* Filters Button */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
+                className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-semibold hover:from-green-600 hover:to-emerald-600 transition-all duration-200 flex items-center gap-3 shadow-lg border-0 transform hover:scale-105 active:scale-95"
               >
+                <FaFilter className="text-sm" />
                 <span>Filters</span>
-                <span className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}>▼</span>
+                <span className={`transform transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`}>▼</span>
               </button>
             </div>
           </div>
@@ -401,19 +411,22 @@ const LaboratoriesTab: React.FC = () => {
           {/* Filter Panel */}
           {showFilters && (
             <div className="mb-6 p-6 bg-gray-50 rounded-xl border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">Filter Options</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                <FaBox className="text-green-600" />
+                Filter Options
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Verification Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Verification Status</label>
                   <select
                     value={verificationFilter}
                     onChange={(e) => setVerificationFilter(e.target.value as 'all' | 'verified' | 'unverified')}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="all">All Laboratories</option>
-                    <option value="verified">Verified Only</option>
-                    <option value="unverified">Unverified Only</option>
+                    <option value="verified">✅ Verified Only</option>
+                    <option value="unverified">⏳ Unverified Only</option>
                   </select>
                 </div>
                 
@@ -423,11 +436,11 @@ const LaboratoriesTab: React.FC = () => {
                   <select
                     value={cityFilter}
                     onChange={(e) => setCityFilter(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
-                    <option value="">All Cities</option>
+                    <option value="">🌍 All Cities</option>
                     {allCities.map(city => (
-                      <option key={city} value={city}>{city}</option>
+                      <option key={city} value={city}>🏙️ {city}</option>
                     ))}
                   </select>
                 </div>
@@ -438,11 +451,11 @@ const LaboratoriesTab: React.FC = () => {
                   <select
                     value={availableFilter}
                     onChange={(e) => setAvailableFilter(e.target.value as 'all' | 'available' | 'unavailable')}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
-                    <option value="all">All Laboratories</option>
-                    <option value="available">Available Only</option>
-                    <option value="unavailable">Unavailable Only</option>
+                    <option value="all">📋 All Laboratories</option>
+                    <option value="available">✅ Available Only</option>
+                    <option value="unavailable">❌ Unavailable Only</option>
                   </select>
                 </div>
                 
@@ -453,17 +466,25 @@ const LaboratoriesTab: React.FC = () => {
                       setVerificationFilter('all');
                       setCityFilter('');
                       setAvailableFilter('all');
+                      setSearch('');
                     }}
-                    className="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                    className="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2"
                   >
-                    Clear All Filters
+                    🗑️ Clear All Filters
                   </button>
                 </div>
               </div>
               
-              {/* Results Count */}
-              <div className="mt-4 text-sm text-gray-600">
-                Showing {filteredLabs.length} of {laboratories.length} laboratories
+              {/* Results Count and Stats */}
+              <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
+                <div className="text-sm text-gray-600">
+                  Showing {filteredLabs.length} of {laboratories.length} laboratories
+                </div>
+                <div className="flex gap-4 text-sm">
+                  <span className="text-green-600">✅ {laboratories.filter(lab => lab.isVerified).length} Verified</span>
+                  <span className="text-yellow-600">⏳ {laboratories.filter(lab => !lab.isVerified).length} Unverified</span>
+                  <span className="text-blue-600">📋 {laboratories.filter(lab => lab.isAvailable).length} Available</span>
+                </div>
               </div>
             </div>
           )}
@@ -485,14 +506,6 @@ const LaboratoriesTab: React.FC = () => {
                     updatedAt: lab.updatedAt ? new Date(lab.updatedAt) : undefined,
                     }} disableModal={true} />
                 </div>
-                  <button
-                    onClick={() => { setSelectedLabForProducts(lab); setShowProductsModal(true); }}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-base font-semibold shadow-lg hover:from-purple-600 hover:to-indigo-600 hover:scale-105 transition-all flex items-center gap-2 ml-2"
-                    style={{ minWidth: 180 }}
-                  >
-                    <FaBox className="text-lg" />
-                    Manage Products
-                  </button>
                   <button
                     onClick={() => handleLabCardClick(lab)}
                     className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-xl text-base font-semibold shadow-lg hover:from-green-500 hover:to-blue-600 hover:scale-105 transition-all flex items-center gap-2 ml-2"
@@ -877,12 +890,7 @@ const LaboratoriesTab: React.FC = () => {
         </div>
       )}
 
-      {showProductsModal && selectedLabForProducts && (
-        <LabProductsManagementModal
-          lab={selectedLabForProducts}
-          onClose={() => setShowProductsModal(false)}
-        />
-      )}
+
     </div>
   );
 };

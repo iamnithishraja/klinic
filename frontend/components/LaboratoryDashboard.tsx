@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Image, TextInput, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import apiClient from '@/api/client';
@@ -18,6 +17,8 @@ interface Patient {
   gender?: string;
   medicalHistory?: string;
   medicalHistoryPdfs?: string[];
+  prescriptionUrl?: string;
+  prescriptionPdfs?: string[];
   address?: {
     address?: string;
     pinCode?: string;
@@ -85,6 +86,8 @@ const LaboratoryDashboard: React.FC = () => {
   const [notesText, setNotesText] = useState('');
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [testReportPdfs, setTestReportPdfs] = useState<string[]>([]);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [selectedPrescription, setSelectedPrescription] = useState<string>('');
   const { showAlert, AlertComponent } = useCustomAlert();
 
   useEffect(() => {
@@ -297,6 +300,61 @@ const LaboratoryDashboard: React.FC = () => {
         type: 'error'
       });
     }
+  };
+
+  const handleViewPrescription = async (prescriptionUrl: string) => {
+    try {
+      console.log('Opening prescription:', prescriptionUrl);
+      
+      const canOpen = await Linking.canOpenURL(prescriptionUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(prescriptionUrl);
+      } else {
+        showAlert({
+          title: 'Error',
+          message: 'Cannot open this prescription. Please check if the URL is valid.',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error opening prescription:', error);
+      showAlert({
+        title: 'Error',
+        message: 'Failed to open prescription. Please try again.',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleDownloadPrescription = async (prescriptionUrl: string) => {
+    try {
+      console.log('Downloading prescription:', prescriptionUrl);
+      
+      const canOpen = await Linking.canOpenURL(prescriptionUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(prescriptionUrl);
+      } else {
+        showAlert({
+          title: 'Error',
+          message: 'Cannot download this prescription. Please check if the URL is valid.',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error downloading prescription:', error);
+      showAlert({
+        title: 'Error',
+        message: 'Failed to download prescription. Please try again.',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleViewPrescriptionModal = (prescriptionUrl: string) => {
+    setSelectedPrescription(prescriptionUrl);
+    setShowPrescriptionModal(true);
   };
 
   const handleSaveReport = async () => {
@@ -613,7 +671,7 @@ const LaboratoryDashboard: React.FC = () => {
         </View>
 
         <View className="flex-row space-x-2">
-                    <Pressable
+          <Pressable
             onPress={() => handleViewPatient(item)}
             className="flex-1 py-2.5 px-3 rounded-lg bg-purple-50 items-center border border-purple-200"
           >
@@ -714,7 +772,7 @@ const LaboratoryDashboard: React.FC = () => {
         </View>
 
         <View className="flex-row space-x-2">
-                    <Pressable
+          <Pressable
             onPress={() => handleViewPatient(item)}
             className="flex-1 py-2.5 px-3 rounded-lg bg-orange-50 items-center border border-orange-200"
           >
@@ -899,528 +957,599 @@ const LaboratoryDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaProvider>
-        <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
-          <FontAwesome name="spinner" size={24} color="#6B7280" />
-          <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+        <FontAwesome name="spinner" size={24} color="#6B7280" />
+        <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <ScrollView 
-          className="flex-1"
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={handleRefresh}
-              colors={['#8B5CF6', '#10B981', '#F59E0B']}
-              tintColor="#8B5CF6"
-              title="Pull to refresh"
-              titleColor="#6B7280"
-            />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="p-6 pt-2">
-            {/* Header */}
-            <View className="mb-6">
-              <Text className="text-3xl font-bold text-gray-900 mb-2">Laboratory Dashboard</Text>
-              <Text className="text-gray-600">Manage your lab tests and patient reports</Text>
-            </View>
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <ScrollView 
+        className="flex-1"
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            colors={['#8B5CF6', '#10B981', '#F59E0B']}
+            tintColor="#8B5CF6"
+            title="Pull to refresh"
+            titleColor="#6B7280"
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="p-6 pt-2">
+          {/* Header */}
+          <View className="mb-6">
+            <Text className="text-3xl font-bold text-gray-900 mb-2">Laboratory Dashboard</Text>
+            <Text className="text-gray-600">Manage your lab tests and patient reports</Text>
+          </View>
 
-            {/* Stats Cards */}
-            <View className="flex-row space-x-3 mb-8">
-              {/* Pending Tests */}
-              <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <View className="items-center">
-                  <View className="bg-purple-100 rounded-full p-2 mb-2 self-center">
-                    <FontAwesome name="clock-o" size={14} color="#8B5CF6" />
-                  </View>
-                  <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalPending || 0}</Text>
-                  <Text className="text-xs text-gray-600 font-medium text-center">Pending</Text>
+          {/* Stats Cards */}
+          <View className="flex-row space-x-3 mb-8">
+            {/* Pending Tests */}
+            <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <View className="items-center">
+                <View className="bg-purple-100 rounded-full p-2 mb-2 self-center">
+                  <FontAwesome name="clock-o" size={14} color="#8B5CF6" />
                 </View>
-              </View>
-              
-              {/* Processing Tests */}
-              <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <View className="items-center">
-                  <View className="bg-orange-100 rounded-full p-2 mb-2 self-center">
-                    <FontAwesome name="flask" size={14} color="#F97316" />
-                  </View>
-                  <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalProcessing || 0}</Text>
-                  <Text className="text-xs text-gray-600 font-medium text-center">Processing</Text>
-                </View>
-              </View>
-              
-              {/* Completed Tests */}
-              <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <View className="items-center">
-                  <View className="bg-green-100 rounded-full p-2 mb-2 self-center">
-                    <FontAwesome name="check-circle" size={14} color="#10B981" />
-                  </View>
-                  <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalCompleted || 0}</Text>
-                  <Text className="text-xs text-gray-600 font-medium text-center">Completed</Text>
-                </View>
+                <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalPending || 0}</Text>
+                <Text className="text-xs text-gray-600 font-medium text-center">Pending</Text>
               </View>
             </View>
-
-            {/* Upcoming Appointments */}
-            <View className="mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-4">
-                Upcoming Tests ({filterAppointments(dashboardData?.pendingAppointments).length || 0})
-              </Text>
-              
-              {filterAppointments(dashboardData?.pendingAppointments).length > 0 ? (
-                <FlatList
-                  data={filterAppointments(dashboardData?.pendingAppointments)}
-                  renderItem={renderPendingAppointment}
-                  scrollEnabled={false}
-                />
-              ) : (
-                <View className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-3xl p-8 shadow-sm border border-purple-100 items-center">
-                  <View className="bg-purple-100 rounded-full p-4 mb-4">
-                    <FontAwesome name="flask" size={40} color="#8B5CF6" />
-                  </View>
-                  <Text className="text-xl font-bold text-gray-900 mb-2">No upcoming tests</Text>
-                  <Text className="text-gray-600 text-center leading-relaxed">
-                    Your upcoming lab tests will appear here. Patients can book test packages with you.
-                  </Text>
+            
+            {/* Processing Tests */}
+            <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <View className="items-center">
+                <View className="bg-orange-100 rounded-full p-2 mb-2 self-center">
+                  <FontAwesome name="flask" size={14} color="#F97316" />
                 </View>
-              )}
+                <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalProcessing || 0}</Text>
+                <Text className="text-xs text-gray-600 font-medium text-center">Processing</Text>
+              </View>
             </View>
-
-            {/* Processing Appointments */}
-            <View className="mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-4">
-                Processing & Completed Tests ({filterAppointments(dashboardData?.processingAppointments).length || 0})
-              </Text>
-              
-              {filterAppointments(dashboardData?.processingAppointments).length > 0 ? (
-                <FlatList
-                  data={filterAppointments(dashboardData?.processingAppointments)}
-                  renderItem={renderProcessingAppointment}
-                  scrollEnabled={false}
-                />
-              ) : (
-                <View className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-3xl p-8 shadow-sm border border-orange-100 items-center">
-                  <View className="bg-orange-100 rounded-full p-4 mb-4">
-                    <FontAwesome name="flask" size={40} color="#F97316" />
-                  </View>
-                  <Text className="text-xl font-bold text-gray-900 mb-2">No processing or completed tests</Text>
-                  <Text className="text-gray-600 text-center leading-relaxed">
-                    Processing and completed tests will appear here.
-                  </Text>
+            
+            {/* Completed Tests */}
+            <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <View className="items-center">
+                <View className="bg-green-100 rounded-full p-2 mb-2 self-center">
+                  <FontAwesome name="check-circle" size={14} color="#10B981" />
                 </View>
-              )}
-            </View>
-
-            {/* Completed Appointments */}
-            <View className="mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-4">Recent Tests</Text>
-              
-              {filterAppointments(dashboardData?.completedAppointments).length > 0 ? (
-                <FlatList
-                  data={filterAppointments(dashboardData?.completedAppointments)}
-                  renderItem={renderCompletedAppointment}
-                  scrollEnabled={false}
-                />
-              ) : (
-                <View className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border border-green-100 items-center">
-                  <View className="bg-green-100 rounded-full p-3 mb-3">
-                    <FontAwesome name="file-text" size={28} color="#059669" />
-                  </View>
-                  <Text className="text-lg font-semibold text-gray-900 mb-1">No completed tests</Text>
-                  <Text className="text-gray-600 text-center text-sm">
-                    Completed tests and reports will appear here
-                  </Text>
-                </View>
-              )}
+                <Text className="text-xl font-bold text-gray-900 text-center">{dashboardData?.totalCompleted || 0}</Text>
+                <Text className="text-xs text-gray-600 font-medium text-center">Completed</Text>
+              </View>
             </View>
           </View>
 
-          {/* Patient Details Modal */}
-          <Modal
-            visible={showPatientModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowPatientModal(false)}
-          >
-            <View className="flex-1 bg-black/50 justify-center items-center p-4" style={{ zIndex: 1000 }}>
-              <View className="bg-white rounded-2xl w-full max-w-lg h-[95%]" style={{ zIndex: 1001 }}>
-                {/* Header */}
-                <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
-                  <Text className="text-xl font-bold text-gray-900">Patient Profile</Text>
-                  <Pressable onPress={() => setShowPatientModal(false)}>
-                    <FontAwesome name="times" size={24} color="#6B7280" />
-                  </Pressable>
+          {/* Upcoming Appointments */}
+          <View className="mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-4">
+              Upcoming Tests ({filterAppointments(dashboardData?.pendingAppointments).length || 0})
+            </Text>
+            
+            {filterAppointments(dashboardData?.pendingAppointments).length > 0 ? (
+              <View>
+                {filterAppointments(dashboardData?.pendingAppointments).map((item) => renderPendingAppointment({ item }))}
+              </View>
+            ) : (
+              <View className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-3xl p-8 shadow-sm border border-purple-100 items-center">
+                <View className="bg-purple-100 rounded-full p-4 mb-4">
+                  <FontAwesome name="flask" size={40} color="#8B5CF6" />
                 </View>
-                
-                {selectedAppointment && (
-                  <ScrollView 
-                    className="flex-1 p-6"
-                    showsVerticalScrollIndicator={true}
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                  >
-                    {/* Patient Header */}
-                    <View className="flex-row items-center mb-6 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-2xl">
-                      {selectedAppointment.patient.profilePicture ? (
-                        <Image
-                          source={{ uri: selectedAppointment.patient.profilePicture }}
-                          className="w-20 h-20 rounded-full mr-4"
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View className="w-20 h-20 rounded-full bg-purple-100 items-center justify-center mr-4">
-                          <FontAwesome name="user" size={32} color="#8B5CF6" />
-                        </View>
-                      )}
-                      <View className="flex-1">
-                        <Text className="text-xl font-bold text-gray-900 mb-1">{selectedAppointment.patient.name}</Text>
-                        <Text className="text-gray-600 mb-1">{selectedAppointment.patient.email}</Text>
-                        <Text className="text-gray-500 text-sm">{selectedAppointment.patient.phone}</Text>
+                <Text className="text-xl font-bold text-gray-900 mb-2">No upcoming tests</Text>
+                <Text className="text-gray-600 text-center leading-relaxed">
+                  Your upcoming lab tests will appear here. Patients can book test packages with you.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Processing Appointments */}
+          <View className="mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-4">
+              Processing & Completed Tests ({filterAppointments(dashboardData?.processingAppointments).length || 0})
+            </Text>
+            
+            {filterAppointments(dashboardData?.processingAppointments).length > 0 ? (
+              <View>
+                {filterAppointments(dashboardData?.processingAppointments).map((item) => renderProcessingAppointment({ item }))}
+              </View>
+            ) : (
+              <View className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-3xl p-8 shadow-sm border border-orange-100 items-center">
+                <View className="bg-orange-100 rounded-full p-4 mb-4">
+                  <FontAwesome name="flask" size={40} color="#F97316" />
+                </View>
+                <Text className="text-xl font-bold text-gray-900 mb-2">No processing or completed tests</Text>
+                <Text className="text-gray-600 text-center leading-relaxed">
+                  Processing and completed tests will appear here.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Completed Appointments */}
+          <View className="mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-4">Recent Tests</Text>
+            
+            {filterAppointments(dashboardData?.completedAppointments).length > 0 ? (
+              <View>
+                {filterAppointments(dashboardData?.completedAppointments).map((item) => renderCompletedAppointment({ item }))}
+              </View>
+            ) : (
+              <View className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border border-green-100 items-center">
+                <View className="bg-green-100 rounded-full p-3 mb-3">
+                  <FontAwesome name="file-text" size={28} color="#059669" />
+                </View>
+                <Text className="text-lg font-semibold text-gray-900 mb-1">No completed tests</Text>
+                <Text className="text-gray-600 text-center text-sm">
+                  Completed tests and reports will appear here
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Patient Details Modal */}
+        <Modal
+          visible={showPatientModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowPatientModal(false)}
+          presentationStyle="fullScreen"
+        >
+        
+          <View className="flex-1 bg-black/50" style={{ zIndex: 1000 }}>
+            <View className="bg-white w-full h-full" style={{ zIndex: 1001 }}>
+              {/* Header */}
+              <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
+                <Text className="text-xl font-bold text-gray-900">Patient Profile</Text>
+                <Pressable onPress={() => setShowPatientModal(false)}>
+                  <FontAwesome name="times" size={24} color="#6B7280" />
+                </Pressable>
+              </View>
+              
+              {selectedAppointment && (
+                <ScrollView 
+                  className="flex-1 p-6"
+                  showsVerticalScrollIndicator={true}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                  {/* Patient Header */}
+                  <View className="flex-row items-center mb-6 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-2xl">
+                    {selectedAppointment.patient.profilePicture ? (
+                      <Image
+                        source={{ uri: selectedAppointment.patient.profilePicture }}
+                        className="w-20 h-20 rounded-full mr-4"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-20 h-20 rounded-full bg-purple-100 items-center justify-center mr-4">
+                        <FontAwesome name="user" size={32} color="#8B5CF6" />
+                      </View>
+                    )}
+                    <View className="flex-1">
+                      <Text className="text-xl font-bold text-gray-900 mb-1">{selectedAppointment.patient.name}</Text>
+                      <Text className="text-gray-600 mb-1">{selectedAppointment.patient.email}</Text>
+                      <Text className="text-gray-500 text-sm">{selectedAppointment.patient.phone}</Text>
+                    </View>
+                    
+
+                  </View>
+
+                  {/* Personal Information */}
+                  <View className="mb-6">
+                    <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                      <FontAwesome name="user-circle" size={18} color="#8B5CF6" style={{ marginRight: 8 }} />
+                      Personal Information
+                    </Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Age</Text>
+                        <Text className="text-gray-900">
+                          {selectedAppointment.patient.age ? `${selectedAppointment.patient.age} years` : 'Not specified'}
+                        </Text>
                       </View>
                       
-
-                    </View>
-
-                    {/* Personal Information */}
-                    <View className="mb-6">
-                      <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                        <FontAwesome name="user-circle" size={18} color="#8B5CF6" style={{ marginRight: 8 }} />
-                        Personal Information
-                      </Text>
-                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Age</Text>
-                          <Text className="text-gray-900">
-                            {selectedAppointment.patient.age ? `${selectedAppointment.patient.age} years` : 'Not specified'}
-                          </Text>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Gender</Text>
-                          <Text className="text-gray-900 capitalize">
-                            {selectedAppointment.patient.gender || 'Not specified'}
-                          </Text>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">City</Text>
-                          <Text className="text-gray-900">
-                            {selectedAppointment.patient.city || 'Not specified'}
-                          </Text>
-                        </View>
-                        
-                        <View>
-                          <Text className="text-sm font-medium text-gray-700 mb-1">Address</Text>
-                          {selectedAppointment.patient.address?.address ? (
-                            <>
-                              <Text className="text-gray-900 text-sm">{selectedAppointment.patient.address.address}</Text>
-                              {selectedAppointment.patient.address.pinCode && (
-                                <Text className="text-gray-500 text-sm">PIN: {selectedAppointment.patient.address.pinCode}</Text>
-                              )}
-                              {(selectedAppointment.patient.address.latitude && selectedAppointment.patient.address.longitude) && (
-                                <Text className="text-gray-500 text-sm">
-                                  Location: {selectedAppointment.patient.address.latitude.toFixed(4)}, {selectedAppointment.patient.address.longitude.toFixed(4)}
-                                </Text>
-                              )}
-                            </>
-                          ) : (
-                            <Text className="text-gray-500 text-sm">Not specified</Text>
-                          )}
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Medical Information */}
-                    {(selectedAppointment.patient.medicalHistory || selectedAppointment.patient.medicalHistoryPdfs?.length) && (
-                      <View className="mb-6">
-                        <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                          <FontAwesome name="heartbeat" size={18} color="#EF4444" style={{ marginRight: 8 }} />
-                          Medical History
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Gender</Text>
+                        <Text className="text-gray-900 capitalize">
+                          {selectedAppointment.patient.gender || 'Not specified'}
                         </Text>
-                        <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
-                          {selectedAppointment.patient.medicalHistory && (
-                            <View>
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Medical Notes</Text>
-                              <Text className="text-gray-900 text-sm leading-relaxed">
-                                {selectedAppointment.patient.medicalHistory}
-                              </Text>
-                            </View>
-                          )}
-                          
-                          {selectedAppointment.patient.medicalHistoryPdfs && selectedAppointment.patient.medicalHistoryPdfs.length > 0 && (
-                            <View>
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Medical Documents</Text>
-                              <View className="space-y-2">
-                                {selectedAppointment.patient.medicalHistoryPdfs.map((pdf, index) => (
-                                  <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
-                                    <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
-                                    <View className="flex-1">
-                                      <Text className="text-sm text-gray-700 font-medium">Medical Document {index + 1}</Text>
-                                      <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
-                                        {pdf.length > 50 ? pdf.substring(0, 50) + '...' : pdf}
-                                      </Text>
-                                    </View>
-                                    <Pressable 
-                                      onPress={() => handleViewDocument(pdf, `Medical Document ${index + 1}`)}
-                                      className="bg-blue-500 px-3 py-2 rounded-lg"
-                                    >
-                                      <Text className="text-white text-xs font-medium">View</Text>
-                                    </Pressable>
-                                  </View>
-                                ))}
-                              </View>
-                            </View>
-                          )}
-                        </View>
                       </View>
-                    )}
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">City</Text>
+                        <Text className="text-gray-900">
+                          {selectedAppointment.patient.city || 'Not specified'}
+                        </Text>
+                      </View>
+                      
+                      <View>
+                        <Text className="text-sm font-medium text-gray-700 mb-1">Address</Text>
+                        {selectedAppointment.patient.address?.address ? (
+                          <>
+                            <Text className="text-gray-900 text-sm">{selectedAppointment.patient.address.address}</Text>
+                            {selectedAppointment.patient.address.pinCode && (
+                              <Text className="text-gray-500 text-sm">PIN: {selectedAppointment.patient.address.pinCode}</Text>
+                            )}
+                            {(selectedAppointment.patient.address.latitude && selectedAppointment.patient.address.longitude) && (
+                              <Text className="text-gray-500 text-sm">
+                                Location: {selectedAppointment.patient.address.latitude.toFixed(4)}, {selectedAppointment.patient.address.longitude.toFixed(4)}
+                              </Text>
+                            )}
+                          </>
+                        ) : (
+                          <Text className="text-gray-500 text-sm">Not specified</Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
 
-                    {/* Test Information */}
+                  {/* Medical Information */}
+                  {(selectedAppointment.patient.medicalHistory || selectedAppointment.patient.medicalHistoryPdfs?.length) && (
                     <View className="mb-6">
                       <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                        <FontAwesome name="flask" size={18} color="#8B5CF6" style={{ marginRight: 8 }} />
-                        Test Details
+                        <FontAwesome name="heartbeat" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+                        Medical History
                       </Text>
-                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Test Package</Text>
-                          <Text className="text-gray-900">{selectedAppointment.laboratoryService?.name || 'Service not available'}</Text>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Selected Tests</Text>
-                          <Text className="text-gray-900">{getSelectedTestsNames(selectedAppointment)}</Text>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Collection Type</Text>
-                          <View className="flex-row items-center">
-                            <View 
-                              className="w-2 h-2 rounded-full mr-2"
-                              style={{ 
-                                backgroundColor: selectedAppointment.collectionType === 'home' ? '#F59E0B' : '#8B5CF6' 
-                              }}
-                            />
-                            <Text className="text-gray-900 capitalize">{selectedAppointment.collectionType}</Text>
-                          </View>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Status</Text>
-                          <View 
-                            className="px-3 py-1 rounded-full"
-                            style={{ 
-                              backgroundColor: selectedAppointment.status === 'pending' || selectedAppointment.status === 'upcoming' ? '#FEF3C7' : 
-                                         selectedAppointment.status === 'processing' || selectedAppointment.status === 'collected' ? '#FED7AA' : '#D1FAE5' 
-                            }}
-                          >
-                            <Text 
-                              className="text-xs font-medium"
-                              style={{ 
-                                color: selectedAppointment.status === 'pending' || selectedAppointment.status === 'upcoming' ? '#D97706' : 
-                                       selectedAppointment.status === 'processing' || selectedAppointment.status === 'collected' ? '#EA580C' : '#059669' 
-                              }}
-                            >
-                              {selectedAppointment.status === 'pending' || selectedAppointment.status === 'upcoming' ? 'Pending' : 
-                               selectedAppointment.status === 'processing' || selectedAppointment.status === 'collected' ? 'Processing' : 'Completed'}
+                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+                        {selectedAppointment.patient.medicalHistory && (
+                          <View>
+                            <Text className="text-sm font-medium text-gray-700 mb-2">Medical Notes</Text>
+                            <Text className="text-gray-900 text-sm leading-relaxed">
+                              {selectedAppointment.patient.medicalHistory}
                             </Text>
                           </View>
+                        )}
+                        
+                        {selectedAppointment.patient.medicalHistoryPdfs && selectedAppointment.patient.medicalHistoryPdfs.length > 0 && (
+                          <View>
+                            <Text className="text-sm font-medium text-gray-700 mb-2">Medical Documents</Text>
+                            <View className="space-y-2">
+                              {selectedAppointment.patient.medicalHistoryPdfs.map((pdf, index) => (
+                                <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                                  <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
+                                  <View className="flex-1">
+                                    <Text className="text-sm text-gray-700 font-medium">Medical Document {index + 1}</Text>
+                                    <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
+                                      {pdf.length > 50 ? pdf.substring(0, 50) + '...' : pdf}
+                                    </Text>
+                                  </View>
+                                  <Pressable 
+                                    onPress={() => handleViewDocument(pdf, `Medical Document ${index + 1}`)}
+                                    className="bg-blue-500 px-3 py-2 rounded-lg"
+                                  >
+                                    <Text className="text-white text-xs font-medium">View</Text>
+                                  </Pressable>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Test Information */}
+                  <View className="mb-6">
+                    <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                      <FontAwesome name="flask" size={18} color="#8B5CF6" style={{ marginRight: 8 }} />
+                      Test Details
+                    </Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Test Package</Text>
+                        <Text className="text-gray-900">{selectedAppointment.laboratoryService?.name || 'Service not available'}</Text>
+                      </View>
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Selected Tests</Text>
+                        <Text className="text-gray-900">{getSelectedTestsNames(selectedAppointment)}</Text>
+                      </View>
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Collection Type</Text>
+                        <View className="flex-row items-center">
+                          <View 
+                            className="w-2 h-2 rounded-full mr-2"
+                            style={{ 
+                              backgroundColor: selectedAppointment.collectionType === 'home' ? '#F59E0B' : '#8B5CF6' 
+                            }}
+                          />
+                          <Text className="text-gray-900 capitalize">{selectedAppointment.collectionType}</Text>
+                        </View>
+                      </View>
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Status</Text>
+                        <View 
+                          className="px-3 py-1 rounded-full"
+                          style={{ 
+                            backgroundColor: selectedAppointment.status === 'pending' || selectedAppointment.status === 'upcoming' ? '#FEF3C7' : 
+                                       selectedAppointment.status === 'processing' || selectedAppointment.status === 'collected' ? '#FED7AA' : '#D1FAE5' 
+                          }}
+                        >
+                          <Text 
+                            className="text-xs font-medium"
+                            style={{ 
+                              color: selectedAppointment.status === 'pending' || selectedAppointment.status === 'upcoming' ? '#D97706' : 
+                                     selectedAppointment.status === 'processing' || selectedAppointment.status === 'collected' ? '#EA580C' : '#059669' 
+                            }}
+                          >
+                            {selectedAppointment.status === 'pending' || selectedAppointment.status === 'upcoming' ? 'Pending' : 
+                             selectedAppointment.status === 'processing' || selectedAppointment.status === 'collected' ? 'Processing' : 'Completed'}
+                          </Text>
                         </View>
                       </View>
                     </View>
+                  </View>
 
-                    {/* Test Reports Section */}
-                    {(selectedAppointment.reportResult || selectedAppointment.testReportPdfs?.length || selectedAppointment.notes) && (
-                      <View className="mb-6">
-                        <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                          <FontAwesome name="file-text" size={18} color="#10B981" style={{ marginRight: 8 }} />
-                          Test Reports
-                        </Text>
-                        <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
-                          {selectedAppointment.reportResult && (
-                            <View>
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Report Details</Text>
-                              <Text className="text-gray-900 text-sm leading-relaxed">
-                                {selectedAppointment.reportResult}
+                  {/* Test Reports Section */}
+                  {(selectedAppointment.reportResult || selectedAppointment.testReportPdfs?.length || selectedAppointment.notes) && (
+                    <View className="mb-6">
+                      <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                        <FontAwesome name="file-text" size={18} color="#10B981" style={{ marginRight: 8 }} />
+                        Test Reports
+                      </Text>
+                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+                        {selectedAppointment.reportResult && (
+                          <View>
+                            <Text className="text-sm font-medium text-gray-700 mb-2">Report Details</Text>
+                            <Text className="text-gray-900 text-sm leading-relaxed">
+                              {selectedAppointment.reportResult}
+                            </Text>
+                          </View>
+                        )}
+                        
+                        {selectedAppointment.testReportPdfs && selectedAppointment.testReportPdfs.length > 0 && (
+                          <View>
+                            <Text className="text-sm font-medium text-gray-700 mb-2">Test Report PDFs</Text>
+                            <View className="space-y-2">
+                              {selectedAppointment.testReportPdfs.map((pdf, index) => (
+                                <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                                  <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
+                                  <View className="flex-1">
+                                    <Text className="text-sm text-gray-700 font-medium">Test Report {index + 1}</Text>
+                                    <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
+                                      {pdf.length > 50 ? pdf.substring(0, 50) + '...' : pdf}
+                                    </Text>
+                                  </View>
+                                  <Pressable 
+                                    onPress={() => handleViewDocument(pdf, `Test Report ${index + 1}`)}
+                                    className="bg-blue-500 px-3 py-2 rounded-lg"
+                                  >
+                                    <Text className="text-white text-xs font-medium">View</Text>
+                                  </Pressable>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        )}
+                        
+                        {selectedAppointment.notes && (
+                          <View>
+                            <Text className="text-sm font-medium text-gray-700 mb-2">Laboratory Notes</Text>
+                            <Text className="text-gray-900 text-sm leading-relaxed">
+                              {selectedAppointment.notes}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Prescription Section */}
+                  {(selectedAppointment.patient.prescriptionUrl || selectedAppointment.patient.prescriptionPdfs?.length) && (
+                    <View className="mb-6">
+                      <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                        <FontAwesome name="medkit" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+                        Prescription
+                      </Text>
+                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+                        {selectedAppointment.patient.prescriptionUrl && (
+                          <View className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                            <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
+                            <View className="flex-1">
+                              <Text className="text-sm text-gray-700 font-medium">Prescription</Text>
+                              <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
+                                {selectedAppointment.patient.prescriptionUrl.length > 50 ? selectedAppointment.patient.prescriptionUrl.substring(0, 50) + '...' : selectedAppointment.patient.prescriptionUrl}
                               </Text>
                             </View>
-                          )}
-                          
-                          {selectedAppointment.testReportPdfs && selectedAppointment.testReportPdfs.length > 0 && (
-                            <View>
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Test Report PDFs</Text>
-                              <View className="space-y-2">
-                                {selectedAppointment.testReportPdfs.map((pdf, index) => (
-                                  <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
-                                    <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
-                                    <View className="flex-1">
-                                      <Text className="text-sm text-gray-700 font-medium">Test Report {index + 1}</Text>
-                                      <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
-                                        {pdf.length > 50 ? pdf.substring(0, 50) + '...' : pdf}
-                                      </Text>
-                                    </View>
+                            <View className="flex-row space-x-2">
+                              <Pressable 
+                                onPress={() => {
+                                  if (selectedAppointment.patient.prescriptionUrl) {
+                                    handleViewPrescription(selectedAppointment.patient.prescriptionUrl);
+                                  }
+                                }}
+                                className="bg-blue-500 px-3 py-2 rounded-lg"
+                              >
+                                <Text className="text-white text-xs font-medium">View</Text>
+                              </Pressable>
+                              <Pressable 
+                                onPress={() => {
+                                  if (selectedAppointment.patient.prescriptionUrl) {
+                                    handleDownloadPrescription(selectedAppointment.patient.prescriptionUrl);
+                                  }
+                                }}
+                                className="bg-green-500 px-3 py-2 rounded-lg"
+                              >
+                                <Text className="text-white text-xs font-medium">Download</Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                        )}
+                        
+                        {selectedAppointment.patient.prescriptionPdfs && selectedAppointment.patient.prescriptionPdfs.length > 0 && (
+                          <View>
+                            <Text className="text-sm font-medium text-gray-700 mb-2">Prescription PDFs</Text>
+                            <View className="space-y-2">
+                              {selectedAppointment.patient.prescriptionPdfs.map((pdf, index) => (
+                                <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                                  <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
+                                  <View className="flex-1">
+                                    <Text className="text-sm text-gray-700 font-medium">Prescription {index + 1}</Text>
+                                    <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
+                                      {pdf.length > 50 ? pdf.substring(0, 50) + '...' : pdf}
+                                    </Text>
+                                  </View>
+                                  <View className="flex-row space-x-2">
                                     <Pressable 
-                                      onPress={() => handleViewDocument(pdf, `Test Report ${index + 1}`)}
+                                      onPress={() => handleViewPrescription(pdf)}
                                       className="bg-blue-500 px-3 py-2 rounded-lg"
                                     >
                                       <Text className="text-white text-xs font-medium">View</Text>
                                     </Pressable>
+                                    <Pressable 
+                                      onPress={() => handleDownloadPrescription(pdf)}
+                                      className="bg-green-500 px-3 py-2 rounded-lg"
+                                    >
+                                      <Text className="text-white text-xs font-medium">Download</Text>
+                                    </Pressable>
                                   </View>
-                                ))}
-                              </View>
+                                </View>
+                              ))}
                             </View>
-                          )}
-                          
-                          {selectedAppointment.notes && (
-                            <View>
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Laboratory Notes</Text>
-                              <Text className="text-gray-900 text-sm leading-relaxed">
-                                {selectedAppointment.notes}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
+                          </View>
+                        )}
                       </View>
-                    )}
+                    </View>
+                  )}
 
-                    {/* Appointment Information */}
-                    <View className="mb-6">
-                      <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                        <FontAwesome name="calendar" size={18} color="#10B981" style={{ marginRight: 8 }} />
-                        Appointment Details
-                      </Text>
-                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                  {/* Appointment Information */}
+                  <View className="mb-6">
+                    <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                      <FontAwesome name="calendar" size={18} color="#10B981" style={{ marginRight: 8 }} />
+                      Appointment Details
+                    </Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Appointment Time</Text>
+                        <Text className="text-gray-900">{formatAppointmentTime(selectedAppointment.timeSlot, selectedAppointment.timeSlotDisplay)}</Text>
+                      </View>
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Created</Text>
+                        <Text className="text-gray-900">
+                          {new Date(selectedAppointment.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Profile Information */}
+                  <View className="mb-6">
+                    <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
+                      <FontAwesome name="clock-o" size={18} color="#6B7280" style={{ marginRight: 8 }} />
+                      Profile Information
+                    </Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                      {selectedAppointment.patient.createdAt && (
                         <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Appointment Time</Text>
-                          <Text className="text-gray-900">{formatAppointmentTime(selectedAppointment.timeSlot, selectedAppointment.timeSlotDisplay)}</Text>
-                        </View>
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Created</Text>
+                          <Text className="text-sm font-medium text-gray-700">Patient Since</Text>
                           <Text className="text-gray-900">
-                            {new Date(selectedAppointment.createdAt).toLocaleDateString('en-US', {
+                            {new Date(selectedAppointment.patient.createdAt).toLocaleDateString('en-US', {
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric'
                             })}
                           </Text>
                         </View>
-                      </View>
-                    </View>
-
-                    {/* Profile Information */}
-                    <View className="mb-6">
-                      <Text className="text-lg font-semibold text-gray-900 mb-4 flex-row items-center">
-                        <FontAwesome name="clock-o" size={18} color="#6B7280" style={{ marginRight: 8 }} />
-                        Profile Information
-                      </Text>
-                      <View className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                        {selectedAppointment.patient.createdAt && (
-                          <View className="flex-row justify-between">
-                            <Text className="text-sm font-medium text-gray-700">Patient Since</Text>
-                            <Text className="text-gray-900">
-                              {new Date(selectedAppointment.patient.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </Text>
-                          </View>
-                        )}
-                        
-                        {selectedAppointment.patient.updatedAt && (
-                          <View className="flex-row justify-between">
-                            <Text className="text-sm font-medium text-gray-700">Last Updated</Text>
-                            <Text className="text-gray-900">
-                              {new Date(selectedAppointment.patient.updatedAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </Text>
-                          </View>
-                        )}
-                        
-                        <View className="flex-row justify-between">
-                          <Text className="text-sm font-medium text-gray-700">Profile Status</Text>
-                          <View className="flex-row items-center">
-                            <View className={`w-2 h-2 rounded-full mr-2 ${
-                              selectedAppointment.patient.age && selectedAppointment.patient.gender && selectedAppointment.patient.city 
-                                ? 'bg-green-500' : 'bg-yellow-500'
-                            }`} />
-                            <Text className="text-gray-900 text-sm">
-                              {selectedAppointment.patient.age && selectedAppointment.patient.gender && selectedAppointment.patient.city 
-                                ? 'Complete' : 'Incomplete'}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Quick Actions */}
-                    <View className="mb-6">
-                      <View className="flex-row space-x-3">
-                        <Pressable
-                          onPress={() => {
-                            setShowPatientModal(false);
-                            handleAddReport(selectedAppointment);
-                          }}
-                          className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
-                        >
-                          <FontAwesome name="upload" size={16} color="white" style={{ marginBottom: 4 }} />
-                          <Text className="text-white font-medium text-sm">Upload Test Reports</Text>
-                        </Pressable>
-                      </View>
+                      )}
                       
-                      {/* Mark as Read Button - Only show for processing appointments */}
-                      {(selectedAppointment.status === 'processing' || selectedAppointment.status === 'collected') && (
-                        <View className="mt-3">
-                          <Pressable
-                            onPress={() => handleMarkAsRead(selectedAppointment)}
-                            disabled={!selectedAppointment.reportsUploaded}
-                            className={`py-3 px-4 rounded-xl items-center ${
-                              (() => {
-                                const hasReportDetails = selectedAppointment.reportResult && selectedAppointment.reportResult.trim() !== '';
-                                const hasPdfs = selectedAppointment.testReportPdfs && selectedAppointment.testReportPdfs.length > 0;
-                                return hasReportDetails && hasPdfs ? 'bg-blue-500' : 'bg-gray-300';
-                              })()
-                            }`}
-                          >
-                            <FontAwesome 
-                              name="check-circle" 
-                              size={16} 
-                              color="white" 
-                              style={{ marginBottom: 4 }} 
-                            />
-                            <Text className="text-white font-medium text-sm text-center">
-                              {(() => {
-                                const hasReportDetails = selectedAppointment.reportResult && selectedAppointment.reportResult.trim() !== '';
-                                const hasPdfs = selectedAppointment.testReportPdfs && selectedAppointment.testReportPdfs.length > 0;
-                                
-                                if (!hasReportDetails && !hasPdfs) {
-                                  return 'No Reports Uploaded';
-                                } else if (!hasReportDetails) {
-                                  return 'Missing Report Details';
-                                } else if (!hasPdfs) {
-                                  return 'Missing PDFs';
-                                } else {
-                                  return 'Mark as Read';
-                                }
-                              })()}
-                            </Text>
-                          </Pressable>
+                      {selectedAppointment.patient.updatedAt && (
+                        <View className="flex-row justify-between">
+                          <Text className="text-sm font-medium text-gray-700">Last Updated</Text>
+                          <Text className="text-gray-900">
+                            {new Date(selectedAppointment.patient.updatedAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </Text>
                         </View>
                       )}
+                      
+                      <View className="flex-row justify-between">
+                        <Text className="text-sm font-medium text-gray-700">Profile Status</Text>
+                        <View className="flex-row items-center">
+                          <View className={`w-2 h-2 rounded-full mr-2 ${
+                            selectedAppointment.patient.age && selectedAppointment.patient.gender && selectedAppointment.patient.city 
+                              ? 'bg-green-500' : 'bg-yellow-500'
+                          }`} />
+                          <Text className="text-gray-900 text-sm">
+                            {selectedAppointment.patient.age && selectedAppointment.patient.gender && selectedAppointment.patient.city 
+                              ? 'Complete' : 'Incomplete'}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
-                  </ScrollView>
-                )}
-              </View>
+                  </View>
+
+                  {/* Quick Actions */}
+                  <View className="mb-6">
+                    <View className="flex-row space-x-3">
+                      <Pressable
+                        onPress={() => {
+                          setShowPatientModal(false);
+                          handleAddReport(selectedAppointment);
+                        }}
+                        className="flex-1 py-3 px-4 rounded-xl bg-green-500 items-center"
+                      >
+                        <FontAwesome name="upload" size={16} color="white" style={{ marginBottom: 4 }} />
+                        <Text className="text-white font-medium text-sm">Upload Test Reports</Text>
+                      </Pressable>
+                    </View>
+                    
+                    {/* Mark as Read Button - Only show for processing appointments */}
+                    {(selectedAppointment.status === 'processing' || selectedAppointment.status === 'collected') && (
+                      <View className="mt-3">
+                        <Pressable
+                          onPress={() => handleMarkAsRead(selectedAppointment)}
+                          disabled={!selectedAppointment.reportsUploaded}
+                          className={`py-3 px-4 rounded-xl items-center ${
+                            (() => {
+                              const hasReportDetails = selectedAppointment.reportResult && selectedAppointment.reportResult.trim() !== '';
+                              const hasPdfs = selectedAppointment.testReportPdfs && selectedAppointment.testReportPdfs.length > 0;
+                              return hasReportDetails && hasPdfs ? 'bg-blue-500' : 'bg-gray-300';
+                            })()
+                          }`}
+                        >
+                          <FontAwesome 
+                            name="check-circle" 
+                            size={16} 
+                            color="white" 
+                            style={{ marginBottom: 4 }} 
+                          />
+                          <Text className="text-white font-medium text-sm text-center">
+                            {(() => {
+                              const hasReportDetails = selectedAppointment.reportResult && selectedAppointment.reportResult.trim() !== '';
+                              const hasPdfs = selectedAppointment.testReportPdfs && selectedAppointment.testReportPdfs.length > 0;
+                              
+                              if (!hasReportDetails && !hasPdfs) {
+                                return 'No Reports Uploaded';
+                              } else if (!hasReportDetails) {
+                                return 'Missing Report Details';
+                              } else if (!hasPdfs) {
+                                return 'Missing PDFs';
+                              } else {
+                                return 'Mark as Read';
+                              }
+                            })()}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                </ScrollView>
+              )}
+            </View>
             </View>
           </Modal>
 
@@ -1430,9 +1559,10 @@ const LaboratoryDashboard: React.FC = () => {
             transparent={true}
             animationType="slide"
             onRequestClose={() => setShowReportModal(false)}
+            presentationStyle="fullScreen"
           >
-            <View className="flex-1 bg-black/50 justify-center items-center p-4" style={{ zIndex: 1000 }}>
-              <View className="bg-white rounded-2xl w-full max-w-lg h-[90%]" style={{ zIndex: 1001 }}>
+            <View className="flex-1 bg-black/50" style={{ zIndex: 1000 }}>
+              <View className="bg-white w-full h-full" style={{ zIndex: 1001 }}>
                 {/* Header */}
                 <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
                   <Text className="text-xl font-bold text-gray-900">Upload Test Reports</Text>
@@ -1638,6 +1768,55 @@ const LaboratoryDashboard: React.FC = () => {
             </View>
           </Modal>
 
+          {/* Prescription Modal */}
+          <Modal
+            visible={showPrescriptionModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowPrescriptionModal(false)}
+            presentationStyle="fullScreen"
+          >
+            <View className="flex-1 bg-black/50" style={{ zIndex: 1000 }}>
+              <View className="bg-white w-full h-full" style={{ zIndex: 1001 }}>
+                {/* Header */}
+                <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
+                  <Text className="text-xl font-bold text-gray-900">Prescription</Text>
+                    <Pressable onPress={() => setShowPrescriptionModal(false)}>
+                    <FontAwesome name="times" size={24} color="#6B7280" />
+                    </Pressable>
+                </View>
+
+                {selectedPrescription && (
+                  <ScrollView 
+                    className="flex-1 p-6"
+                    showsVerticalScrollIndicator={true}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                  >
+                    <View className="bg-white border border-gray-200 rounded-xl p-4">
+                              <Pressable
+                        onPress={() => handleViewPrescription(selectedPrescription)}
+                        className="border-2 border-dashed border-gray-300 rounded-xl p-6 items-center"
+                      >
+                        <FontAwesome name="upload" size={24} color="#6B7280" style={{ marginBottom: 8 }} />
+                        <Text className="text-gray-700 font-medium text-base">View Prescription</Text>
+                        <Text className="text-gray-500 text-sm mt-1">Tap to view prescription</Text>
+                              </Pressable>
+                      
+                  <Pressable
+                        onPress={() => handleDownloadPrescription(selectedPrescription)}
+                        className="mt-4 border-2 border-dashed border-gray-300 rounded-xl p-6 items-center"
+                  >
+                        <FontAwesome name="download" size={24} color="#6B7280" style={{ marginBottom: 8 }} />
+                        <Text className="text-gray-700 font-medium text-base">Download Prescription</Text>
+                        <Text className="text-gray-500 text-sm mt-1">Tap to download</Text>
+                  </Pressable>
+                </View>
+                  </ScrollView>
+                )}
+              </View>
+            </View>
+          </Modal>
+
           <AlertComponent />
         </ScrollView>
 
@@ -1662,12 +1841,12 @@ const LaboratoryDashboard: React.FC = () => {
             }}
           >
             <FontAwesome name="plus" size={28} color="white" />
+
           </Pressable>
           <Text className="mt-2 text-xs text-blue-700 font-medium">Manage Products</Text>
         </View>
       </SafeAreaView>
-    </SafeAreaProvider>
-  );
-};
+    );
+  };
 
-export default LaboratoryDashboard;
+  export default LaboratoryDashboard;

@@ -170,7 +170,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
           <View style={styles.placeholder} />
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
           <View style={styles.form}>
             {/* Product Name */}
             <View style={styles.inputGroup}>

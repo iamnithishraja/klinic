@@ -223,7 +223,7 @@ export default function OrderDetailsScreen() {
               
               <View className="space-y-4">
                 {order.products.map((item, index) => (
-                  <View key={index} className="bg-gray-50 rounded-xl p-4">
+                  <View key={`${item.product._id}-${item.quantity}-${index}`} className="bg-gray-50 rounded-xl p-4">
                     <View className="flex-row justify-between items-start mb-2">
                       <Text className="text-lg font-semibold text-gray-900 flex-1">
                         {item.product.name}
