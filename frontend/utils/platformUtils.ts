@@ -7,6 +7,7 @@ export const getInitialRoute = (): string => {
   if (isWeb) {
     return '/landing';
   } else {
+    // For mobile, check if user is already logged in before redirecting to login
     return '/(auth)/login';
   }
 };

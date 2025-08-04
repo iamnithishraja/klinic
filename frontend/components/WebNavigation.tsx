@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 // @ts-ignore
 import { useRouter } from 'expo-router';
 
 import Logo from './Logo';
+import { isWeb } from '@/utils/platformUtils';
 
 interface WebNavigationProps {
   onLogin?: () => void;
@@ -33,12 +34,17 @@ const WebNavigation: React.FC<WebNavigationProps> = ({
     }
   };
 
+  // Only show full navigation on web
+  if (!isWeb) {
+    return null; // Don't show web navigation on mobile
+  }
+  
   return (
     <View className="px-6 py-4 flex-row justify-between items-center bg-white/80 backdrop-blur-sm border-b border-gray-100">
       <Logo size="small" />
       
       <View className="flex-row items-center space-x-6">
-        {/* Navigation Links */}
+        {/* Navigation Links - only visible on larger screens */}
         <View className="hidden md:flex-row space-x-6">
           <TouchableOpacity>
             <Text className="text-text-secondary hover:text-primary font-medium">

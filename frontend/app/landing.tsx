@@ -27,6 +27,9 @@ import SkeletonLoader, {
   SkeletonTestimonial 
 } from '@/components/SkeletonLoader';
 
+// Utils
+import { isWeb, isMobile } from '@/utils/platformUtils';
+
 // Types
 interface FeatureCard {
   icon: string;
@@ -47,6 +50,18 @@ const LandingPage: React.FC = () => {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const router = useRouter();
   const { width } = Dimensions.get('window');
+
+  // Redirect to login screen if on mobile
+  useEffect(() => {
+    if (isMobile) {
+      // On mobile devices, redirect to login screen
+      router.replace('/(auth)/login' as any);
+    }
+    // On web, make sure we stay on landing page
+    else if (isWeb) {
+      console.log('Showing landing page on web');
+    }
+  }, [router]);
 
   // Simulate loading for skeleton states
   useEffect(() => {

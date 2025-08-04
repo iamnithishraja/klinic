@@ -81,7 +81,7 @@ export default function LoginScreen() {
       await store.set('token', response.data.token);
       setUser(response.data.user);
 
-      // Navigate to home
+      // Navigate to home based on user role
       router.replace('/(tabs)' as any);
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -110,7 +110,7 @@ export default function LoginScreen() {
         suspensionMessage += '\n\nPlease contact support for assistance.';
         setError(suspensionMessage);
       } else {
-      setError(error.response?.data?.message || 'Login failed. Please try again.');
+        setError(error.response?.data?.message || 'Login failed. Please try again.');
       }
     } finally {
       setLoading(false);

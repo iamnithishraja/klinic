@@ -10,7 +10,7 @@ import { AxiosError } from 'axios';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
 import { useUserStore } from '@/store/userStore';
-import { getInitialRoute, shouldShowLandingPage } from '@/utils/platformUtils';
+import { getInitialRoute, shouldShowLandingPage, isWeb } from '@/utils/platformUtils';
 
 import '../global.css';
 
@@ -35,7 +35,14 @@ function AppContent() {
 
   // Platform-specific routing logic
   useEffect(() => {
-    setInitialRoute(getInitialRoute());
+    const route = getInitialRoute();
+    setInitialRoute(route);
+    
+    // Force navigation to landing page on web
+    if (isWeb && route === '/landing') {
+      const router = useRouter();
+      router.replace('/landing' as any);
+    }
   }, []);
   
   return (
@@ -67,19 +74,41 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete, initialRoute }:
       try {
         await SplashScreen.hideAsync();
         
-        // Only check authentication if not on web landing page
-        if (!shouldShowLandingPage() || initialRoute !== '/landing') {
-          // Fetch user data
+        // On web, if we're on landing page, don't try to fetch user data yet
+        if (isWeb && initialRoute === '/landing') {
+          // On web, we want to show landing page first, so don't redirect
+          console.log('Web platform: showing landing page');
+        } else {
+          // For mobile or web (when not on landing page), check authentication
           try {
             const response = await apiClient.get('/api/v1/user');
             console.log(response.data);
             
+            // User is authenticated, set user data
             setUser(response.data);
+            
+            // If on mobile, always redirect to tabs when authenticated
+            if (!isWeb) {
+              router.replace('/(tabs)' as any);
+            }
+            // On web, only redirect if not already on landing page
+            else if (initialRoute !== '/landing') {
+              router.replace('/(tabs)' as any);
+            }
           } catch (error: unknown) {
             console.error("API call failed:", error);
             const axiosError = error as AxiosError;
+            
+            // Handle authentication errors
             if (axiosError.response && axiosError.response.status === 401) {
-              router.replace('/(auth)/login' as any);
+              // If on mobile, redirect to login
+              if (!isWeb) {
+                router.replace('/(auth)/login' as any);
+              }
+              // On web, redirect to landing page if not already there
+              else if (initialRoute !== '/landing') {
+                router.replace('/landing' as any);
+              }
             }
             if (axiosError.response && axiosError.response.status === 408) {
               router.replace('/(auth)/verify' as any);
