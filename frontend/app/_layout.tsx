@@ -22,7 +22,7 @@ function AppContent() {
   // Fix for React 19 compatibility - use Appearance instead of useColorScheme
   const [colorScheme, setColorScheme] = useState(Appearance.getColorScheme());
   const [isLoadingComplete, setLoadingComplete] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<string | null>(null);
 
   // Listen for color scheme changes
   useEffect(() => {
@@ -33,9 +33,16 @@ function AppContent() {
     return () => subscription.remove();
   }, []);
 
-  // Set ready state after component mounts
+  // Platform-specific routing logic
   useEffect(() => {
-    setIsReady(true);
+    const route = getInitialRoute();
+    setInitialRoute(route);
+    
+    // Force navigation to landing page on web
+    if (isWeb && route === '/landing') {
+      const router = useRouter();
+      router.replace('/landing' as any);
+    }
   }, []);
   
   return (
@@ -44,7 +51,7 @@ function AppContent() {
       <UserDataLoader 
         isLoadingComplete={isLoadingComplete} 
         setLoadingComplete={setLoadingComplete}
-        isReady={isReady}
+        initialRoute={initialRoute}
       />
     </>
   );
@@ -54,10 +61,10 @@ function AppContent() {
 interface UserDataLoaderProps {
   isLoadingComplete: boolean;
   setLoadingComplete: React.Dispatch<React.SetStateAction<boolean>>;
-  isReady: boolean;
+  initialRoute: string | null;
 }
 
-function UserDataLoader({ isLoadingComplete, setLoadingComplete, isReady }: UserDataLoaderProps) {
+function UserDataLoader({ isLoadingComplete, setLoadingComplete, initialRoute }: UserDataLoaderProps) {
   const setUser = useUserStore(state => state.setUser);
   const router = useRouter();
   
@@ -67,14 +74,12 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete, isReady }: User
       try {
         await SplashScreen.hideAsync();
         
-        // Only proceed with navigation logic after component is ready
-        if (!isReady) return;
-        
         // On web, if we're on landing page, don't try to fetch user data yet
-        if (isWeb) {
+        if (isWeb && initialRoute === '/landing') {
+          // On web, we want to show landing page first, so don't redirect
           console.log('Web platform: showing landing page');
         } else {
-          // For mobile, check authentication
+          // For mobile or web (when not on landing page), check authentication
           try {
             const response = await apiClient.get('/api/v1/user');
             console.log(response.data);
@@ -86,6 +91,10 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete, isReady }: User
             if (!isWeb) {
               router.replace('/(tabs)' as any);
             }
+            // On web, only redirect if not already on landing page
+            else if (initialRoute !== '/landing') {
+              router.replace('/(tabs)' as any);
+            }
           } catch (error: unknown) {
             console.error("API call failed:", error);
             const axiosError = error as AxiosError;
@@ -95,6 +104,10 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete, isReady }: User
               // If on mobile, redirect to login
               if (!isWeb) {
                 router.replace('/(auth)/login' as any);
+              }
+              // On web, redirect to landing page if not already there
+              else if (initialRoute !== '/landing') {
+                router.replace('/landing' as any);
               }
             }
             if (axiosError.response && axiosError.response.status === 408) {
@@ -109,10 +122,10 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete, isReady }: User
       }
     }
 
-    if (!isLoadingComplete && isReady) {
+    if (!isLoadingComplete && initialRoute) {
       prepare();
     }
-  }, [isLoadingComplete, setLoadingComplete, setUser, router, isReady]);
+  }, [isLoadingComplete, setLoadingComplete, setUser, router, initialRoute]);
   
   return <Slot />;
 }
