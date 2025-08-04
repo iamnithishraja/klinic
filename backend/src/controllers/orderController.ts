@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { CustomRequest } from '../types/userTypes';
 import orderService from '../services/orderService';
+import Order from '../models/ordersModel';
 
 // Create Order (Patient/User)
 const createOrder = async (req: CustomRequest, res: Response): Promise<void> => {
@@ -512,14 +513,17 @@ const getLabOrdersWithAddresses = async (req: CustomRequest, res: Response): Pro
                     
                     const userProfile = await UserProfile.findOne({ user: userId }).select('address city');
                     
+                    const orderObj = order.toObject ? order.toObject() : order;
+                    
                     return {
-                        ...order.toObject(),
+                        ...orderObj,
                         customerAddress: userProfile?.address?.address || userProfile?.city || 'Address not available'
                     };
                 } catch (error) {
                     console.error('Error fetching user profile for order:', order._id, error);
+                    const orderObj = order.toObject ? order.toObject() : order;
                     return {
-                        ...order.toObject(),
+                        ...orderObj,
                         customerAddress: 'Address not available'
                     };
                 }
@@ -549,6 +553,242 @@ const getLabOrdersWithAddresses = async (req: CustomRequest, res: Response): Pro
     }
 };
 
+// Cancel unpaid order (when user doesn't complete payment)
+const cancelUnpaidOrder = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { orderId } = req.params;
+        const userId = req.user._id;
+
+        console.log('Cancelling unpaid order:', orderId, 'for user:', userId.toString());
+
+        // Find the order and verify ownership
+        const order = await Order.findOne({ 
+            _id: orderId, 
+            orderedBy: userId,
+            isPaid: false // Only allow cancellation of unpaid orders
+        });
+
+        if (!order) {
+            res.status(404).json({ 
+                success: false, 
+                message: 'Order not found or cannot be cancelled' 
+            });
+            return;
+        }
+
+        // Update order status to cancelled
+        order.status = 'cancelled';
+        await order.save();
+
+        console.log('Order cancelled successfully:', orderId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Order cancelled successfully',
+            data: order
+        });
+    } catch (error: any) {
+        console.error('Cancel unpaid order error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
+// Get order payment status
+const getOrderPaymentStatus = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { orderId } = req.params;
+        const userId = req.user._id;
+
+        console.log('Getting payment status for order:', orderId, 'user:', userId.toString());
+
+        const order = await Order.findOne({ 
+            _id: orderId, 
+            orderedBy: userId 
+        }).select('_id isPaid status needAssignment totalPrice createdAt');
+
+        if (!order) {
+            res.status(404).json({ 
+                success: false, 
+                message: 'Order not found' 
+            });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                orderId: order._id,
+                isPaid: order.isPaid,
+                status: order.status,
+                needAssignment: order.needAssignment,
+                totalPrice: order.totalPrice,
+                createdAt: order.createdAt
+            }
+        });
+    } catch (error: any) {
+        console.error('Get order payment status error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
+// Update order payment status (for admin or system use)
+const updateOrderPaymentStatus = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { orderId } = req.params;
+        const { isPaid, status } = req.body;
+        const userId = req.user._id;
+
+        console.log('Updating payment status for order:', orderId, 'user:', userId.toString(), { isPaid, status });
+
+        const order = await Order.findOne({ 
+            _id: orderId, 
+            orderedBy: userId 
+        });
+
+        if (!order) {
+            res.status(404).json({ 
+                success: false, 
+                message: 'Order not found' 
+            });
+            return;
+        }
+
+        // Update payment status
+        order.isPaid = isPaid;
+        
+        // Update status if provided
+        if (status) {
+            order.status = status;
+        }
+
+        await order.save();
+
+        console.log('Order payment status updated successfully:', orderId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Order payment status updated successfully',
+            data: {
+                orderId: order._id,
+                isPaid: order.isPaid,
+                status: order.status
+            }
+        });
+    } catch (error: any) {
+        console.error('Update order payment status error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
+// Cancel order by laboratory (for laboratory users)
+const cancelOrderByLaboratory = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { orderId } = req.params;
+        const laboratoryId = req.user._id;
+
+        console.log('Cancelling order by laboratory:', orderId, 'for laboratory:', laboratoryId.toString());
+
+        // Find the order and verify it belongs to this laboratory
+        const order = await Order.findOne({ 
+            _id: orderId, 
+            laboratoryUser: laboratoryId,
+            status: { $in: ['pending', 'confirmed'] } // Only allow cancellation of pending/confirmed orders
+        });
+
+        if (!order) {
+            res.status(404).json({ 
+                success: false, 
+                message: 'Order not found or cannot be cancelled' 
+            });
+            return;
+        }
+
+        // Update order status to cancelled
+        order.status = 'cancelled';
+        await order.save();
+
+        console.log('Order cancelled successfully by laboratory:', orderId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Order cancelled successfully',
+            data: order
+        });
+    } catch (error: any) {
+        console.error('Cancel order by laboratory error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
+// Get user's unpaid orders
+const getUnpaidOrders = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user._id;
+        const { page = 1, limit = 10 } = req.query;
+
+        console.log('Getting unpaid orders for user:', userId.toString());
+
+        const pagination = {
+            page: Math.max(1, Number(page)),
+            limit: Math.min(100, Math.max(1, Number(limit)))
+        };
+
+        // Find unpaid orders
+        const unpaidOrders = await Order.find({ 
+            orderedBy: userId,
+            isPaid: false,
+            status: { $ne: 'cancelled' } // Exclude cancelled orders
+        })
+        .sort({ createdAt: -1 })
+        .skip((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
+        .populate('products.product', 'name price imageUrl')
+        .lean();
+
+        const totalCount = await Order.countDocuments({ 
+            orderedBy: userId,
+            isPaid: false,
+            status: { $ne: 'cancelled' }
+        });
+
+        const totalPages = Math.ceil(totalCount / pagination.limit);
+
+        console.log(`Found ${unpaidOrders.length} unpaid orders for user`);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                orders: unpaidOrders,
+                pagination: {
+                    currentPage: pagination.page,
+                    totalPages,
+                    totalCount,
+                    hasNextPage: pagination.page < totalPages,
+                    hasPrevPage: pagination.page > 1
+                }
+            }
+        });
+    } catch (error: any) {
+        console.error('Get unpaid orders error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
 export {
     createOrder,
     getMyOrders,
@@ -559,5 +799,10 @@ export {
     claimOrder,
     assignDeliveryPartner,
     getAvailableDeliveryPartners,
-    getLabOrdersWithAddresses
+    getLabOrdersWithAddresses,
+    cancelUnpaidOrder,
+    getOrderPaymentStatus,
+    updateOrderPaymentStatus,
+    getUnpaidOrders,
+    cancelOrderByLaboratory
 };

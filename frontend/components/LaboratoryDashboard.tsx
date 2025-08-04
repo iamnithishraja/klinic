@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Image, TextInput, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Image, TextInput, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -546,6 +546,44 @@ const LaboratoryDashboard: React.FC = () => {
     }
   };
 
+  // const handleCancelAppointment = async (appointment: LabAppointment) => {
+  //   Alert.alert(
+  //     "Cancel Appointment",
+  //     "Are you sure you want to cancel this appointment? This action cannot be undone.",
+  //     [
+  //       {
+  //         text: "No",
+  //         style: "cancel"
+  //       },
+  //       {
+  //         text: "Yes, Cancel",
+  //         style: "destructive",
+  //         onPress: async () => {
+  //           try {
+  //             await apiClient.delete(`/api/v1/laboratory/appointments/${appointment._id}`);
+              
+  //             showAlert({
+  //               title: 'Success',
+  //               message: 'Appointment cancelled successfully',
+  //               type: 'success'
+  //             });
+
+  //             // Refresh dashboard data
+  //             await fetchDashboardData();
+  //           } catch (error: any) {
+  //             console.error('Error cancelling appointment:', error);
+  //             showAlert({
+  //               title: 'Error',
+  //               message: `Failed to cancel appointment: ${error.response?.data?.message || error.message}`,
+  //               type: 'error'
+  //             });
+  //           }
+  //         }
+  //       }
+  //     ]
+  //   );
+  // };
+
   const formatAppointmentTime = (timeSlot: string, timeSlotDisplay: string) => {
     try {
       const appointmentDateUTC = new Date(timeSlot);
@@ -670,7 +708,7 @@ const LaboratoryDashboard: React.FC = () => {
           <Text className="text-sm text-gray-500">{getSelectedTestsNames(item)}</Text>
         </View>
 
-        <View className="flex-row space-x-2">
+        <View className="flex-row space-x-2 mb-2">
           <Pressable
             onPress={() => handleViewPatient(item)}
             className="flex-1 py-2.5 px-3 rounded-lg bg-purple-50 items-center border border-purple-200"
@@ -699,6 +737,29 @@ const LaboratoryDashboard: React.FC = () => {
             <Text className="text-white font-medium text-xs">Sample Collected</Text>
           </Pressable>
         </View>
+
+        {/* Cancel Appointment Button
+        <View className="flex-row space-x-2">
+          <Pressable
+            onPress={() => handleCancelAppointment(item)}
+            className="flex-1 py-2.5 px-3 rounded-lg bg-red-500 items-center shadow-sm"
+            style={{
+              shadowColor: '#EF4444',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+          >
+            <FontAwesome 
+              name="times" 
+              size={14} 
+              color="white" 
+              style={{ marginBottom: 3 }} 
+            />
+            <Text className="text-white font-medium text-xs">Cancel Appointment</Text>
+          </Pressable>
+        </View> */}
 
         {/* Payment Status - Show for all collection types */}
           <View className="mt-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
@@ -1031,7 +1092,11 @@ const LaboratoryDashboard: React.FC = () => {
             
             {filterAppointments(dashboardData?.pendingAppointments).length > 0 ? (
               <View>
-                {filterAppointments(dashboardData?.pendingAppointments).map((item) => renderPendingAppointment({ item }))}
+                {filterAppointments(dashboardData?.pendingAppointments).map((item) => (
+                  <View key={item._id}>
+                    {renderPendingAppointment({ item })}
+                  </View>
+                ))}
               </View>
             ) : (
               <View className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-3xl p-8 shadow-sm border border-purple-100 items-center">
@@ -1054,7 +1119,11 @@ const LaboratoryDashboard: React.FC = () => {
             
             {filterAppointments(dashboardData?.processingAppointments).length > 0 ? (
               <View>
-                {filterAppointments(dashboardData?.processingAppointments).map((item) => renderProcessingAppointment({ item }))}
+                {filterAppointments(dashboardData?.processingAppointments).map((item) => (
+                  <View key={item._id}>
+                    {renderProcessingAppointment({ item })}
+                  </View>
+                ))}
               </View>
             ) : (
               <View className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-3xl p-8 shadow-sm border border-orange-100 items-center">
@@ -1075,7 +1144,11 @@ const LaboratoryDashboard: React.FC = () => {
             
             {filterAppointments(dashboardData?.completedAppointments).length > 0 ? (
               <View>
-                {filterAppointments(dashboardData?.completedAppointments).map((item) => renderCompletedAppointment({ item }))}
+                {filterAppointments(dashboardData?.completedAppointments).map((item) => (
+                  <View key={item._id}>
+                    {renderCompletedAppointment({ item })}
+                  </View>
+                ))}
               </View>
             ) : (
               <View className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 shadow-sm border border-green-100 items-center">
@@ -1209,7 +1282,7 @@ const LaboratoryDashboard: React.FC = () => {
                             <Text className="text-sm font-medium text-gray-700 mb-2">Medical Documents</Text>
                             <View className="space-y-2">
                               {selectedAppointment.patient.medicalHistoryPdfs.map((pdf, index) => (
-                                <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                                <View key={`medical-${selectedAppointment._id}-${index}`} className="flex-row items-center bg-gray-50 rounded-lg p-3">
                                   <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
                                   <View className="flex-1">
                                     <Text className="text-sm text-gray-700 font-medium">Medical Document {index + 1}</Text>
@@ -1308,7 +1381,7 @@ const LaboratoryDashboard: React.FC = () => {
                             <Text className="text-sm font-medium text-gray-700 mb-2">Test Report PDFs</Text>
                             <View className="space-y-2">
                               {selectedAppointment.testReportPdfs.map((pdf, index) => (
-                                <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                                <View key={`test-report-${selectedAppointment._id}-${index}`} className="flex-row items-center bg-gray-50 rounded-lg p-3">
                                   <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
                                   <View className="flex-1">
                                     <Text className="text-sm text-gray-700 font-medium">Test Report {index + 1}</Text>
@@ -1387,7 +1460,7 @@ const LaboratoryDashboard: React.FC = () => {
                             <Text className="text-sm font-medium text-gray-700 mb-2">Prescription PDFs</Text>
                             <View className="space-y-2">
                               {selectedAppointment.patient.prescriptionPdfs.map((pdf, index) => (
-                                <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                                <View key={`prescription-${selectedAppointment._id}-${index}`} className="flex-row items-center bg-gray-50 rounded-lg p-3">
                                   <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
                                   <View className="flex-1">
                                     <Text className="text-sm text-gray-700 font-medium">Prescription {index + 1}</Text>
@@ -1656,7 +1729,7 @@ const LaboratoryDashboard: React.FC = () => {
                           <View className="mt-4 space-y-2">
                             <Text className="text-sm font-medium text-gray-700 mb-2">Uploaded PDFs:</Text>
                             {testReportPdfs.map((pdf, index) => (
-                              <View key={index} className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                              <View key={`uploaded-test-report-${index}`} className="flex-row items-center bg-gray-50 rounded-lg p-3">
                                 <FontAwesome name="file-pdf-o" size={16} color="#EF4444" style={{ marginRight: 8 }} />
                                 <View className="flex-1">
                                   <Text className="text-sm text-gray-700 font-medium">Test Report {index + 1}</Text>

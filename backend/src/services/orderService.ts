@@ -26,6 +26,12 @@ export interface OrderData {
     prescription?: string;
     totalPrice?: number;
     needAssignment: boolean;
+    isPaid?: boolean;
+    cod?: boolean;
+    deliveryAddress?: {
+        address: string;
+        pinCode: string;
+    };
 }
 
 export interface UpdateOrderData {
@@ -52,7 +58,11 @@ class OrderService {
                 prescription: prescription,
                 totalPrice: 0,
                 needAssignment: needAssignment,
-                status: 'confirmed' // Set status to confirmed so it can be assigned to delivery
+                isPaid: orderData.isPaid !== undefined ? orderData.isPaid : false,
+                cod: orderData.cod !== undefined ? orderData.cod : false,
+                status: 'confirmed', // Set status to confirmed so it can be assigned to delivery
+                customerAddress: orderData.deliveryAddress?.address || null,
+                customerPinCode: orderData.deliveryAddress?.pinCode || null
             };
 
             console.log('Creating single order without products:', JSON.stringify(singleOrderData, null, 2));
@@ -104,7 +114,11 @@ class OrderService {
                 prescription: prescription,
                 totalPrice: 0,
                 needAssignment: needAssignment,
-                status: 'confirmed' // Set status to confirmed so it can be assigned to delivery
+                isPaid: orderData.isPaid !== undefined ? orderData.isPaid : false,
+                cod: orderData.cod !== undefined ? orderData.cod : false,
+                status: 'confirmed', // Set status to confirmed so it can be assigned to delivery
+                customerAddress: orderData.deliveryAddress?.address || null,
+                customerPinCode: orderData.deliveryAddress?.pinCode || null
             };
 
             console.log('Creating single order for products without lab assignment:', JSON.stringify(singleOrderData, null, 2));
@@ -139,7 +153,11 @@ class OrderService {
                 prescription: prescription,
                 totalPrice: labTotalPrice,
                 needAssignment: needAssignment,
-                status: 'confirmed' // Set status to confirmed so it can be assigned to delivery
+                isPaid: orderData.isPaid !== undefined ? orderData.isPaid : false,
+                cod: orderData.cod !== undefined ? orderData.cod : false,
+                status: 'confirmed', // Set status to confirmed so it can be assigned to delivery
+                customerAddress: orderData.deliveryAddress?.address || null,
+                customerPinCode: orderData.deliveryAddress?.pinCode || null
             };
 
             console.log(`Creating order for lab ${labId}:`, JSON.stringify(labOrderData, null, 2));
@@ -158,7 +176,9 @@ class OrderService {
                     orderId: createdOrder?._id,
                     labId: createdOrder?.laboratoryUser?._id,
                     labName: labName,
-                    status: createdOrder?.status
+                    status: createdOrder?.status,
+                    isPaid: createdOrder?.isPaid,
+                    cod: createdOrder?.cod
                 });
             } catch (error: any) {
                 console.error(`Error creating order for lab ${labId}:`, error);
@@ -210,7 +230,9 @@ class OrderService {
             orderedBy: orderData.orderedBy,
             laboratoryUser: orderData.laboratoryUser || undefined,
             products: orderData.products || undefined,
-            totalPrice: calculatedTotalPrice || 0
+            totalPrice: calculatedTotalPrice || 0,
+            customerAddress: orderData.deliveryAddress?.address || null,
+            customerPinCode: orderData.deliveryAddress?.pinCode || null
         };
 
         let order;
@@ -483,7 +505,8 @@ class OrderService {
         console.log('Assigning lab to order:', orderId, 'lab user:', laboratoryUser);
         return await this.updateOrder(orderId, {
             laboratoryUser,
-            needAssignment: false
+            needAssignment: false,
+            status: 'confirmed' // Update status to confirmed when lab is assigned
         });
     }
 

@@ -6,7 +6,8 @@ import {
     getAppointmentDetails, 
     updateAppointmentStatus,
     testDoctorEndpoint,
-    getDoctorAvailability
+    getDoctorAvailability,
+    cancelAppointment
 } from '../controllers/doctorController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
 import { UserRole } from '../types/userTypes';
@@ -25,6 +26,7 @@ doctorRouter.get('/dashboard', getDoctorDashboard);
 // Appointment management
 doctorRouter.get('/appointments/:appointmentId', getAppointmentDetails);
 doctorRouter.put('/appointments/:appointmentId/status', updateAppointmentStatus);
+doctorRouter.delete('/appointments/:appointmentId', cancelAppointment);
 
 // Availability
 doctorRouter.get('/:doctorId/availability', getDoctorAvailability);

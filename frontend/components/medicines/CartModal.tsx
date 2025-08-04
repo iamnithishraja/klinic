@@ -2,28 +2,25 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  StyleSheet,
   Modal,
+  TouchableOpacity,
   FlatList,
+  ScrollView,
   Alert,
   ActivityIndicator,
-  Dimensions,
-  ScrollView,
-  Image,
+  StyleSheet,
+  TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
-import { useProductStore } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useUserProfileStore } from '@/store/profileStore';
-import { orderService, Order } from '@/services/orderService';
-import { CartItem } from './CartItem';
+import { CartItem } from '@/components/medicines/CartItem';
+import { PrescriptionUpload } from '@/components/medicines/PrescriptionUpload';
+import ProductPaymentModal from '@/components/payment/ProductPaymentModal';
 import { CartItem as CartItemType } from '@/types/medicineTypes';
-import * as DocumentPicker from 'expo-document-picker';
-import useProfileApi from '@/hooks/useProfileApi';
-
-const { width, height } = Dimensions.get('window');
+import { useRouter } from 'expo-router';
 
 interface CartModalProps {
   visible: boolean;
@@ -32,47 +29,22 @@ interface CartModalProps {
 }
 
 const CartModal: React.FC<CartModalProps> = ({ visible, onClose, onBrowseItems }) => {
-  const { items: cart, clearCart, getCartTotal } = useCartStore();
-  const { address, city, pinCode } = useUserProfileStore();
-  const [loading, setLoading] = useState(false);
+  const { items: cart, getCartTotal, clearCart } = useCartStore();
+  const { address, pinCode, setAddress, setPinCode } = useUserProfileStore();
   const [prescription, setPrescription] = useState<string | null>(null);
   const [uploadingPrescription, setUploadingPrescription] = useState(false);
-
-  const totalAmount = cart.reduce((total: number, item: CartItemType) => total + (item.product.price * item.quantity), 0);
-
-  const { uploadFile } = useProfileApi({ endpoint: '/api/v1/user-profile' });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [orderData, setOrderData] = useState<any>(null);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const router = useRouter();
 
   const handleUploadPrescription = async () => {
     try {
       setUploadingPrescription(true);
-      
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-        copyToCacheDirectory: true,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        
-        // Validate file size (5MB limit)
-        if (asset.size && asset.size > 5 * 1024 * 1024) {
-          Alert.alert('File Too Large', 'Please select a PDF file smaller than 5MB.');
-          return;
-        }
-        
-        // Upload the prescription to get a public URL
-        const fileName = asset.name || `prescription-${Date.now()}.pdf`;
-        const publicUrl = await uploadFile('application/pdf', fileName, asset.uri);
-        
-        if (publicUrl) {
-          setPrescription(publicUrl);
-          Alert.alert('Success', 'Prescription uploaded successfully!');
-        } else {
-          throw new Error('Failed to upload prescription');
-        }
-      }
+      // This will be handled by the PrescriptionUpload component
+      // The actual upload logic is in the PrescriptionUpload component
     } catch (error) {
-      console.error('Error picking document:', error);
+      console.error('Error uploading prescription:', error);
       Alert.alert('Error', 'Failed to upload prescription. Please try again.');
     } finally {
       setUploadingPrescription(false);
@@ -85,76 +57,46 @@ const CartModal: React.FC<CartModalProps> = ({ visible, onClose, onBrowseItems }
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0) {
-      Alert.alert('Error', 'Your cart is empty.');
+      Alert.alert('Empty Cart', 'Please add items to your cart before placing an order.');
       return;
     }
 
     if (!prescription) {
-      Alert.alert('Error', 'Please upload your prescription first.');
+      Alert.alert('Prescription Required', 'Please upload a prescription before placing your order.');
       return;
     }
 
-    // Address is optional - user can add it later or admin can contact them
     if (!address) {
-      Alert.alert(
-        'Address Information', 
-        'No delivery address found. You can add your address in profile settings, or our team will contact you for delivery details.',
-        [
-          { text: 'Continue Without Address', onPress: () => proceedWithOrder() },
-          { text: 'Add Address', onPress: () => onClose() }
-        ]
-      );
+      Alert.alert('Address Required', 'Please add your delivery address before placing your order.');
       return;
     }
 
-    proceedWithOrder();
+    // Prepare order data for payment (don't create order yet)
+    const orderData = {
+      products: cart.map(item => ({
+        product: item.product._id,
+        quantity: item.quantity,
+      })),
+      prescription: prescription || undefined,
+      totalPrice: getCartTotal(),
+      needAssignment: false,
+      deliveryAddress: {
+        address: address,
+        pinCode: pinCode,
+      },
+    };
+
+    // Store order data and show payment modal
+    setOrderData(orderData);
+    setShowPaymentModal(true);
   };
 
-  const proceedWithOrder = async () => {
-
-    try {
-      setLoading(true);
-      
-      const orderData = {
-        products: cart.map((item: CartItemType) => ({
-          product: item.product._id,
-          quantity: item.quantity,
-        })),
-        prescription: prescription || undefined,
-        totalPrice: totalAmount,
-        needAssignment: false,
-      };
-
-      const response = await orderService.createOrder(orderData);
-      
-      if (response.data) {
-        Alert.alert(
-          'Success',
-          'Order placed successfully! You will receive a confirmation shortly.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                clearCart();
-                setPrescription(null);
-                onClose();
-              }
-            }
-          ]
-        );
-      } else {
-        throw new Error('Failed to place order');
-      }
-    } catch (error: any) {
-      console.error('Error placing order:', error);
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          'Failed to place order. Please try again.';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
-    }
+  const handlePaymentSuccess = () => {
+    clearCart();
+    setPrescription(null);
+    setOrderData(null);
+    setShowPaymentModal(false);
+    onClose();
   };
 
   const renderCartItem = ({ item }: { item: CartItemType }) => (
@@ -169,7 +111,7 @@ const CartModal: React.FC<CartModalProps> = ({ visible, onClose, onBrowseItems }
     />
   );
 
-  const canPlaceOrder = cart.length > 0 && prescription;
+  const canPlaceOrder = cart.length > 0 && prescription && address;
 
   return (
     <Modal
@@ -226,6 +168,51 @@ const CartModal: React.FC<CartModalProps> = ({ visible, onClose, onBrowseItems }
             )}
           </View>
 
+          {/* Delivery Address Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <IconSymbol name="location" size={18} color={Colors.light.tint} weight="medium" />
+                <Text style={styles.sectionTitle}>Delivery Address</Text>
+              </View>
+              <View style={styles.requiredBadge}>
+                <Text style={styles.requiredText}>Required</Text>
+              </View>
+            </View>
+            
+            {address ? (
+              <View style={styles.addressContainer}>
+                <View style={styles.addressInfo}>
+                  <Text style={styles.addressText}>{address}</Text>
+                  {pinCode && <Text style={styles.pinCodeText}>{pinCode}</Text>}
+                </View>
+                <TouchableOpacity 
+                  onPress={() => setShowAddressModal(true)}
+                  style={styles.editAddressButton}
+                >
+                  <IconSymbol name="edit" size={16} color={Colors.light.tint} weight="medium" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.addAddressButton}
+                onPress={() => setShowAddressModal(true)}
+              >
+                <IconSymbol name="plus" size={16} color={Colors.light.tint} weight="medium" />
+                <Text style={styles.addAddressText}>Add Delivery Address</Text>
+              </TouchableOpacity>
+            )}
+
+            {!address && (
+              <View style={styles.addressWarning}>
+                <IconSymbol name="icon" size={14} color="#92400E" weight="medium" />
+                <Text style={styles.addressWarningText}>
+                  Please add your delivery address to continue
+                </Text>
+              </View>
+            )}
+          </View>
+
           {/* Prescription Upload Section - Always visible */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -238,125 +225,32 @@ const CartModal: React.FC<CartModalProps> = ({ visible, onClose, onBrowseItems }
               </View>
             </View>
             
-            {prescription ? (
-              <View style={styles.prescriptionContainer}>
-                <View style={styles.prescriptionHeader}>
-                  <View style={styles.prescriptionInfo}>
-                    <IconSymbol name="check-circle" size={16} color="#10B981" weight="medium" />
-                    <Text style={styles.prescriptionText}>Prescription uploaded</Text>
-                  </View>
-                  <TouchableOpacity onPress={handleRemovePrescription} style={styles.removeButton}>
-                    <IconSymbol name="trash" size={14} color="#EF4444" weight="medium" />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.prescriptionFileContainer}>
-                  <View style={styles.prescriptionFileInfo}>
-                    <IconSymbol name="document" size={24} color={Colors.light.tint} weight="medium" />
-                    <View style={styles.prescriptionFileDetails}>
-                      <Text style={styles.prescriptionFileName}>Prescription.pdf</Text>
-                      <Text style={styles.prescriptionFileSize}>PDF Document • Ready for order</Text>
-                    </View>
-                  </View>
-                  <View style={styles.prescriptionStatusBadge}>
-                    <IconSymbol name="check-circle" size={12} color="#10B981" weight="medium" />
-                    <Text style={styles.prescriptionStatusText}>Uploaded</Text>
-                  </View>
-                </View>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                style={[
-                  styles.uploadButton, 
-                  uploadingPrescription && styles.uploadButtonDisabled
-                ]} 
-                onPress={handleUploadPrescription}
-                disabled={uploadingPrescription}
-              >
-                {uploadingPrescription ? (
-                  <View style={styles.uploadLoadingContainer}>
-                    <ActivityIndicator size="small" color={Colors.light.tint} />
-                    <Text style={styles.uploadLoadingText}>Uploading...</Text>
-                  </View>
-                ) : (
-                  <View style={styles.uploadContent}>
-                    <IconSymbol name="upload" size={24} color={Colors.light.tint} weight="medium" />
-                    <View style={styles.uploadTextContainer}>
-                      <Text style={styles.uploadButtonText}>Upload Prescription</Text>
-                      <Text style={styles.uploadSubtext}>PDF files only, max 5MB</Text>
-                    </View>
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
+            <PrescriptionUpload
+              onUploadComplete={(url) => setPrescription(url)}
+              isUploading={uploadingPrescription}
+            />
           </View>
 
-          {/* Delivery Address Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <IconSymbol name="location" size={18} color={Colors.light.tint} weight="medium" />
-                <Text style={styles.sectionTitle}>Delivery Address</Text>
-              </View>
-              {!address && (
-                <View style={styles.requiredBadge}>
-                  <Text style={styles.requiredText}>Required</Text>
-                </View>
-              )}
-            </View>
-            
-            {address ? (
-              <View style={styles.addressContainer}>
-                <View style={styles.addressInfo}>
-                  <Text style={styles.addressText}>{address}</Text>
-                  {city && <Text style={styles.cityText}>{city}</Text>}
-                  {pinCode && <Text style={styles.pinCodeText}>{pinCode}</Text>}
-                </View>
-                <View style={styles.addressVerified}>
-                  <IconSymbol name="check-circle" size={12} color="#10B981" weight="medium" />
-                  <Text style={styles.addressVerifiedText}>Verified</Text>
-                </View>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.addAddressButton} onPress={() => {
-                Alert.alert(
-                  'Address Required',
-                  'Please add your delivery address in your profile settings.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Go to Profile', onPress: () => onClose() }
-                  ]
-                );
-              }}>
-                <IconSymbol name="plus" size={16} color={Colors.light.tint} weight="medium" />
-                <Text style={styles.addAddressText}>Add Delivery Address</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Order Summary - Always visible */}
+          {/* Order Summary Section */}
           <View style={styles.summarySection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Order Summary</Text>
             </View>
-            <View style={styles.summaryContainer}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>₹{totalAmount.toFixed(2)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                <Text style={styles.summaryValue}>₹0.00</Text>
-              </View>
-              <View style={[styles.summaryRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Total Amount</Text>
-                <Text style={styles.totalValue}>₹{totalAmount.toFixed(2)}</Text>
-              </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal</Text>
+              <Text style={styles.summaryValue}>₹{getCartTotal().toFixed(2)}</Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Total Amount</Text>
+              <Text style={styles.totalValue}>₹{getCartTotal().toFixed(2)}</Text>
             </View>
           </View>
         </ScrollView>
 
-        {/* Footer - Show when prescription is uploaded */}
-        {prescription && (
+        {/* Footer - Show when prescription is uploaded and address is added */}
+        {prescription && address && (
           <View style={styles.footer}>
             <TouchableOpacity
               style={[
@@ -364,26 +258,80 @@ const CartModal: React.FC<CartModalProps> = ({ visible, onClose, onBrowseItems }
                 !canPlaceOrder && styles.placeOrderButtonDisabled
               ]}
               onPress={handlePlaceOrder}
-              disabled={!canPlaceOrder || loading}
+              disabled={!canPlaceOrder}
             >
-              {loading ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <IconSymbol name="check-circle" size={20} color="white" weight="medium" />
-              )}
+              <IconSymbol name="check-circle" size={20} color="white" weight="medium" />
               <Text style={styles.placeOrderButtonText}>
-                {loading ? 'Placing Order...' : `Place Order - ₹${totalAmount.toFixed(2)}`}
+                Pay Now - ₹{getCartTotal().toFixed(2)}
               </Text>
             </TouchableOpacity>
-            
-            {!address && (
-              <View style={styles.addressWarning}>
-                <Text style={styles.addressWarningText}>
-                  ⚠️ Please add your delivery address to complete the order
-                </Text>
-              </View>
-            )}
           </View>
+        )}
+
+        {/* Address Input Modal */}
+        <Modal
+          visible={showAddressModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowAddressModal(false)}
+        >
+          <View style={styles.addressModalContainer}>
+            <View style={styles.addressModalHeader}>
+              <TouchableOpacity 
+                onPress={() => setShowAddressModal(false)}
+                style={styles.addressModalCloseButton}
+              >
+                <IconSymbol name="x-mark" size={24} color={Colors.light.text} weight="medium" />
+              </TouchableOpacity>
+              <Text style={styles.addressModalTitle}>Add Delivery Address</Text>
+              <View style={styles.addressModalSpacer} />
+            </View>
+            
+            <View style={styles.addressModalContent}>
+              <View style={styles.addressInputContainer}>
+                <Text style={styles.addressInputLabel}>Address</Text>
+                <TextInput
+                  style={styles.addressInput}
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="Enter your full address"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+              
+              <View style={styles.addressInputContainer}>
+                <Text style={styles.addressInputLabel}>PIN Code</Text>
+                <TextInput
+                  style={styles.addressInput}
+                  value={pinCode}
+                  onChangeText={setPinCode}
+                  placeholder="Enter PIN code"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                  maxLength={6}
+                />
+              </View>
+              
+              <TouchableOpacity
+                style={styles.saveAddressButton}
+                onPress={() => setShowAddressModal(false)}
+              >
+                <Text style={styles.saveAddressButtonText}>Save Address</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Product Payment Modal */}
+        {orderData && (
+          <ProductPaymentModal
+            visible={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+            orderData={orderData}
+            onPaymentSuccess={handlePaymentSuccess}
+          />
         )}
       </View>
     </Modal>
@@ -770,6 +718,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
+  editAddressButton: {
+    padding: 8,
+  },
   addAddressButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -803,6 +754,66 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
     flex: 1,
+  },
+  addressModalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  addressModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  addressModalCloseButton: {
+    padding: 8,
+  },
+  addressModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.light.text,
+  },
+  addressModalSpacer: {
+    width: 40,
+  },
+  addressModalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  addressInputContainer: {
+    marginTop: 20,
+  },
+  addressInputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.light.text,
+    marginBottom: 8,
+  },
+  addressInput: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: Colors.light.text,
+  },
+  saveAddressButton: {
+    backgroundColor: Colors.light.tint,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  saveAddressButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
   },
 });
 

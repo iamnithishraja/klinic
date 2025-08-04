@@ -44,7 +44,7 @@ export default function SearchBox({ onSearch, placeholder = 'Search...' }: Searc
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: 8,
     backgroundColor: 'white',
   },
   searchContainer: {

@@ -187,7 +187,7 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
     switch (order.status) {
       case 'assigned_to_delivery':
         return (
-          <View style={styles.actionButtons}>
+          <>
             <TouchableOpacity
               style={[styles.actionButton, styles.acceptButton]}
               onPress={handleAcceptOrder}
@@ -202,7 +202,7 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
               <FontAwesome name="times" size={14} color="white" />
               <Text style={styles.actionButtonText}>Reject</Text>
             </TouchableOpacity>
-          </View>
+          </>
         );
       case 'delivery_accepted':
         return (
@@ -275,7 +275,15 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
 
       {/* Order Details */}
       <View style={styles.orderDetails}>
-        <Text style={styles.priceText}>₹{order.totalPrice}</Text>
+        <View style={styles.priceContainer}>
+          <Text style={styles.priceText}>₹{order.totalPrice}</Text>
+          {order.cod && (
+            <View style={styles.codBadge}>
+              <FontAwesome name="money" size={12} color="white" />
+              <Text style={styles.codText}>COD</Text>
+            </View>
+          )}
+        </View>
         
         {order.products && order.products.length > 0 && (
           <Text style={styles.productsText}>
@@ -288,9 +296,16 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
       {order.customerAddress && (
         <View style={styles.addressContainer}>
           <FontAwesome name="map-marker" size={14} color="#6B7280" />
-          <Text style={styles.addressText} numberOfLines={2}>
-            {order.customerAddress}
-          </Text>
+          <View style={styles.addressTextContainer}>
+            <Text style={styles.addressText} numberOfLines={2}>
+              {order.customerAddress}
+            </Text>
+            {order.customerPinCode && (
+              <Text style={styles.pinCodeText}>
+                PIN: {order.customerPinCode}
+              </Text>
+            )}
+          </View>
         </View>
       )}
 
@@ -303,7 +318,21 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
       )}
 
       {/* Action Buttons */}
-      {renderActionButtons()}
+      <View style={styles.actionContainer}>
+        <View style={styles.actionButtonsContainer}>
+          {renderActionButtons()}
+        </View>
+        
+        {/* COD Collection Reminder */}
+        {order.cod && (order.status === 'out_for_delivery' || order.status === 'delivery_accepted') && (
+          <View style={styles.codReminder}>
+            <FontAwesome name="money" size={14} color="#EF4444" />
+            <Text style={styles.codReminderText}>
+              Collect ₹{order.totalPrice} as Cash on Delivery
+            </Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 };
@@ -382,11 +411,30 @@ const styles = StyleSheet.create({
   orderDetails: {
     marginBottom: 12,
   },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   priceText: {
     fontSize: 18,
     fontWeight: '700',
     color: Colors.light.tint,
-    marginBottom: 4,
+  },
+  codBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  codText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 4,
   },
   productsText: {
     fontSize: 12,
@@ -401,12 +449,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
   },
+  addressTextContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
   addressText: {
     fontSize: 12,
     color: '#374151',
-    marginLeft: 8,
-    flex: 1,
     lineHeight: 16,
+    marginBottom: 2,
+  },
+  pinCodeText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   labInfo: {
     flexDirection: 'row',
@@ -423,18 +479,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.light.text,
   },
-  actionButtons: {
+  actionButtonsContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    marginBottom: 10,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    flex: 1,
     justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 10,
+    flex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    minHeight: 48,
   },
   acceptButton: {
     backgroundColor: '#10B981',
@@ -449,10 +512,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#059669',
   },
   actionButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: 'white',
-    marginLeft: 4,
+    marginLeft: 8,
+    textAlign: 'center',
+  },
+  actionContainer: {
+    marginTop: 12,
+  },
+  codReminder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    marginTop: 4,
+  },
+  codReminderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC2626',
+    marginLeft: 8,
   },
 });
 

@@ -46,6 +46,12 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ onRefresh }) => {
       bgColor: '#FEF3C7',
       icon: 'clock-o' as const,
     },
+    pending_assignment: {
+      text: 'Pending Assignment',
+      color: '#F59E0B',
+      bgColor: '#FEF3C7',
+      icon: 'clock-o' as const,
+    },
     confirmed: {
       text: 'Confirmed',
       color: '#3B82F6',
@@ -512,6 +518,12 @@ const OrderDetailsContent: React.FC<{ order: Order }> = ({ order }) => {
     const configs = {
       pending: {
         text: 'Pending',
+        color: '#F59E0B',
+        bgColor: '#FEF3C7',
+        icon: 'clock-o' as const,
+      },
+      pending_assignment: {
+        text: 'Pending Assignment',
         color: '#F59E0B',
         bgColor: '#FEF3C7',
         icon: 'clock-o' as const,

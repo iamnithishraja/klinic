@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,12 @@ import {
   RefreshControl,
   Linking,
   TouchableOpacity,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/Colors';
 import apiClient from '@/api/client';
 import RatingModal from './RatingModal';
 import VideoCallModal from './VideoCallModal';
@@ -40,29 +41,30 @@ const UserDashboard: React.FC = () => {
   const [collectedSamples, setCollectedSamples] = useState<CollectedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Modal states
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  // selectedAppointment is not used, so we can remove it to avoid unused variable error
+  // const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showPdfsModal, setShowPdfsModal] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showLabReportsListModal, setShowLabReportsListModal] = useState(false);
   const [allLabReports, setAllLabReports] = useState<Appointment[]>([]);
-  
+
   // Modal data
   const [prescriptionData, setPrescriptionData] = useState<any>(null);
   const [reportData, setReportData] = useState<any>(null);
   const [pdfsData, setPdfsData] = useState<any>(null);
   const [notesData, setNotesData] = useState<any>(null);
-  
+
   // Video call states
   const [showVideoCallModal, setShowVideoCallModal] = useState(false);
   const [selectedVideoCallAppointment, setSelectedVideoCallAppointment] = useState<Appointment | null>(null);
-  
+
   // AI Chat state
   const [showAIChat, setShowAIChat] = useState(false);
-  
+
   const { showAlert, AlertComponent } = useCustomAlert();
 
   // Rating system - Only check previous/completed appointments for ratings
@@ -70,30 +72,16 @@ const UserDashboard: React.FC = () => {
     ...(previousAppointments?.appointments || []),
     ...(previousLabTests?.labTests || [])
   ];
-  
-  console.log('📊 Completed appointments for rating system:', {
-    totalAppointments: completedAppointments.length,
-    doctorAppointments: previousAppointments?.appointments?.length || 0,
-    labTests: previousLabTests?.labTests?.length || 0,
-    appointments: completedAppointments.map(apt => ({
-      id: apt._id,
-      status: apt.status,
-      type: apt.type,
-      hasDoctor: !!apt.doctor,
-      hasLaboratoryService: !!apt.laboratoryService,
-      hasLaboratory: !!apt.laboratory
-    }))
-  });
-  
-  const { 
-    showRatingModal, 
-    ratingModalData, 
-    handleRatingSubmitted 
+
+  const {
+    showRatingModal,
+    ratingModalData,
+    handleRatingSubmitted
   } = useRatingSystem(completedAppointments);
 
   // Handle rating submission and refresh data
-  const handleRatingSubmittedWithRefresh = async () => {
-    handleRatingSubmitted();
+  const handleRatingSubmittedWithRefresh = useCallback(async () => {
+    await handleRatingSubmitted();
     // Refresh dashboard data after rating submission
     await Promise.all([
       fetchDashboardData(),
@@ -101,7 +89,8 @@ const UserDashboard: React.FC = () => {
       fetchPreviousLabTests(),
       fetchCollectedSamples()
     ]);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleRatingSubmitted]);
 
   // Add handler for AI chat
   const handleOpenAIChat = () => {
@@ -112,19 +101,12 @@ const UserDashboard: React.FC = () => {
     setShowAIChat(false);
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-    fetchPreviousAppointments();
-    fetchPreviousLabTests();
-    fetchCollectedSamples();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  // useCallback to avoid stale closures
+  const fetchDashboardData = useCallback(async () => {
     try {
       const response = await apiClient.get('/api/v1/user/dashboard');
       setDashboardData(response.data);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+    } catch (error: any) {
       showAlert({
         title: 'Error',
         message: 'Failed to load dashboard data',
@@ -133,36 +115,36 @@ const UserDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showAlert]);
 
-  const fetchPreviousAppointments = async (page: number = 1) => {
+  const fetchPreviousAppointments = useCallback(async (page: number = 1) => {
     try {
       const response = await apiClient.get(`/api/v1/user/appointments/previous?page=${page}&limit=5`);
       setPreviousAppointments(response.data);
     } catch (error) {
-      console.error('Error fetching previous appointments:', error);
+      // Optionally show error toast
     }
-  };
+  }, []);
 
-  const fetchPreviousLabTests = async (page: number = 1) => {
+  const fetchPreviousLabTests = useCallback(async (page: number = 1) => {
     try {
       const response = await apiClient.get(`/api/v1/user/lab-tests/previous?page=${page}&limit=5`);
       setPreviousLabTests(response.data);
     } catch (error) {
-      console.error('Error fetching previous lab tests:', error);
+      // Optionally show error toast
     }
-  };
+  }, []);
 
-  const fetchCollectedSamples = async (page: number = 1) => {
+  const fetchCollectedSamples = useCallback(async (page: number = 1) => {
     try {
       const response = await apiClient.get(`/api/v1/user/lab-tests/collected?page=${page}&limit=5`);
       setCollectedSamples(response.data);
     } catch (error) {
-      console.error('Error fetching collected samples:', error);
+      // Optionally show error toast
     }
-  };
+  }, []);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
       fetchDashboardData(),
@@ -171,7 +153,18 @@ const UserDashboard: React.FC = () => {
       fetchCollectedSamples()
     ]);
     setRefreshing(false);
-  };
+  }, [fetchDashboardData, fetchPreviousAppointments, fetchPreviousLabTests, fetchCollectedSamples]);
+
+  useEffect(() => {
+    // Use IIFE to call async functions in useEffect
+    (async () => {
+      await fetchDashboardData();
+      await fetchPreviousAppointments();
+      await fetchPreviousLabTests();
+      await fetchCollectedSamples();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleJoinOnlineConsultation = (appointment: Appointment) => {
     showAlert({
@@ -180,8 +173,8 @@ const UserDashboard: React.FC = () => {
       type: 'info',
       buttons: [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Join Now', 
+        {
+          text: 'Join Now',
           style: 'primary',
           onPress: () => {
             setSelectedVideoCallAppointment(appointment);
@@ -198,22 +191,20 @@ const UserDashboard: React.FC = () => {
   };
 
   const handleGetDirections = (appointment: Appointment) => {
-    let addressData = null;
+    let addressData: any = null;
     let locationName = '';
 
     if (appointment.type === 'doctor' && appointment.clinic) {
       addressData = appointment.clinic.clinicAddress;
       locationName = 'clinic';
     } else if (appointment.type === 'laboratory' && appointment.lab) {
-      // For labs, we need to get the laboratory address
-      // This might be stored differently in the lab profile
       addressData = appointment.lab.laboratoryAddress || appointment.lab.address;
       locationName = 'laboratory';
     }
 
     if (addressData) {
       const { latitude, longitude, address, googleMapsLink } = addressData;
-      
+
       if (googleMapsLink) {
         Linking.openURL(googleMapsLink);
       } else if (latitude && longitude) {
@@ -244,7 +235,7 @@ const UserDashboard: React.FC = () => {
       const response = await apiClient.get(`/api/v1/user/appointments/${appointmentId}/prescription`);
       setPrescriptionData(response.data);
       setShowPrescriptionModal(true);
-    } catch (error) {
+    } catch (error: any) {
       showAlert({
         title: 'Error',
         message: 'Failed to load prescription',
@@ -258,7 +249,7 @@ const UserDashboard: React.FC = () => {
       const response = await apiClient.get(`/api/v1/user/lab-tests/${testId}/report`);
       setReportData(response.data);
       setShowReportModal(true);
-    } catch (error) {
+    } catch (error: any) {
       showAlert({
         title: 'Error',
         message: 'Failed to load lab report',
@@ -272,7 +263,7 @@ const UserDashboard: React.FC = () => {
       const response = await apiClient.get(`/api/v1/user/lab-tests/${testId}/pdfs`);
       setPdfsData(response.data);
       setShowPdfsModal(true);
-    } catch (error) {
+    } catch (error: any) {
       showAlert({
         title: 'Error',
         message: 'Failed to load lab report PDFs',
@@ -286,7 +277,7 @@ const UserDashboard: React.FC = () => {
       const response = await apiClient.get(`/api/v1/user/lab-tests/${testId}/notes`);
       setNotesData(response.data);
       setShowNotesModal(true);
-    } catch (error) {
+    } catch (error: any) {
       showAlert({
         title: 'Error',
         message: 'Failed to load lab notes',
@@ -297,11 +288,10 @@ const UserDashboard: React.FC = () => {
 
   const fetchAllLabReports = async () => {
     try {
-      // Fetch all completed lab tests to show in the list
       const response = await apiClient.get('/api/v1/user/lab-tests/previous?page=1&limit=50');
       setAllLabReports(response.data.labTests || []);
       setShowLabReportsListModal(true);
-    } catch (error) {
+    } catch (error: any) {
       showAlert({
         title: 'Error',
         message: 'Failed to load lab reports',
@@ -311,8 +301,7 @@ const UserDashboard: React.FC = () => {
   };
 
   const showPrescriptionsModal = () => {
-    // Show all appointments with prescriptions
-    const appointmentsWithPrescriptions = previousAppointments?.appointments?.filter(apt => apt.prescription) || [];
+    const appointmentsWithPrescriptions = previousAppointments?.appointments?.filter((apt: any) => apt.prescription) || [];
     if (appointmentsWithPrescriptions.length > 0) {
       setPrescriptionData({ appointments: appointmentsWithPrescriptions });
       setShowPrescriptionModal(true);
@@ -327,84 +316,168 @@ const UserDashboard: React.FC = () => {
 
   const formatAppointmentTime = (timeSlot: string, timeSlotDisplay: string) => {
     try {
-      // Convert UTC timeSlot to IST for comparison
       const appointmentDateUTC = new Date(timeSlot);
       const appointmentDateIST = new Date(appointmentDateUTC.getTime() + (5.5 * 60 * 60 * 1000));
-      
-      // Get today's date in IST
       const todayUTC = new Date();
       const todayIST = new Date(todayUTC.getTime() + (5.5 * 60 * 60 * 1000));
-      
-      // Check if it's today or tomorrow in IST
       const todayStartIST = new Date(todayIST.getFullYear(), todayIST.getMonth(), todayIST.getDate());
       const appointmentStartIST = new Date(appointmentDateIST.getFullYear(), appointmentDateIST.getMonth(), appointmentDateIST.getDate());
-      
       const daysDiff = Math.floor((appointmentStartIST.getTime() - todayStartIST.getTime()) / (1000 * 60 * 60 * 24));
-      
       if (daysDiff === 0) {
-        // Today - extract just the time from timeSlotDisplay
         const timePart = timeSlotDisplay.split(' ').slice(1).join(' ');
         return `Today, ${timePart}`;
       } else if (daysDiff === 1) {
-        // Tomorrow - extract just the time from timeSlotDisplay
         const timePart = timeSlotDisplay.split(' ').slice(1).join(' ');
         return `Tomorrow, ${timePart}`;
       } else {
-        // Other days - use the full timeSlotDisplay
         return timeSlotDisplay;
       }
-    } catch {
-      // Fallback to timeSlotDisplay
+    } catch (e) {
       return timeSlotDisplay;
     }
   };
 
   const getAppointmentStatusColor = (appointment: Appointment) => {
     if (appointment.type === 'doctor') {
+      // @ts-ignore
       return appointment.consultationType === 'online' ? '#10B981' : '#3B82F6';
     }
     return '#8B5CF6';
   };
 
   const canJoinNow = (timeSlot: string) => {
-    // Always allow joining for online consultations
+    // TODO: Implement actual logic if needed
     return true;
   };
 
+  // UI/UX IMPROVEMENTS: Add a subtle gradient background, improved header, sticky orders button, and section cards
+
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
-        <FontAwesome name="spinner" size={24} color="#6B7280" />
-        <Text className="text-gray-600 mt-2">Loading your dashboard...</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
+        <View style={{
+          backgroundColor: '#fff',
+          padding: 24,
+          borderRadius: 16,
+          shadowColor: '#000',
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 4,
+          alignItems: 'center'
+        }}>
+          <FontAwesome name="spinner" size={32} color="#6B7280" style={{ marginBottom: 8 }} />
+          <Text style={{ color: '#6B7280', fontSize: 16, fontWeight: '500' }}>Loading your dashboard...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-        <ScrollView 
-          className="flex-1"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-        >
-          <View className="p-6">
-            {/* Header */}
-            <View className="mb-6">
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-2xl font-bold text-gray-900">Your Health Dashboard</Text>
-                <TouchableOpacity
-                  onPress={() => router.push('/orders')}
-                  className="bg-blue-600 px-4 py-2 rounded-lg flex-row items-center"
-                >
-                  <FontAwesome name="shopping-cart" size={16} color="white" />
-                  <Text className="text-white font-semibold ml-2">Orders</Text>
-                </TouchableOpacity>
-              </View>
-              <Text className="text-gray-600">Stay on top of your appointments and health records</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f3f4f6' }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
+      {/* Gradient background */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 220,
+          // React Native does not support CSS gradients in backgroundColor
+          // Use a fallback color or a gradient library if needed
+          opacity: 0.15,
+          zIndex: -1,
+        }}
+      />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={Platform.OS === 'android' ? ['#3B82F6'] : undefined}
+            tintColor={Platform.OS === 'ios' ? '#3B82F6' : undefined}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{
+          paddingHorizontal: 20,
+          paddingTop: 24,
+          paddingBottom: 8,
+        }}>
+          {/* Header */}
+          <View
+            style={{
+              marginBottom: 18,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View>
+              <Text
+                style={{
+                  fontSize: 26,
+                  fontWeight: 'bold',
+                  color: '#1e293b',
+                  letterSpacing: 0.2,
+                }}
+              >
+                 Welcome Back
+              </Text>
+              <Text
+                style={{
+                  color: '#64748b',
+                  fontSize: 15,
+                  marginTop: 2,
+                  fontWeight: '500',
+                }}
+              >
+                Your Health Dashboard
+              </Text>
             </View>
+            <TouchableOpacity
+              onPress={() => router.push('/orders')}
+              style={{
+                backgroundColor: '#3B82F6',
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                shadowColor: '#3B82F6',
+                shadowOpacity: 0.18,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+              activeOpacity={0.85}
+            >
+              <FontAwesome name="shopping-cart" size={18} color="white" />
+              <Text style={{ color: 'white', fontWeight: 'bold', marginLeft: 8, fontSize: 15 }}>
+                Orders
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-            {/* Upcoming Appointments */}
+        {/* Section Cards */}
+        <View style={{ paddingHorizontal: 12 }}>
+          {/* Upcoming Appointments */}
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 16,
+              marginBottom: 18,
+              padding: 14,
+              shadowColor: '#000',
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
             <UpcomingAppointments
               dashboardData={dashboardData}
               onJoinOnlineConsultation={handleJoinOnlineConsultation}
@@ -413,23 +486,65 @@ const UserDashboard: React.FC = () => {
               getAppointmentStatusColor={getAppointmentStatusColor}
               canJoinNow={canJoinNow}
               onAppointmentCancelled={handleRefresh}
+              cardMode
             />
+          </View>
 
-            {/* Previous Appointments */}
+          {/* Previous Appointments */}
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 16,
+              marginBottom: 18,
+              padding: 14,
+              shadowColor: '#000',
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
             <PreviousAppointments
               previousAppointments={previousAppointments}
               formatAppointmentTime={formatAppointmentTime}
               onViewPrescription={viewPrescription}
               onShowPrescriptionsModal={showPrescriptionsModal}
+              cardMode
             />
+          </View>
 
-            {/* Collected Samples */}
+          {/* Collected Samples */}
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 16,
+              marginBottom: 18,
+              padding: 14,
+              shadowColor: '#000',
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
             <CollectedSamples
               collectedSamples={collectedSamples}
               formatAppointmentTime={formatAppointmentTime}
+              cardMode
             />
+          </View>
 
-            {/* Previous Lab Tests */}
+          {/* Previous Lab Tests */}
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 16,
+              marginBottom: 18,
+              padding: 14,
+              shadowColor: '#000',
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
             <PreviousLabTests
               previousLabTests={previousLabTests}
               formatAppointmentTime={formatAppointmentTime}
@@ -437,72 +552,86 @@ const UserDashboard: React.FC = () => {
               onViewLabPdfs={viewLabPdfs}
               onViewLabNotes={viewLabNotes}
               onShowAllReportsModal={fetchAllLabReports}
+              cardMode
             />
           </View>
-        </ScrollView>
+        </View>
+      </ScrollView>
 
-        {/* AI Chat Floating Button */}
-        <ToctorFloatingButton onPress={handleOpenAIChat} />
+      {/* AI Chat Floating Button */}
+      <ToctorFloatingButton
+        onPress={handleOpenAIChat}
+        style={{
+          position: 'absolute',
+          bottom: 32,
+          right: 24,
+          zIndex: 10,
+          shadowColor: '#3B82F6',
+          shadowOpacity: 0.18,
+          shadowRadius: 8,
+          elevation: 4,
+        }}
+      />
 
-        {/* Video Call Modal */}
-        {selectedVideoCallAppointment && (
-          <VideoCallModal
-            visible={showVideoCallModal}
-            onClose={handleCloseVideoCall}
-            appointmentId={selectedVideoCallAppointment._id}
-            userRole="patient"
-            appointmentData={{
-              doctorName: selectedVideoCallAppointment.providerName,
-              appointmentTime: selectedVideoCallAppointment.timeSlotDisplay
-            }}
-          />
-        )}
-
-        {/* Rating Modal */}
-        {ratingModalData && (
-          <RatingModal
-            visible={showRatingModal}
-            onClose={() => handleRatingSubmittedWithRefresh()}
-            appointmentId={ratingModalData.appointmentId}
-            providerId={ratingModalData.providerId}
-            providerName={ratingModalData.providerName}
-            providerType={ratingModalData.providerType}
-            onRatingSubmitted={handleRatingSubmittedWithRefresh}
-          />
-        )}
-
-        {/* All Dashboard Modals */}
-        <UserDashboardModals
-          showPrescriptionModal={showPrescriptionModal}
-          showReportModal={showReportModal}
-          showPdfsModal={showPdfsModal}
-          showNotesModal={showNotesModal}
-          showLabReportsListModal={showLabReportsListModal}
-          prescriptionData={prescriptionData}
-          reportData={reportData}
-          pdfsData={pdfsData}
-          notesData={notesData}
-          allLabReports={allLabReports}
-          onClosePrescriptionModal={() => setShowPrescriptionModal(false)}
-          onCloseReportModal={() => setShowReportModal(false)}
-          onClosePdfsModal={() => setShowPdfsModal(false)}
-          onCloseNotesModal={() => setShowNotesModal(false)}
-          onCloseLabReportsListModal={() => setShowLabReportsListModal(false)}
-          onViewLabReport={viewLabReport}
-          onViewLabPdfs={viewLabPdfs}
-          onViewLabNotes={viewLabNotes}
-          formatAppointmentTime={formatAppointmentTime}
+      {/* Video Call Modal */}
+      {selectedVideoCallAppointment && (
+        <VideoCallModal
+          visible={showVideoCallModal}
+          onClose={handleCloseVideoCall}
+          appointmentId={selectedVideoCallAppointment._id}
+          userRole="patient"
+          appointmentData={{
+            doctorName: selectedVideoCallAppointment.providerName,
+            appointmentTime: selectedVideoCallAppointment.timeSlotDisplay
+          }}
         />
+      )}
 
-        {/* AI Chat Modal */}
-        <ToctorAIChat
-          visible={showAIChat}
-          onClose={handleCloseAIChat}
+      {/* Rating Modal */}
+      {ratingModalData && (
+        <RatingModal
+          visible={showRatingModal}
+          onClose={handleRatingSubmittedWithRefresh}
+          appointmentId={ratingModalData.appointmentId}
+          providerId={ratingModalData.providerId}
+          providerName={ratingModalData.providerName}
+          providerType={ratingModalData.providerType}
+          onRatingSubmitted={handleRatingSubmittedWithRefresh}
         />
+      )}
 
-        <AlertComponent />
-      </SafeAreaView>
+      {/* All Dashboard Modals */}
+      <UserDashboardModals
+        showPrescriptionModal={showPrescriptionModal}
+        showReportModal={showReportModal}
+        showPdfsModal={showPdfsModal}
+        showNotesModal={showNotesModal}
+        showLabReportsListModal={showLabReportsListModal}
+        prescriptionData={prescriptionData}
+        reportData={reportData}
+        pdfsData={pdfsData}
+        notesData={notesData}
+        allLabReports={allLabReports}
+        onClosePrescriptionModal={() => setShowPrescriptionModal(false)}
+        onCloseReportModal={() => setShowReportModal(false)}
+        onClosePdfsModal={() => setShowPdfsModal(false)}
+        onCloseNotesModal={() => setShowNotesModal(false)}
+        onCloseLabReportsListModal={() => setShowLabReportsListModal(false)}
+        onViewLabReport={viewLabReport}
+        onViewLabPdfs={viewLabPdfs}
+        onViewLabNotes={viewLabNotes}
+        formatAppointmentTime={formatAppointmentTime}
+      />
+
+      {/* AI Chat Modal */}
+      <ToctorAIChat
+        visible={showAIChat}
+        onClose={handleCloseAIChat}
+      />
+
+      <AlertComponent />
+    </SafeAreaView>
   );
 };
 
-export default UserDashboard; 
+export default UserDashboard;

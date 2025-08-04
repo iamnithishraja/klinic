@@ -23,6 +23,7 @@ import DoctorProfileForm from '@/components/profile/DoctorProfileForm';
 import LaboratoryProfileForm from '@/components/profile/LaboratoryProfileForm';
 import SaveButton from '@/components/profile/SaveButton';
 import ImagePickerModal from '@/components/profile/ImagePickerModal';
+import DeleteAccountModal from '@/components/profile/DeleteAccountModal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const Profile = () => {
@@ -49,6 +50,7 @@ const Profile = () => {
   const [cameraCaptureUri, setCameraCaptureUri] = useState<string | null>(null);
   const [galleryCaptureUri, setGalleryCaptureUri] = useState<string | null>(null);
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
 
   // Custom hooks for API calls
   const userApi = useProfileApi({
@@ -1227,6 +1229,23 @@ const Profile = () => {
 
           {/* Dynamic Form Section based on role */}
           {renderProfileForm()}
+
+          {/* Delete Account Section */}
+          <View className="mt-8 mb-6">
+            <View className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <Text className="text-red-800 font-semibold text-lg mb-2">Danger Zone</Text>
+              <Text className="text-red-700 text-sm mb-4">
+                Once you delete your account, there is no going back. Please be certain.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowDeleteAccountModal(true)}
+                className="bg-red-600 rounded-xl py-3 px-4 flex-row items-center justify-center"
+              >
+                <MaterialCommunityIcons name="delete" size={20} color="white" />
+                <Text className="text-white font-medium ml-2">Delete Account</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </ScrollView>
 
         {/* Floating Save Button (only show when there are changes) */}
@@ -1239,6 +1258,12 @@ const Profile = () => {
           visible={uiStore.showImageOptions}
           onClose={() => uiStore.setShowImageOptions(false)}
           onChooseFromGallery={openGallery}
+        />
+
+        {/* Delete Account Modal */}
+        <DeleteAccountModal
+          visible={showDeleteAccountModal}
+          onClose={() => setShowDeleteAccountModal(false)}
         />
       </SafeAreaView>
     </View>

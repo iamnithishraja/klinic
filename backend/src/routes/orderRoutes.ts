@@ -1,15 +1,20 @@
 import { Router } from 'express';
-import { 
-    createOrder, 
-    getMyOrders, 
-    getLabOrders, 
-    updateOrderStatus, 
+import {
+    createOrder,
+    getMyOrders,
+    getLabOrders,
+    updateOrderStatus,
     getOrderDetails,
     getOrderById,
     claimOrder,
     assignDeliveryPartner,
     getAvailableDeliveryPartners,
-    getLabOrdersWithAddresses
+    getLabOrdersWithAddresses,
+    cancelUnpaidOrder,
+    getOrderPaymentStatus,
+    updateOrderPaymentStatus,
+    getUnpaidOrders,
+    cancelOrderByLaboratory
 } from '../controllers/orderController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
 import { UserRole } from '../types/userTypes';
@@ -60,6 +65,34 @@ orderRouter.get('/orders/:orderId',
 );
 
 // ========================================
+// PAYMENT-RELATED ROUTES
+// ========================================
+
+// Get user's unpaid orders
+orderRouter.get('/orders/unpaid-orders', 
+    isAuthenticatedUser, 
+    getUnpaidOrders
+);
+
+// Get order payment status
+orderRouter.get('/orders/:orderId/payment-status', 
+    isAuthenticatedUser, 
+    getOrderPaymentStatus
+);
+
+// Update order payment status
+orderRouter.put('/orders/:orderId/payment-status', 
+    isAuthenticatedUser, 
+    updateOrderPaymentStatus
+);
+
+// Cancel unpaid order
+orderRouter.post('/orders/:orderId/cancel', 
+    isAuthenticatedUser, 
+    cancelUnpaidOrder
+);
+
+// ========================================
 // LABORATORY ROUTES
 // ========================================
 
@@ -81,6 +114,13 @@ orderRouter.post('/orders/:orderId/assign-delivery',
     isAuthenticatedUser, 
     (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
     assignDeliveryPartner
+);
+
+// Cancel order by laboratory (Lab User)
+orderRouter.delete('/orders/:orderId/cancel-by-lab', 
+    isAuthenticatedUser, 
+    (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
+    cancelOrderByLaboratory
 );
 
 export default orderRouter; 

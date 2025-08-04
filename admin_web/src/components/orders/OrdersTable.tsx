@@ -32,6 +32,7 @@ export interface Order {
   totalPrice: number;
   status: 'pending' | 'confirmed' | 'out for delivery' | 'delivered' | 'cancelled';
   isPaid: boolean;
+  cod: boolean;
   needAssignment: boolean;
   deliveryAddress?: {
     street: string;
@@ -412,9 +413,17 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ filters = {} }) => {
               {/* Total Price */}
               <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
                 <span className="font-semibold text-gray-900">Total Amount</span>
-                <div className="flex items-center gap-1">
-                  <FaRupeeSign className="text-gray-600 text-sm" />
-                  <span className="text-lg font-bold text-gray-900">₹{order.totalPrice}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <FaRupeeSign className="text-gray-600 text-sm" />
+                    <span className="text-lg font-bold text-gray-900">₹{order.totalPrice}</span>
+                  </div>
+                  {order.cod && (
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                      COD
+                    </span>
+                  )}
                 </div>
               </div>
 

@@ -1332,6 +1332,7 @@ export const assignLabToOrder = async (req: Request, res: Response): Promise<voi
       { 
         laboratoryUser: labObjectId,
         needAssignment: false,
+        status: 'confirmed', // Update status to confirmed when lab is assigned
         updatedAt: new Date()
       },
       { new: true }

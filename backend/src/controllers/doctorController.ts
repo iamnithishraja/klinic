@@ -389,6 +389,43 @@ const getDoctorAvailability = async (req: CustomRequest, res: Response) => {
     }
 };
 
+const cancelAppointment = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const doctorId = req.user._id;
+        const { appointmentId } = req.params;
+
+        console.log('Cancel appointment - Doctor ID:', doctorId);
+        console.log('Cancel appointment - Appointment ID:', appointmentId);
+
+        // Verify appointment belongs to this doctor
+        const appointment = await DoctorAppointments.findOne({
+            _id: appointmentId,
+            doctor: doctorId,
+            status: 'upcoming'
+        });
+
+        console.log('Cancel appointment - Found appointment:', appointment ? 'Yes' : 'No');
+
+        if (!appointment) {
+            console.log('Cancel appointment - Appointment not found or access denied');
+            res.status(404).json({ message: "Appointment not found or access denied" });
+            return;
+        }
+
+        // Delete the appointment
+        await DoctorAppointments.deleteOne({ _id: appointmentId });
+
+        console.log('Cancel appointment - Successfully deleted');
+
+        res.status(200).json({ 
+            message: "Appointment cancelled successfully"
+        });
+    } catch (error) {
+        console.error('Cancel appointment error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
 export { 
     getDoctorDashboard, 
     addPrescription, 
@@ -396,5 +433,6 @@ export {
     getAppointmentDetails, 
     updateAppointmentStatus,
     testDoctorEndpoint,
-    getDoctorAvailability
+    getDoctorAvailability,
+    cancelAppointment
 }; 

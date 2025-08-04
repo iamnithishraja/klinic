@@ -32,8 +32,10 @@ export interface DeliveryOrder {
   }>;
   prescription?: string;
   customerAddress?: string;
+  customerPinCode?: string;
   totalPrice: number;
   isPaid: boolean;
+  cod: boolean;
   needAssignment: boolean;
   status: 'pending' | 'confirmed' | 'assigned_to_delivery' | 'delivery_accepted' | 'out_for_delivery' | 'delivered' | 'delivery_rejected' | 'cancelled';
   assignedAt?: string;

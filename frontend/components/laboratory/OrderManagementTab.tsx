@@ -55,9 +55,11 @@ interface LabOrder {
   prescription?: string;
   totalPrice: number;
   isPaid: boolean;
+  cod: boolean;
   needAssignment: boolean;
   status: 'pending' | 'confirmed' | 'assigned_to_delivery' | 'delivery_accepted' | 'out_for_delivery' | 'delivered' | 'delivery_rejected' | 'cancelled';
   customerAddress?: string;
+  customerPinCode?: string;
   createdAt: string;
   updatedAt: string;
   // Additional fields from API response
@@ -349,26 +351,43 @@ const OrderManagementTab: React.FC<OrderManagementTabProps> = ({ onRefresh }) =>
             {item.orderedBy.phone} • {item.orderedBy.email}
           </Text>
           {item.customerAddress && (
-            <Text style={styles.customerAddress} numberOfLines={2}>
-              📍 {item.customerAddress}
-            </Text>
+            <View style={styles.customerAddressContainer}>
+              <Text style={styles.customerAddress} numberOfLines={2}>
+                📍 {item.customerAddress}
+              </Text>
+              {item.customerPinCode && (
+                <Text style={styles.customerPinCode}>
+                  PIN: {item.customerPinCode}
+                </Text>
+              )}
+            </View> 
           )}
-        </View>
 
-        {item.prescription && (
-          <Text style={styles.prescriptionText} numberOfLines={2}>
-            Prescription: {item.prescription}
-          </Text>
-        )}
-        
-        {item.products && item.products.length > 0 && (
+          {item.products && item.products.length > 0 && (
           <Text style={styles.productsText}>
             {item.products.length} product{item.products.length > 1 ? 's' : ''}
           </Text>
         )}
+        </View>
+
+        {/* {item.prescription && (
+          <Text style={styles.prescriptionText} numberOfLines={2}>
+            Prescription: {item.prescription}
+          </Text>
+        )} */}
+        
+
 
         <View style={styles.orderActions}>
-          <Text style={styles.orderPrice}>₹{item.totalPrice.toFixed(2)}</Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.orderPrice}>₹{item.totalPrice.toFixed(2)}</Text>
+            {item.cod && (
+              <View style={styles.codBadge}>
+                <FontAwesome name="money" size={12} color="white" />
+                <Text style={styles.codText}>COD</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.actionButtons}>
             {needsAssignment && (
               <View style={styles.needsAssignmentBadge}>
@@ -456,6 +475,7 @@ const OrderManagementTab: React.FC<OrderManagementTabProps> = ({ onRefresh }) =>
             );
           }}
           keyExtractor={(item) => item.id}
+          style={styles.filterChipsList}
         />
       </View>
     );
@@ -519,12 +539,13 @@ const OrderManagementTab: React.FC<OrderManagementTabProps> = ({ onRefresh }) =>
         renderItem={renderOrderItem}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
         ListEmptyComponent={renderEmptyState}
         key={activeFilter} // Force re-render when filter changes
+        style={styles.ordersList}
       />
 
       {/* Order Details Modal */}
@@ -572,10 +593,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    zIndex: 1,
   },
   filterChipsContainer: {
     paddingHorizontal: 16,
     gap: 8,
+  },
+  filterChipsList: {
+    // Ensure the horizontal list doesn't interfere with vertical scroll
   },
   filterChip: {
     flexDirection: 'row',
@@ -607,6 +632,10 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    flexGrow: 1,
+  },
+  ordersList: {
+    flex: 1,
   },
   orderCard: {
     backgroundColor: 'white',
@@ -669,10 +698,18 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
+  customerAddressContainer: {
+    marginTop: 4,
+  },
   customerAddress: {
     fontSize: 12,
     color: '#6B7280',
-    marginTop: 4,
+    marginBottom: 2,
+  },
+  customerPinCode: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
   },
   prescriptionText: {
     fontSize: 12,
@@ -781,6 +818,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   // Overlay styles
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  codBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  codText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 4,
+  },
 });
 
 export default OrderManagementTab;

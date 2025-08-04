@@ -15,6 +15,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import useProfileApi from '@/hooks/useProfileApi';
 import { orderService } from '@/services/orderService';
+import PrescriptionPaymentModal from '@/components/payment/PrescriptionPaymentModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,6 +38,9 @@ const PrescriptionUploadModal: React.FC<PrescriptionUploadModalProps> = ({
   } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<any>(null);
+  const [orderData, setOrderData] = useState<any>(null);
 
   const handleDocumentPick = async () => {
     try {
@@ -87,39 +91,24 @@ const PrescriptionUploadModal: React.FC<PrescriptionUploadModalProps> = ({
         throw new Error('Failed to upload prescription');
       }
 
-      // Create prescription-only order that needs laboratory assignment
+      // Prepare order data for payment (don't create order yet)
       const orderData = {
         prescription: publicUrl,
         needAssignment: true, // This flag tells admin to assign laboratory
         totalPrice: 0, // Will be calculated after laboratory assignment
+        products: [], // No products for prescription-only orders
       };
 
-      console.log('Creating prescription order with data:', orderData);
+      console.log('Preparing prescription order data:', orderData);
 
-      const order = await orderService.createOrder(orderData);
-
-      if (order) {
-        Alert.alert(
-          'Prescription Order Created Successfully!',
-          'Your prescription has been uploaded and order created. Our admin team will review your prescription and assign it to a laboratory. You will be notified once the order is processed.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onSuccess();
-                handleClose();
-              },
-            },
-          ]
-        );
-      } else {
-        throw new Error('Failed to create order');
-      }
+      // Store order data and show payment modal
+      setOrderData(orderData);
+      setShowPaymentModal(true);
     } catch (error) {
-      console.error('Error creating prescription order:', error);
+      console.error('Error preparing prescription order:', error);
       Alert.alert(
         'Error', 
-        'Failed to create prescription order. Please try again or contact support if the issue persists.'
+        'Failed to prepare prescription order. Please try again or contact support if the issue persists.'
       );
     } finally {
       setIsUploading(false);
@@ -131,7 +120,18 @@ const PrescriptionUploadModal: React.FC<PrescriptionUploadModalProps> = ({
     setSelectedFile(null);
     setIsUploading(false);
     setIsCreatingOrder(false);
+    setCreatedOrder(null);
+    setOrderData(null);
+    setShowPaymentModal(false);
     onClose();
+  };
+
+  const handlePaymentSuccess = () => {
+    setCreatedOrder(null);
+    setOrderData(null);
+    setShowPaymentModal(false);
+    onSuccess();
+    handleClose();
   };
 
   const formatFileSize = (bytes: number) => {
@@ -268,6 +268,16 @@ const PrescriptionUploadModal: React.FC<PrescriptionUploadModalProps> = ({
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Prescription Payment Modal */}
+      {orderData && (
+        <PrescriptionPaymentModal
+          visible={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          orderData={orderData}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
     </Modal>
   );
 };

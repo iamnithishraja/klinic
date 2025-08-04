@@ -149,38 +149,49 @@ export default function ProductList() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      {/* Header with Search and Filters */}
-      <View style={styles.header}>
-        <SearchBox 
-          onSearch={handleSearch} 
-          placeholder="Search medicines..." 
-        />
-        
-        <View style={styles.headerRow}>
+      {/* Header: Search and Filter in a row, minimal look */}
+      <View style={[styles.header, { paddingBottom: 0 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <SearchBox 
+              onSearch={handleSearch} 
+              placeholder="Search medicines..." 
+            />
+          </View>
           <TouchableOpacity
             style={[
-              styles.filterButton,
-              hasActiveFilters() && styles.filterButtonActive
+              {
+                marginLeft: 8,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 8,
+                backgroundColor: hasActiveFilters() ? '#e0e7ff' : '#f3f4f6',
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderWidth: hasActiveFilters() ? 1 : 0,
+                borderColor: hasActiveFilters() ? '#2563eb' : 'transparent',
+                minWidth: 40,
+                minHeight: 40,
+              }
             ]}
             onPress={() => setShowFilters(true)}
             activeOpacity={0.8}
           >
             <Ionicons name="filter-outline" size={18} color={hasActiveFilters() ? "#2563eb" : "#6b7280"} />
-            <Text style={[
-              styles.filterButtonText,
-              hasActiveFilters() && styles.filterButtonTextActive
-            ]}>
-              Filters
-            </Text>
             {hasActiveFilters() && (
-              <View style={styles.activeDot} />
+              <View style={{
+                width: 7,
+                height: 7,
+                borderRadius: 4,
+                backgroundColor: "#2563eb",
+                marginLeft: 4,
+              }} />
             )}
           </TouchableOpacity>
-          
-          <Text style={styles.productCount}>
-            {products.length} product{products.length !== 1 ? 's' : ''}
-          </Text>
         </View>
+        {/* <Text style={[styles.productCount, { marginTop: 10, marginLeft: 2, color: '#6b7280', fontSize: 14 }]}>
+          {products.length} product{products.length !== 1 ? 's' : ''}
+        </Text> */}
       </View>
 
       {/* Product List */}

@@ -30,7 +30,7 @@ export interface Order {
   totalPrice: number;
   isPaid: boolean;
   needAssignment: boolean;
-  status: 'pending' | 'confirmed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  status: 'pending' | 'pending_assignment' | 'confirmed' | 'out_for_delivery' | 'delivered' | 'cancelled';
   createdAt: string;
   updatedAt: string;
 }
@@ -55,7 +55,7 @@ export interface OrderResponse {
 }
 
 export interface UpdateOrderStatusData {
-  status: 'pending' | 'confirmed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  status: 'pending' | 'pending_assignment' | 'confirmed' | 'out_for_delivery' | 'delivered' | 'cancelled';
 }
 
 export interface CreateOrderData {
@@ -67,6 +67,10 @@ export interface CreateOrderData {
   totalPrice?: number;
   needAssignment: boolean;
   laboratoryUser?: string;
+  deliveryAddress?: {
+    address: string;
+    pinCode: string;
+  };
 }
 
 export interface CreateOrderResponse {
@@ -259,6 +263,98 @@ export const orderService = {
     } catch (error: any) {
       console.error('Error updating order status:', error);
       console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Payment-related methods
+  getUnpaidOrders: async (filters: OrderFilters): Promise<OrderResponse> => {
+    try {
+      const queryParams = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          queryParams.append(key, value.toString());
+        }
+      });
+
+      const queryString = queryParams.toString();
+      const url = `/api/v1/orders/unpaid-orders?${queryString}`;
+      console.log('API Request URL:', url);
+      
+      const response = await apiClient.get(url);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to fetch unpaid orders');
+      }
+      
+      return {
+        orders: response.data.data.orders,
+        pagination: response.data.data.pagination
+      };
+    } catch (error: any) {
+      console.error('Error fetching unpaid orders:', error);
+      throw error;
+    }
+  },
+
+  getOrderPaymentStatus: async (orderId: string): Promise<{
+    orderId: string;
+    isPaid: boolean;
+    status: string;
+    needAssignment: boolean;
+    totalPrice: number;
+    createdAt: string;
+  }> => {
+    try {
+      console.log('Getting payment status for order:', orderId);
+      const response = await apiClient.get(`/api/v1/orders/${orderId}/payment-status`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to get payment status');
+      }
+      
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error getting order payment status:', error);
+      throw error;
+    }
+  },
+
+  updateOrderPaymentStatus: async (orderId: string, isPaid: boolean, status?: string): Promise<{
+    orderId: string;
+    isPaid: boolean;
+    status: string;
+  }> => {
+    try {
+      console.log('Updating payment status for order:', orderId, { isPaid, status });
+      const response = await apiClient.put(`/api/v1/orders/${orderId}/payment-status`, {
+        isPaid,
+        status
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to update payment status');
+      }
+      
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error updating order payment status:', error);
+      throw error;
+    }
+  },
+
+  cancelUnpaidOrder: async (orderId: string): Promise<Order> => {
+    try {
+      console.log('Cancelling unpaid order:', orderId);
+      const response = await apiClient.post(`/api/v1/orders/${orderId}/cancel`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to cancel order');
+      }
+      
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error cancelling unpaid order:', error);
       throw error;
     }
   }

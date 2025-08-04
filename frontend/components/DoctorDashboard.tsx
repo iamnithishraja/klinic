@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Image, TextInput, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, FlatList, Modal, RefreshControl, Image, TextInput, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -401,6 +401,44 @@ const DoctorDashboard: React.FC = () => {
     setSelectedVideoCallAppointment(null);
   };
 
+  const handleCancelAppointment = async (appointment: DoctorAppointment) => {
+    Alert.alert(
+      "Cancel Appointment",
+      "Are you sure you want to cancel this appointment? This action cannot be undone.",
+      [
+        {
+          text: "No",
+          style: "cancel"
+        },
+        {
+          text: "Yes, Cancel",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await apiClient.delete(`/api/v1/doctor/appointments/${appointment._id}`);
+              
+              showAlert({
+                title: 'Success',
+                message: 'Appointment cancelled successfully',
+                type: 'success'
+              });
+
+              // Refresh dashboard data
+              await fetchDashboardData();
+            } catch (error: any) {
+              console.error('Error cancelling appointment:', error);
+              showAlert({
+                title: 'Error',
+                message: `Failed to cancel appointment: ${error.response?.data?.message || error.message}`,
+                type: 'error'
+              });
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Filter appointments to only show paid online consultations
   const filterAppointments = (appointments: DoctorAppointment[] = []) =>
     appointments.filter(
@@ -462,7 +500,7 @@ const DoctorDashboard: React.FC = () => {
           </View>
         )}
 
-        <View className="flex-row space-x-2">
+        <View className="flex-row space-x-2 mb-2">
           <Pressable
             onPress={() => handleViewPatient(item)}
             className="flex-1 py-2.5 px-3 rounded-lg bg-blue-50 items-center border border-blue-200"
@@ -520,6 +558,29 @@ const DoctorDashboard: React.FC = () => {
             }`}>
               {item.prescriptionSent ? 'Mark as Read' : 'No Prescription'}
             </Text>
+          </Pressable>
+        </View>
+
+        {/* Cancel Appointment Button */}
+        <View className="flex-row space-x-2">
+          <Pressable
+            onPress={() => handleCancelAppointment(item)}
+            className="flex-1 py-2.5 px-3 rounded-lg bg-red-500 items-center shadow-sm"
+            style={{
+              shadowColor: '#EF4444',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+          >
+            <FontAwesome 
+              name="times" 
+              size={14} 
+              color="white" 
+              style={{ marginBottom: 3 }} 
+            />
+            <Text className="text-white font-medium text-xs">Cancel Appointment</Text>
           </Pressable>
         </View>
 

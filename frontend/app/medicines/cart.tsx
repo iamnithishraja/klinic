@@ -12,17 +12,21 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
-import { useProductStore } from '@/store/productStore';
+import { useCartStore } from '@/store/cartStore';
 import { orderService, Order } from '@/services/orderService';
 import { CartItem } from '@/components/medicines/CartItem';
 import { PrescriptionUpload } from '@/components/medicines/PrescriptionUpload';
+import ProductPaymentModal from '@/components/payment/ProductPaymentModal';
 import { CartItem as CartItemType } from '@/types/medicineTypes';
 
 export default function CartScreen() {
   const router = useRouter();
-  const { cart, getCartTotal, clearCart } = useProductStore();
+  const { items: cart, getCartTotal, clearCart } = useCartStore();
   const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
   const [uploadingPrescription, setUploadingPrescription] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  const [orderData, setOrderData] = useState<any>(null);
 
   const handleQuantityChange = (productId: string, quantity: number) => {
     // This will be handled by the CartItem component
@@ -47,44 +51,29 @@ export default function CartScreen() {
       return;
     }
 
-    try {
-      const orderData = {
-        products: cart.map(item => ({
-          product: item.product._id,
-          quantity: item.quantity,
-        })),
-        prescription: prescriptionUrl || undefined,
-        totalPrice: getCartTotal(),
-        needAssignment: false,
-      };
+    // Prepare order data for payment (don't create order yet)
+    const orderData = {
+      products: cart.map(item => ({
+        product: item.product._id,
+        quantity: item.quantity,
+      })),
+      prescription: prescriptionUrl || undefined,
+      totalPrice: getCartTotal(),
+      needAssignment: false,
+    };
 
-      const result = await orderService.createOrder(orderData);
-      
-      // Check if multiple orders were created (multi-lab scenario)
-      const isMultiLabOrder = Array.isArray(result.data);
-      const orderCount = isMultiLabOrder ? (result.data as Order[]).length : 1;
-      
-      const message = isMultiLabOrder 
-        ? `Your order has been split into ${orderCount} separate orders and will be processed by different laboratories.`
-        : 'Your order has been placed and will be processed soon.';
-      
-      Alert.alert(
-        'Order Placed Successfully',
-        message,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              clearCart();
-              setPrescriptionUrl(null);
-              router.back();
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to place order. Please try again.');
-    }
+    // Store order data and show payment modal
+    setOrderData(orderData);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    clearCart();
+    setPrescriptionUrl(null);
+    setCreatedOrder(null);
+    setOrderData(null);
+    setShowPaymentModal(false);
+    router.back();
   };
 
   const renderCartItem = ({ item }: { item: CartItemType }) => (
@@ -171,6 +160,16 @@ export default function CartScreen() {
             </TouchableOpacity>
           </View>
         </>
+      )}
+
+      {/* Product Payment Modal */}
+      {orderData && (
+        <ProductPaymentModal
+          visible={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          orderData={orderData}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
       )}
     </SafeAreaView>
   );

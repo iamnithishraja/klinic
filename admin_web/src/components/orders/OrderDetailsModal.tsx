@@ -29,6 +29,7 @@ interface Order {
   totalPrice: number;
   status: 'pending' | 'confirmed' | 'out for delivery' | 'delivered' | 'cancelled';
   isPaid: boolean;
+  cod: boolean;
   needAssignment: boolean;
   deliveryAddress?: {
     street: string;
@@ -273,6 +274,18 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, 
                               <FaPhone className="text-gray-400" />
                               {displayOrder.assignedLab.phone}
                             </div>
+                            {displayOrder.cod && (
+                              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                  <span className="text-sm font-medium text-blue-800">COD Order</span>
+                                </div>
+                                <div className="text-sm text-blue-700">
+                                  <p className="font-medium">Order value: ₹{displayOrder.totalPrice}</p>
+                                  <p className="text-xs mt-1">Payment will be collected by delivery partner</p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -283,6 +296,17 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, 
                         </div>
                         <p className="text-orange-600 font-medium mb-2">No Laboratory Assigned</p>
                         <p className="text-sm text-gray-500">This prescription order needs to be assigned to a laboratory</p>
+                        {displayOrder.cod && (
+                          <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                              <span className="text-sm font-medium text-orange-800">COD Order</span>
+                            </div>
+                            <div className="text-sm text-orange-700">
+                              <p>When assigning laboratory, inform them this is a COD order worth ₹{displayOrder.totalPrice}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-4">
@@ -291,6 +315,17 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, 
                         </div>
                         <p className="text-green-600 font-medium mb-2">Product Order</p>
                         <p className="text-sm text-gray-500">Products are sourced from their respective laboratories</p>
+                        {displayOrder.cod && (
+                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                              <span className="text-sm font-medium text-green-800">COD Order</span>
+                            </div>
+                            <div className="text-sm text-green-700">
+                              <p>Order value: ₹{displayOrder.totalPrice} - Payment will be collected by delivery partner</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -314,6 +349,18 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, 
                               <FaPhone className="text-gray-400" />
                               {displayOrder.assignedDeliveryPartner.phone}
                             </div>
+                            {displayOrder.cod && (
+                              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                  <span className="text-sm font-medium text-red-800">Cash on Delivery</span>
+                                </div>
+                                <div className="text-sm text-red-700">
+                                  <p className="font-medium">Collect ₹{displayOrder.totalPrice} from customer</p>
+                                  <p className="text-xs mt-1">Payment due upon delivery</p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -324,6 +371,17 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, 
                         </div>
                         <p className="text-gray-600 font-medium mb-2">No Delivery Partner Assigned</p>
                         <p className="text-sm text-gray-500">This order has not been assigned to a delivery partner yet</p>
+                        {displayOrder.cod && (
+                          <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                              <span className="text-sm font-medium text-orange-800">COD Order</span>
+                            </div>
+                            <div className="text-sm text-orange-700">
+                              <p>When assigning delivery partner, inform them to collect ₹{displayOrder.totalPrice}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -365,18 +423,41 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, 
                     <div className="mt-6 pt-4 border-t border-gray-200">
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
-                        <span className="text-2xl font-bold text-blue-600">₹{displayOrder.totalPrice}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl font-bold text-blue-600">₹{displayOrder.totalPrice}</span>
+                          {displayOrder.cod && (
+                            <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center gap-1">
+                              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                              COD
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex justify-between items-center mt-2">
                         <span className="text-sm text-gray-500">Payment Status:</span>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          displayOrder.isPaid 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
+                          displayOrder.cod 
+                            ? 'bg-orange-100 text-orange-800' 
+                            : displayOrder.isPaid 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
                         }`}>
-                          {displayOrder.isPaid ? 'Paid' : 'Pending'}
+                          {displayOrder.cod ? 'Cash on Delivery' : (displayOrder.isPaid ? 'Paid' : 'Pending')}
                         </span>
                       </div>
+                      {displayOrder.cod && (
+                        <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                            <span className="text-sm font-medium text-orange-800">Cash on Delivery Order</span>
+                          </div>
+                          <div className="text-sm text-orange-700 space-y-1">
+                            <p>• Delivery partner must collect ₹{displayOrder.totalPrice} from customer</p>
+                            <p>• Payment will be processed after successful delivery</p>
+                            <p>• Ensure delivery partner is informed about COD amount</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

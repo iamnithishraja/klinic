@@ -16,6 +16,7 @@ import laboratoryRouter from "./routes/laboratoryRoutes";
 import videoCallRouter from "./routes/videoCallRoutes";
 import ratingRouter from "./routes/ratingRoutes";
 import deliveryRouter from "./routes/deliveryRoutes";
+import accountDeletionRouter from "./routes/accountDeletionRoutes";
 
 import aiRouter from "./routes/aiRoutes";
 import productRouter from "./routes/productRoutes";
@@ -57,6 +58,7 @@ app.use('/api/v1/doctor', doctorRouter);
 app.use('/api/v1/laboratory', laboratoryRouter);
 app.use('/api/v1/video-call', videoCallRouter);
 app.use('/api/v1/ratings', ratingRouter);
+app.use('/api/v1/account-deletion', accountDeletionRouter);
 
 app.use('/api/v1/ai', aiRouter);
 

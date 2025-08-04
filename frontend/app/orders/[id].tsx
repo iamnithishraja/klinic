@@ -54,6 +54,12 @@ export default function OrderDetailsScreen() {
         bgColor: '#FEF3C7',
         icon: 'clock-o' as const,
       },
+      pending_assignment: {
+        text: 'Pending Assignment',
+        color: '#F59E0B',
+        bgColor: '#FEF3C7',
+        icon: 'clock-o' as const,
+      },
       confirmed: {
         text: 'Confirmed',
         color: '#3B82F6',

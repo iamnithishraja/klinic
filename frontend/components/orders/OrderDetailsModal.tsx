@@ -52,6 +52,7 @@ interface LabOrder {
   prescription?: string;
   totalPrice: number;
   isPaid: boolean;
+  cod: boolean;
   needAssignment: boolean;
   status: 'pending' | 'confirmed' | 'assigned_to_delivery' | 'delivery_accepted' | 'out_for_delivery' | 'delivered' | 'delivery_rejected' | 'cancelled';
   customerAddress?: string;
@@ -168,19 +169,14 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
       size="full"
       animationType="slide"
       zIndex={1000}
-      scrollable={false} // We'll handle scrollability ourselves
+      scrollable={true} // Use the modal's built-in scroll functionality
     >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        <ScrollView
-          style={styles.scrollContainer}
-          contentContainerStyle={styles.scrollContentContainer}
-          showsVerticalScrollIndicator={true}
-          bounces={true}
-        >
+        <View style={styles.scrollContainer}>
           {/* Header */}
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
@@ -209,12 +205,20 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             <View style={styles.infoRow}>
               <View style={styles.infoCol}>
                 <Text style={styles.infoLabel}>Total</Text>
-                <Text style={styles.infoValue}>₹{order.totalPrice.toFixed(2)}</Text>
+                <View style={styles.totalPriceContainer}>
+                  <Text style={styles.infoValue}>₹{order.totalPrice.toFixed(2)}</Text>
+                  {order.cod && (
+                    <View style={styles.codBadge}>
+                      <FontAwesome name="money" size={12} color="white" />
+                      <Text style={styles.codText}>COD</Text>
+                    </View>
+                  )}
+                </View>
               </View>
               <View style={styles.infoCol}>
                 <Text style={styles.infoLabel}>Payment</Text>
                 <Text style={[styles.infoValue, { color: order.isPaid ? '#10B981' : '#F59E0B' }]}>
-                  {order.isPaid ? 'Paid' : 'Pending'}
+                  {order.cod ? 'Cash on Delivery' : (order.isPaid ? 'Paid' : 'Pending')}
                 </Text>
               </View>
             </View>
@@ -297,22 +301,6 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             </View>
           )}
 
-          {/* Products */}
-          {order.products && order.products.length > 0 && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Products ({order.products.length})</Text>
-              {order.products.map((item, idx) => (
-                <View key={`${item.product._id}-${item.quantity}`} style={styles.productRow}>
-                  <View style={styles.productLeft}>
-                    <Text style={styles.productName}>{item.product.name}</Text>
-                    <Text style={styles.productQty}>x{item.quantity}</Text>
-                  </View>
-                  <Text style={styles.productPrice}>₹{item.product.price.toFixed(2)}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
           {/* Delivery Partner */}
           {order.deliveryPartner && (
             <View style={[styles.card, styles.deliveryCard]}>
@@ -330,13 +318,6 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   <FontAwesome name="envelope" size={13} color="#6B7280" />
                   <Text style={styles.userDetailText}>{order.deliveryPartner.email}</Text>
                 </View>
-                {/* Debug: Show delivery partner data */}
-                <View style={styles.userDetailRow}>
-                  <FontAwesome name="info-circle" size={13} color="#6B7280" />
-                  <Text style={styles.userDetailText}>
-                    Profile: {order.deliveryPartner.profile ? 'Yes' : 'No'}
-                  </Text>
-                </View>
                 {(order.deliveryPartner.profile?.address?.address || order.deliveryPartner.profile?.city) && (
                   <View style={styles.userDetailRow}>
                     <FontAwesome name="map-marker" size={13} color="#6B7280" />
@@ -345,28 +326,48 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     </Text>
                   </View>
                 )}
+                {/* COD Information for Delivery Partner */}
+                {order.cod && (
+                  <View style={styles.userDetailRow}>
+                    <FontAwesome name="money" size={13} color="#EF4444" />
+                    <Text style={[styles.userDetailText, { color: '#EF4444', fontWeight: '600' }]}>
+                      Collect ₹{order.totalPrice.toFixed(2)} as Cash on Delivery
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           )}
 
-          {/* Action Button */}
-          {order.needAssignment && !order.deliveryPartner && onAssignDelivery && (
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={styles.assignBtn}
-                onPress={() => {
-                  onClose();
-                  onAssignDelivery();
-                }}
-              >
-                <FontAwesome name="user-plus" size={16} color="white" />
-                <Text style={styles.assignBtnText}>Assign Delivery Partner</Text>
-              </TouchableOpacity>
+          {/* Products */}
+          {order.products && order.products.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Products</Text>
+              {order.products.map((item, index) => (
+                <View key={index} style={styles.productItem}>
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName}>{item.product.name}</Text>
+                    <Text style={styles.productQuantity}>Qty: {item.quantity}</Text>
+                  </View>
+                  <Text style={styles.productPrice}>₹{item.product.price.toFixed(2)}</Text>
+                </View>
+              ))}
             </View>
           )}
-          {/* Add bottom padding so last item is not hidden behind modal controls */}
-          <View style={{ height: 30 }} />
-        </ScrollView>
+
+          {/* Actions */}
+          <View style={styles.actionsContainer}>
+            {onAssignDelivery && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={onAssignDelivery}
+              >
+                <FontAwesome name="truck" size={16} color="white" />
+                <Text style={styles.actionButtonText}>Assign Delivery Partner</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </CustomModal>
   );
@@ -376,11 +377,8 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
     backgroundColor: '#F3F4F6',
-  },
-  scrollContentContainer: {
     padding: 20,
     paddingBottom: 40,
-    flexGrow: 1,
   },
   headerRow: {
     flexDirection: 'row',
@@ -505,21 +503,10 @@ const styles = StyleSheet.create({
   productLeft: {
     flex: 1,
   },
-  productName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.light.text,
-  },
   productQty: {
     fontSize: 12,
     color: '#6B7280',
     marginTop: 1,
-  },
-  productPrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.light.tint,
-    marginLeft: 10,
   },
   deliveryCard: {
     backgroundColor: '#F0F9FF',
@@ -545,6 +532,75 @@ const styles = StyleSheet.create({
     color: 'white',
     marginLeft: 10,
     letterSpacing: 0.5,
+  },
+  productItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 7,
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.light.text,
+  },
+  productQuantity: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  productPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.light.tint,
+    marginLeft: 10,
+  },
+  actionsContainer: {
+    marginTop: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.light.tint,
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 200,
+  },
+  actionButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 10,
+    letterSpacing: 0.5,
+  },
+  totalPriceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  codBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginLeft: 10,
+  },
+  codText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 4,
   },
 });
 

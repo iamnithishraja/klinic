@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface OrderStatusBadgeProps {
-  status: 'pending' | 'confirmed' | 'out for delivery' | 'delivered' | 'cancelled';
+  status: 'pending' | 'pending_assignment' | 'confirmed' | 'out for delivery' | 'delivered' | 'cancelled';
 }
 
 const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status }) => {
@@ -10,6 +10,13 @@ const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status }) => {
       case 'pending':
         return {
           label: 'Pending',
+          bgColor: 'bg-yellow-100',
+          textColor: 'text-yellow-800',
+          borderColor: 'border-yellow-200'
+        };
+      case 'pending_assignment':
+        return {
+          label: 'Pending Assignment',
           bgColor: 'bg-yellow-100',
           textColor: 'text-yellow-800',
           borderColor: 'border-yellow-200'
@@ -24,7 +31,7 @@ const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status }) => {
       case 'out for delivery':
         return {
           label: 'Out for Delivery',
-          bgColor: 'bg-orange-100',
+        bgColor: 'bg-orange-100',
           textColor: 'text-orange-800',
           borderColor: 'border-orange-200'
         };

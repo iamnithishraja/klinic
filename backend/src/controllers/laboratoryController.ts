@@ -504,6 +504,43 @@ const getLaboratoryAvailability = async (req: CustomRequest, res: Response) => {
     }
 };
 
+const cancelAppointment = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const laboratoryId = req.user._id;
+        const { appointmentId } = req.params;
+
+        console.log('Cancel appointment - Laboratory ID:', laboratoryId);
+        console.log('Cancel appointment - Appointment ID:', appointmentId);
+
+        // Verify appointment belongs to this laboratory
+        const appointment = await LabAppointment.findOne({
+            _id: appointmentId,
+            lab: laboratoryId,
+            status: { $in: ['pending', 'upcoming'] }
+        });
+
+        console.log('Cancel appointment - Found appointment:', appointment ? 'Yes' : 'No');
+
+        if (!appointment) {
+            console.log('Cancel appointment - Appointment not found or access denied');
+            res.status(404).json({ message: "Appointment not found or access denied" });
+            return;
+        }
+
+        // Delete the appointment
+        await LabAppointment.deleteOne({ _id: appointmentId });
+
+        console.log('Cancel appointment - Successfully deleted');
+
+        res.status(200).json({ 
+            message: "Appointment cancelled successfully"
+        });
+    } catch (error) {
+        console.error('Cancel appointment error:', error);
+        res.status(500).json({ message: "Internal server error", error });
+    }
+};
+
 export { 
     getLaboratoryDashboard, 
     addLabReport, 
@@ -514,5 +551,6 @@ export {
     getLaboratoryServices,
     testLaboratoryEndpoint,
     markSampleCollected,
-    getLaboratoryAvailability
+    getLaboratoryAvailability,
+    cancelAppointment
 }; 

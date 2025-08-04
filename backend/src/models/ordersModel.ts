@@ -38,17 +38,25 @@ const orderSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    cod: {
+        type: Boolean,
+        default: false,
+    },
     needAssignment: {
         type: Boolean,
         default: false,
     },
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'assigned_to_delivery', 'delivery_accepted', 'out_for_delivery', 'delivered', 'delivery_rejected', 'cancelled'],
+        enum: ['pending', 'pending_assignment', 'confirmed', 'assigned_to_delivery', 'delivery_accepted', 'out_for_delivery', 'delivered', 'delivery_rejected', 'cancelled'],
         default: 'pending',
     },
     // Customer address for delivery
     customerAddress: {
+        type: String,
+        default: null,
+    },
+    customerPinCode: {
         type: String,
         default: null,
     },

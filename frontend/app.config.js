@@ -8,6 +8,10 @@ module.exports = {
     scheme: 'klinic',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
+    assetBundlePatterns: [
+      "**/*",
+      "assets/fonts/*"
+    ],
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.klinic.kliinic',
@@ -17,7 +21,12 @@ module.exports = {
         foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#ffffff',
       },
+      edgeToEdgeEnabled: true,
       package: 'com.klinic.kliinic',
+      jsEngine: 'hermes',
+      compileSdkVersion: 33,
+      targetSdkVersion: 33,
+      buildToolsVersion: '33.0.2'
     },
     web: {
       bundler: 'metro',
@@ -26,6 +35,15 @@ module.exports = {
     },
     plugins: [
       'expo-router',
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/images/splash-icon.png',
+          imageWidth: 200,
+          resizeMode: 'contain',
+          backgroundColor: '#ffffff'
+        }
+      ],
       [
         'expo-build-properties',
         {
@@ -36,6 +54,7 @@ module.exports = {
           },
         },
       ],
+      'expo-web-browser'
     ],
     experiments: {
       typedRoutes: true,
