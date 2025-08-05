@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 import React, { useEffect, useState } from 'react';
 import { LogBox, Appearance } from 'react-native';
 import { AxiosError } from 'axios';
+import { isWeb } from '@/utils/platformUtils';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from '@/api/client';
@@ -65,6 +66,10 @@ function UserDataLoader({ isLoadingComplete, setLoadingComplete }: UserDataLoade
         } catch (error: unknown) {
           console.error("API call failed:", error);
           const axiosError = error as AxiosError;
+          if (isWeb && axiosError.response && axiosError.response.status === 401) {
+            router.replace('/landing' as any);
+            return;
+          }
           if (axiosError.response && axiosError.response.status === 401) {
             router.replace('/(auth)/login' as any);
           }

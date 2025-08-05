@@ -160,7 +160,7 @@ const LandingPage: React.FC = () => {
       icon: 'video',
       color: '#EF4444',
       gradient: ['#EF4444', '#DC2626', '#B91C1C'],
-      image: 'https://images.unsplash.com/photo-1576091160399-112f8d6d6b97?w=800&h=600&fit=crop',
+      image: 'https://www.charakayurveda.com/wp-content/uploads/2023/04/video-consult.jpeg',
       description: 'Consult doctors remotely with high-quality, secure video calls. Get expert medical advice without leaving your home.',
       imagePosition: 'right',
       features: [
