@@ -81,58 +81,7 @@ export const DeliveryDashboard: React.FC = () => {
     }
   }, [fetchDeliveryOrders, fetchDeliveryStats]);
 
-  // Quick action handler
-  const handleQuickAction = () => {
-    const newOrders = orders.filter(
-      (order) => order.status === 'assigned_to_delivery'
-    ).length;
-    const pendingOrders = orders.filter(
-      (order) =>
-        order.status === 'delivery_accepted' ||
-        order.status === 'out_for_delivery'
-    ).length;
 
-    if (newOrders > 0) {
-      Alert.alert(
-        'Quick Action',
-        `You have ${newOrders} new order${newOrders > 1 ? 's' : ''} to accept. Would you like to view them?`,
-        [
-          { text: 'Later', style: 'cancel' },
-          {
-            text: 'View New Orders',
-            onPress: () => {
-              setActiveTab('orders');
-            },
-          },
-        ]
-      );
-    } else if (pendingOrders > 0) {
-      Alert.alert(
-        'Quick Action',
-        `You have ${pendingOrders} order${pendingOrders > 1 ? 's' : ''} in progress. Would you like to continue?`,
-        [
-          { text: 'Later', style: 'cancel' },
-          {
-            text: 'View Orders',
-            onPress: () => setActiveTab('orders'),
-          },
-        ]
-      );
-    } else {
-      Alert.alert(
-        'All Caught Up! 🎉',
-        'You have no pending orders. Great job!',
-        [
-          {
-            text: 'View Statistics',
-            onPress: () => setActiveTab('stats'),
-            style: 'default',
-          },
-          { text: 'OK', style: 'cancel' },
-        ]
-      );
-    }
-  };
 
   const renderTabButton = (
     tab: 'orders' | 'stats',
@@ -229,10 +178,7 @@ export const DeliveryDashboard: React.FC = () => {
           )}
         </View>
 
-        {/* Floating Action Button */}
-        <TouchableOpacity style={styles.fab} onPress={handleQuickAction} activeOpacity={0.8}>
-          <FontAwesome name="bolt" size={24} color="white" />
-        </TouchableOpacity>
+
       </View>
     </SafeAreaView>
   );
@@ -383,22 +329,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 15,
     color: Colors.light.text,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.light.tint,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
   },
 });
 
