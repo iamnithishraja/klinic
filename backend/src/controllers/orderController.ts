@@ -689,49 +689,6 @@ const updateOrderPaymentStatus = async (req: CustomRequest, res: Response): Prom
     }
 };
 
-// Cancel order by laboratory (for laboratory users)
-const cancelOrderByLaboratory = async (req: CustomRequest, res: Response): Promise<void> => {
-    try {
-        const { orderId } = req.params;
-        const laboratoryId = req.user._id;
-
-        console.log('Cancelling order by laboratory:', orderId, 'for laboratory:', laboratoryId.toString());
-
-        // Find the order and verify it belongs to this laboratory
-        const order = await Order.findOne({ 
-            _id: orderId, 
-            laboratoryUser: laboratoryId,
-            status: { $in: ['pending', 'confirmed'] } // Only allow cancellation of pending/confirmed orders
-        });
-
-        if (!order) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Order not found or cannot be cancelled' 
-            });
-            return;
-        }
-
-        // Update order status to cancelled
-        order.status = 'cancelled';
-        await order.save();
-
-        console.log('Order cancelled successfully by laboratory:', orderId);
-
-        res.status(200).json({
-            success: true,
-            message: 'Order cancelled successfully',
-            data: order
-        });
-    } catch (error: any) {
-        console.error('Cancel order by laboratory error:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Internal server error' 
-        });
-    }
-};
-
 // Get user's unpaid orders
 const getUnpaidOrders = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
@@ -803,6 +760,5 @@ export {
     cancelUnpaidOrder,
     getOrderPaymentStatus,
     updateOrderPaymentStatus,
-    getUnpaidOrders,
-    cancelOrderByLaboratory
+    getUnpaidOrders
 };

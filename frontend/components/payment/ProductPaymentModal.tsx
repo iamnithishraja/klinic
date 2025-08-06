@@ -29,10 +29,6 @@ interface ProductPaymentModalProps {
     prescription?: string;
     totalPrice: number;
     needAssignment: boolean;
-    deliveryAddress?: {
-      address: string;
-      pinCode: string;
-    };
   };
   onPaymentSuccess: () => void;
 }
@@ -52,17 +48,20 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
     try {
       setLoading(true);
       
-      // First verify the payment with Razorpay
-      const verificationResponse = await apiClient.post('/api/v1/verify-product-payment', {
+      // Create the actual order after successful payment
+      const orderResponse = await orderService.createOrder(orderData);
+      
+      if (!orderResponse.data) {
+        throw new Error('Failed to create order after payment');
+      }
+
+      // Verify payment with the created order
+      await apiClient.post('/api/v1/verify-product-payment', {
         razorpay_order_id: response.razorpay_order_id,
         razorpay_payment_id: response.razorpay_payment_id,
         razorpay_signature: response.razorpay_signature,
-        orderData: orderData // Pass the order data for creation after verification
+        orderId: Array.isArray(orderResponse.data) ? orderResponse.data[0]._id : orderResponse.data._id
       });
-
-      if (!verificationResponse.data.success) {
-        throw new Error('Payment verification failed');
-      }
 
       const successMessage = orderData.needAssignment 
         ? 'Payment successful! Your prescription order has been created and will be assigned to a laboratory by our admin team. You will be notified once the order is processed.'
@@ -86,41 +85,7 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
       console.error('Payment verification failed:', error);
       showAlert({
         title: 'Payment Verification Failed',
-        message: 'Please contact support if the amount was deducted from your account.',
-        type: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCODSuccess = async () => {
-    try {
-      setLoading(true);
-      
-      const successMessage = orderData.needAssignment 
-        ? 'COD order created successfully! Your prescription order has been created and will be assigned to a laboratory by our admin team. You will be notified once the order is processed. Payment will be collected upon delivery.'
-        : 'COD order created successfully! Your order has been confirmed and will be processed soon. Payment will be collected upon delivery.';
-
-      showAlert({
-        title: 'COD Order Created!',
-        message: successMessage,
-        type: 'success',
-        buttons: [{ 
-          text: 'OK', 
-          style: 'primary', 
-          onPress: () => {
-            onClose();
-            onPaymentSuccess();
-            router.push('/');
-          }
-        }]
-      });
-    } catch (error) {
-      console.error('Error handling COD success:', error);
-      showAlert({
-        title: 'Error',
-        message: 'Failed to create COD order. Please try again.',
+        message: 'Please contact support.',
         type: 'error'
       });
     } finally {
@@ -161,31 +126,10 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
     try {
       setLoading(true);
       
-      // Validate order data
-      if (!orderData || !orderData.totalPrice || orderData.totalPrice <= 0) {
-        showAlert({
-          title: 'Invalid Order',
-          message: 'Please ensure your order is valid before proceeding with payment.',
-          type: 'error'
-        });
-        return;
-      }
-
-      // Validate user data
-      if (!user || !user.email) {
-        showAlert({
-          title: 'User Not Found',
-          message: 'Please log in to proceed with payment.',
-          type: 'error'
-        });
-        return;
-      }
-      
       // Create payment order
       const orderResponse = await apiClient.post('/api/v1/create-product-payment-order', {
         amount: orderData.totalPrice * 100, // Convert to paise
-        currency: 'INR',
-        orderData: orderData // Pass order data for webhook processing
+        currency: 'INR'
       });
 
       const { orderId, amount, currency } = orderResponse.data;
@@ -208,12 +152,6 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
         },
         theme: {
           color: '#3B82F6'
-        },
-        modal: {
-          ondismiss: () => {
-            console.log('Payment modal dismissed');
-            setLoading(false);
-          }
         }
       };
 
@@ -236,14 +174,6 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
             }
           });
           rzp.open();
-        };
-        script.onerror = () => {
-          showAlert({
-            title: 'Payment Error',
-            message: 'Failed to load payment gateway. Please try again.',
-            type: 'error'
-          });
-          setLoading(false);
         };
         document.body.appendChild(script);
       } else {
@@ -284,78 +214,7 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
       console.error('Payment initiation failed:', error);
       showAlert({
         title: 'Payment Failed',
-        message: 'Failed to initiate payment. Please check your internet connection and try again.',
-        type: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCODOrder = async () => {
-    try {
-      setLoading(true);
-      
-      // Validate order data
-      if (!orderData) {
-        showAlert({
-          title: 'Invalid Order',
-          message: 'Please ensure your order is valid before proceeding with COD.',
-          type: 'error'
-        });
-        return;
-      }
-
-      // For prescription orders, totalPrice can be 0 initially
-      // For product orders, totalPrice should be greater than 0
-      if (orderData.needAssignment) {
-        // Prescription orders can have 0 totalPrice initially
-        if (orderData.totalPrice === undefined || orderData.totalPrice === null) {
-          showAlert({
-            title: 'Invalid Order',
-            message: 'Please ensure your prescription order is valid before proceeding with COD.',
-            type: 'error'
-          });
-          return;
-        }
-      } else {
-        // Product orders should have totalPrice > 0
-        if (!orderData.totalPrice || orderData.totalPrice <= 0) {
-          showAlert({
-            title: 'Invalid Order',
-            message: 'Please ensure your order is valid before proceeding with COD.',
-            type: 'error'
-          });
-          return;
-        }
-      }
-
-      // Validate user data
-      if (!user || !user.email) {
-        showAlert({
-          title: 'User Not Found',
-          message: 'Please log in to proceed with COD order.',
-          type: 'error'
-        });
-        return;
-      }
-      
-      // Create COD order
-      const codResponse = await apiClient.post('/api/v1/create-cod-order', {
-        orderData: orderData
-      });
-
-      if (!codResponse.data.success) {
-        throw new Error('Failed to create COD order');
-      }
-
-      await handleCODSuccess();
-
-    } catch (error) {
-      console.error('COD order creation failed:', error);
-      showAlert({
-        title: 'COD Order Failed',
-        message: 'Failed to create COD order. Please try again.',
+        message: 'Failed to initiate payment. Please try again.',
         type: 'error'
       });
     } finally {
@@ -379,9 +238,9 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
 
   const getPaymentMessage = () => {
     if (orderData.needAssignment) {
-      return 'Choose your payment option for prescription orders. After payment, our admin team will review your prescription and assign it to a laboratory.';
+      return 'Payment is required for prescription orders. After payment, our admin team will review your prescription and assign it to a laboratory.';
     }
-    return 'Choose your payment option to confirm your order.';
+    return 'Payment is required to confirm your order.';
   };
 
   return (
@@ -431,24 +290,7 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
                 <>
                   <FontAwesome name="credit-card" size={20} color="white" />
                   <Text className="text-white font-bold text-lg ml-2">
-                    Pay Online Now
-                  </Text>
-                </>
-              )}
-            </Pressable>
-
-            <Pressable
-              onPress={handleCODOrder}
-              disabled={loading}
-              className="bg-green-600 py-4 rounded-lg mb-3 flex-row justify-center items-center"
-            >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <>
-                  <FontAwesome name="money" size={20} color="white" />
-                  <Text className="text-white font-bold text-lg ml-2">
-                    Cash on Delivery
+                    Pay Now ₹{orderData.totalPrice}
                   </Text>
                 </>
               )}
@@ -474,7 +316,7 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
             <Text className="text-xs text-gray-500 text-center mt-3">
               {orderData.needAssignment 
                 ? 'After payment, your prescription will be reviewed and assigned to a laboratory'
-                : 'Secure payment powered by Razorpay or pay on delivery'
+                : 'Secure payment powered by Razorpay'
               }
             </Text>
           </View>

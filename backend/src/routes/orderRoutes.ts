@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import {
-    createOrder,
-    getMyOrders,
-    getLabOrders,
-    updateOrderStatus,
+import { 
+    createOrder, 
+    getMyOrders, 
+    getLabOrders, 
+    updateOrderStatus, 
     getOrderDetails,
     getOrderById,
     claimOrder,
@@ -13,8 +13,7 @@ import {
     cancelUnpaidOrder,
     getOrderPaymentStatus,
     updateOrderPaymentStatus,
-    getUnpaidOrders,
-    cancelOrderByLaboratory
+    getUnpaidOrders
 } from '../controllers/orderController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
 import { UserRole } from '../types/userTypes';
@@ -114,13 +113,6 @@ orderRouter.post('/orders/:orderId/assign-delivery',
     isAuthenticatedUser, 
     (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
     assignDeliveryPartner
-);
-
-// Cancel order by laboratory (Lab User)
-orderRouter.delete('/orders/:orderId/cancel-by-lab', 
-    isAuthenticatedUser, 
-    (req, res, next) => checkRole(req, res, next, [UserRole.LABORATORY]),
-    cancelOrderByLaboratory
 );
 
 export default orderRouter; 

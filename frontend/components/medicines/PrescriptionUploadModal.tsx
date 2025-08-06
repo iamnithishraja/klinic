@@ -15,7 +15,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import useProfileApi from '@/hooks/useProfileApi';
 import { orderService } from '@/services/orderService';
-import PrescriptionPaymentModal from '@/components/payment/PrescriptionPaymentModal';
+import ProductPaymentModal from '@/components/payment/ProductPaymentModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -269,9 +269,9 @@ const PrescriptionUploadModal: React.FC<PrescriptionUploadModalProps> = ({
         </View>
       </View>
 
-      {/* Prescription Payment Modal */}
+      {/* Product Payment Modal */}
       {orderData && (
-        <PrescriptionPaymentModal
+        <ProductPaymentModal
           visible={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           orderData={orderData}

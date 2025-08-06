@@ -2,17 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Pressable, Alert, Dimensions } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 
-// Dynamically import AgoraRTC only in browser environment
+// AgoraRTC will be loaded dynamically in useEffect
 let AgoraRTC: any = null;
-let IAgoraRTCClient: any = null;
-let ICameraVideoTrack: any = null;
-let IMicrophoneAudioTrack: any = null;
-let IRemoteVideoTrack: any = null;
-let IRemoteAudioTrack: any = null;
-let UID: any = null;
-
-// Check if we're in a browser environment
-const isBrowser = typeof window !== 'undefined';
 
 interface VideoCallProps {
   channelName: string;
@@ -59,7 +50,7 @@ const VideoCall: React.FC<VideoCallProps> = ({
     });
     
     // Check if we're in a browser environment
-    if (!isBrowser) {
+    if (typeof window === 'undefined') {
       setInitializationError('Video calling is only supported in web browsers');
       return;
     }
@@ -73,6 +64,19 @@ const VideoCall: React.FC<VideoCallProps> = ({
       setInitializationError('No token provided for video call');
       return;
     }
+
+    // Load AgoraRTC dynamically
+    const loadAgoraSDK = async () => {
+      try {
+        const module = await import('agora-rtc-sdk-ng');
+        AgoraRTC = module.default;
+        console.log('Agora SDK loaded successfully');
+        initializeAgoraClient();
+      } catch (error) {
+        console.error('Failed to load Agora SDK:', error);
+        setInitializationError('Failed to load video call SDK. Please refresh the page and try again.');
+      }
+    };
 
     loadAgoraSDK();
     
@@ -165,33 +169,12 @@ const VideoCall: React.FC<VideoCallProps> = ({
     return () => clearInterval(interval);
   }, [client, isJoined, remoteUsers]);
 
-  const loadAgoraSDK = async () => {
-    try {
-      console.log('Loading Agora Web SDK...');
-      
-      // Dynamically import AgoraRTC only in browser environment
-      const AgoraRTCModule = await import('agora-rtc-sdk-ng');
-      AgoraRTC = AgoraRTCModule.default;
-      
-      if (!AgoraRTC) {
-        throw new Error('Failed to load Agora SDK');
-      }
-      
-      setIsAgoraLoaded(true);
-      await initializeAgoraClient();
-      
-    } catch (error) {
-      console.error('Error loading Agora SDK:', error);
-      setInitializationError(`Failed to load video call SDK: ${error}`);
-    }
-  };
-
   const initializeAgoraClient = async () => {
     try {
       console.log('Initializing Agora Web SDK...');
       
       if (!AgoraRTC) {
-        throw new Error('Agora SDK not loaded');
+        throw new Error('Agora SDK not available');
       }
       
       // Create Agora client with compatibility settings
@@ -239,6 +222,7 @@ const VideoCall: React.FC<VideoCallProps> = ({
       });
 
       setClient(agoraClient);
+      setIsAgoraLoaded(true);
 
       // Request permissions and create tracks
       await requestPermissions(agoraClient);
@@ -682,10 +666,10 @@ const VideoCall: React.FC<VideoCallProps> = ({
             cursor: 'pointer'
           }}
           onClick={() => {
-            if (isBrowser && window.location) {
+            if (typeof window !== 'undefined' && window.location) {
               window.location.reload();
             } else {
-              loadAgoraSDK();
+              initializeAgoraClient();
             }
           }}
         >
@@ -833,67 +817,67 @@ const VideoCall: React.FC<VideoCallProps> = ({
           <FontAwesome name="phone" size={20} color="#fff" />
         </button>
 
-                  <button
+        <button
+          style={{
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: isLocalVideoMuted ? '#666' : '#333',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            border: 'none',
+            cursor: 'pointer'
+          }}
+          onClick={toggleLocalVideo}
+        >
+          <FontAwesome 
+            name={isLocalVideoMuted ? "video-camera" : "video-camera"} 
+            size={20} 
+            color="#fff" 
+          />
+        </button>
+
+        {/* Manual retry button for remote video */}
+        {remoteUsers.size > 0 && (
+          <button
             style={{
               width: 60,
               height: 60,
               borderRadius: 30,
-              backgroundColor: isLocalVideoMuted ? '#666' : '#333',
+              backgroundColor: '#007AFF',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
               border: 'none',
               cursor: 'pointer'
             }}
-            onClick={toggleLocalVideo}
-          >
-            <FontAwesome 
-              name={isLocalVideoMuted ? "video-camera" : "video-camera"} 
-              size={20} 
-              color="#fff" 
-            />
-          </button>
-
-          {/* Manual retry button for remote video */}
-          {remoteUsers.size > 0 && (
-            <button
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: '#007AFF',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              onClick={() => {
-                console.log('Manual retry for remote video...');
-                if (!client || !isJoined) return;
-                
-                remoteUsers.forEach((userData, uid) => {
-                  if (userData.videoTrack && typeof userData.videoTrack.play === 'function') {
-                    const container = document.getElementById(`remote-video-${uid}`);
-                    if (container) {
-                      try {
-                        const playPromise = userData.videoTrack.play(container);
-                        if (playPromise && typeof playPromise.then === 'function') {
-                          playPromise.catch((error: any) => {
-                            console.error('Manual retry failed:', error);
-                          });
-                        }
-                      } catch (error) {
-                        console.error('Manual retry exception:', error);
+            onClick={() => {
+              console.log('Manual retry for remote video...');
+              if (!client || !isJoined) return;
+              
+              remoteUsers.forEach((userData, uid) => {
+                if (userData.videoTrack && typeof userData.videoTrack.play === 'function') {
+                  const container = document.getElementById(`remote-video-${uid}`);
+                  if (container) {
+                    try {
+                      const playPromise = userData.videoTrack.play(container);
+                      if (playPromise && typeof playPromise.then === 'function') {
+                        playPromise.catch((error: any) => {
+                          console.error('Manual retry failed:', error);
+                        });
                       }
+                    } catch (error) {
+                      console.error('Manual retry exception:', error);
                     }
                   }
-                });
-              }}
-            >
-              <FontAwesome name="refresh" size={20} color="#fff" />
-            </button>
-          )}
+                }
+              });
+            }}
+          >
+            <FontAwesome name="refresh" size={20} color="#fff" />
+          </button>
+        )}
       </div>
 
       {/* Connection status */}

@@ -12,6 +12,7 @@ import { ChatHeader } from './chat/ChatHeader';
 import { MessageBubble } from './chat/MessageBubble';
 import { ChatInput } from './chat/ChatInput';
 import { LoadingIndicator } from './chat/LoadingIndicator';
+import { VoiceRecordingModal } from './chat/VoiceRecordingModal';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -34,7 +35,9 @@ const ToctorAIChat: React.FC<ToctorAIChatProps> = ({ visible, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [modalHeight] = useState(new Animated.Value(0));
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [setTextDirectly, setSetTextDirectly] = useState<((text: string) => void) | null>(null);
 
   // Initialize chat with welcome message
   useEffect(() => {
@@ -94,6 +97,11 @@ What health concern would you like to discuss today? You can ask me about:
     }
   }, [messages, isLoading]);
 
+  // Debug inputText changes
+  useEffect(() => {
+    // Removed console.log to prevent React Native error
+  }, [inputText]);
+
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
 
@@ -145,6 +153,25 @@ Error details: ${error instanceof Error ? error.message : 'Unknown error'}
     }
   };
 
+  const handleVoiceInput = () => {
+    setShowVoiceModal(true);
+  };
+
+  const handleVoiceTextReceived = (text: string) => {
+    console.log('Received voice text in ToctorAIChat:', text);
+    console.log('Current inputText before setting:', inputText);
+    
+    // Set the text immediately
+    setInputText(text);
+    
+    // Also use direct text setting if available
+    if (setTextDirectly) {
+      setTextDirectly(text);
+    }
+    
+    console.log('InputText should now be set to:', text);
+  };
+
   return (
     <Modal
       visible={visible}
@@ -182,10 +209,19 @@ Error details: ${error instanceof Error ? error.message : 'Unknown error'}
               setInputText={setInputText}
               onSendMessage={sendMessage}
               isLoading={isLoading}
+              onVoiceInput={handleVoiceInput}
+              setTextDirectly={setSetTextDirectly}
             />
           </SafeAreaView>
         </Animated.View>
       </View>
+
+      {/* Voice Recording Modal */}
+      <VoiceRecordingModal
+        visible={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+        onTextReceived={handleVoiceTextReceived}
+      />
     </Modal>
   );
 };

@@ -107,7 +107,6 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
           text: 'Accept',
           onPress: async () => {
             try {
-              console.log('Attempting to accept order:', order._id);
               const success = await acceptOrder(order._id);
               if (success) {
                 Alert.alert('Success', `Order #${order._id.slice(-8)} accepted successfully!`);
@@ -135,7 +134,6 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
           text: 'Reject',
           onPress: async () => {
             try {
-              console.log('Attempting to reject order:', order._id, 'reason: Order rejected by delivery partner');
               const success = await rejectOrder(order._id, 'Order rejected by delivery partner');
               if (success) {
                 Alert.alert('Success', `Order #${order._id.slice(-8)} rejected successfully!`);
@@ -164,7 +162,6 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
           onPress: async () => {
             try {
               setUpdatingStatus(newStatus);
-              console.log('Attempting to update order status:', order._id, 'to:', newStatus);
               const success = await updateDeliveryStatus(order._id, newStatus);
               setUpdatingStatus(null);
               if (success) {

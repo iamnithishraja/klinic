@@ -67,10 +67,6 @@ export interface CreateOrderData {
   totalPrice?: number;
   needAssignment: boolean;
   laboratoryUser?: string;
-  deliveryAddress?: {
-    address: string;
-    pinCode: string;
-  };
 }
 
 export interface CreateOrderResponse {
