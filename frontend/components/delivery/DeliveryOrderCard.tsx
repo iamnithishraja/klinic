@@ -98,89 +98,72 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
   }, []);
 
   const handleAcceptOrder = useCallback(async () => {
-    Alert.alert(
-      'Accept Order',
-      'Are you sure you want to accept this order?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Accept',
-          onPress: async () => {
-            try {
-              const success = await acceptOrder(order._id);
-              if (success) {
-                Alert.alert('Success', `Order #${order._id.slice(-8)} accepted successfully!`);
-              } else {
-                Alert.alert('Error', 'Failed to accept order. Please try again.');
-              }
-            } catch (error) {
-              console.error('Error accepting order:', error);
-              Alert.alert('Error', 'Failed to accept order. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    console.log('🔵 Accept button pressed for order:', order._id);
+    
+    // Test direct API call without Alert
+    try {
+      console.log('🟢 Testing direct API call for accept order:', order._id);
+      const success = await acceptOrder(order._id);
+      console.log('🟢 Accept result:', success);
+      
+      if (success) {
+        Alert.alert('Success', `Order #${order._id.slice(-8)} accepted successfully!`);
+      } else {
+        Alert.alert('Error', 'Failed to accept order. Please try again.');
+      }
+    } catch (error) {
+      console.error('🔴 Error accepting order:', error);
+      Alert.alert('Error', 'Failed to accept order. Please try again.');
+    }
   }, [order._id, acceptOrder]);
 
   const handleRejectOrder = useCallback(async () => {
-    // Use a simple alert with a default reason since Alert.prompt is not available on all platforms
-    Alert.alert(
-      'Reject Order',
-      'Are you sure you want to reject this order?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          onPress: async () => {
-            try {
-              const success = await rejectOrder(order._id, 'Order rejected by delivery partner');
-              if (success) {
-                Alert.alert('Success', `Order #${order._id.slice(-8)} rejected successfully!`);
-              } else {
-                Alert.alert('Error', 'Failed to reject order. Please try again.');
-              }
-            } catch (error) {
-              console.error('Error rejecting order:', error);
-              Alert.alert('Error', 'Failed to reject order. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    console.log('🔵 Reject button pressed for order:', order._id);
+    
+    // Test direct API call without Alert
+    try {
+      console.log('🟢 Testing direct API call for reject order:', order._id);
+      const success = await rejectOrder(order._id, 'Order rejected by delivery partner');
+      console.log('🟢 Reject result:', success);
+      
+      if (success) {
+        Alert.alert('Success', `Order #${order._id.slice(-8)} rejected successfully!`);
+      } else {
+        Alert.alert('Error', 'Failed to reject order. Please try again.');
+      }
+    } catch (error) {
+      console.error('🔴 Error rejecting order:', error);
+      Alert.alert('Error', 'Failed to reject order. Please try again.');
+    }
   }, [order._id, rejectOrder]);
 
   const handleUpdateStatus = useCallback(async (newStatus: 'out_for_delivery' | 'delivered') => {
-    const statusText = newStatus === 'out_for_delivery' ? 'out for delivery' : 'delivered';
-    Alert.alert(
-      'Update Status',
-      `Are you sure you want to mark this order as ${statusText}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Update',
-          onPress: async () => {
-            try {
-              setUpdatingStatus(newStatus);
-              const success = await updateDeliveryStatus(order._id, newStatus);
-              setUpdatingStatus(null);
-              if (success) {
-                Alert.alert('Success', `Order #${order._id.slice(-8)} status updated to ${statusText}!`);
-              } else {
-                Alert.alert('Error', 'Failed to update order status. Please try again.');
-              }
-            } catch (error) {
-              console.error('Error updating order status:', error);
-              setUpdatingStatus(null);
-              Alert.alert('Error', 'Failed to update order status. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    console.log('🔵 Update status button pressed for order:', order._id, 'to:', newStatus);
+    
+    // Test direct API call without Alert
+    try {
+      console.log('🟢 Testing direct API call for update status:', order._id, 'to:', newStatus);
+      setUpdatingStatus(newStatus);
+      const success = await updateDeliveryStatus(order._id, newStatus);
+      console.log('🟢 Update status result:', success);
+      setUpdatingStatus(null);
+      
+      if (success) {
+        const statusText = newStatus === 'out_for_delivery' ? 'out for delivery' : 'delivered';
+        Alert.alert('Success', `Order #${order._id.slice(-8)} status updated to ${statusText}!`);
+      } else {
+        Alert.alert('Error', 'Failed to update order status. Please try again.');
+      }
+    } catch (error) {
+      console.error('🔴 Error updating order status:', error);
+      setUpdatingStatus(null);
+      Alert.alert('Error', 'Failed to update order status. Please try again.');
+    }
   }, [order._id, updateDeliveryStatus]);
 
   const renderActionButtons = () => {
+    console.log('🔄 Rendering action buttons for order:', order._id, 'status:', order.status);
+    
     switch (order.status) {
       case 'assigned_to_delivery':
         return (
@@ -188,6 +171,7 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
             <TouchableOpacity
               style={[styles.actionButton, styles.acceptButton]}
               onPress={handleAcceptOrder}
+              activeOpacity={0.7}
             >
               <FontAwesome name="check" size={14} color="white" />
               <Text style={styles.actionButtonText}>Accept</Text>
@@ -195,6 +179,7 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
             <TouchableOpacity
               style={[styles.actionButton, styles.rejectButton]}
               onPress={handleRejectOrder}
+              activeOpacity={0.7}
             >
               <FontAwesome name="times" size={14} color="white" />
               <Text style={styles.actionButtonText}>Reject</Text>
@@ -207,6 +192,7 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
             style={[styles.actionButton, styles.outForDeliveryButton]}
             onPress={() => handleUpdateStatus('out_for_delivery')}
             disabled={updatingStatus === 'out_for_delivery'}
+            activeOpacity={0.7}
           >
             {updatingStatus === 'out_for_delivery' ? (
               <ActivityIndicator size="small" color="white" />
@@ -224,6 +210,7 @@ const DeliveryOrderCard: React.FC<DeliveryOrderCardProps> = ({ order }) => {
             style={[styles.actionButton, styles.deliveredButton]}
             onPress={() => handleUpdateStatus('delivered')}
             disabled={updatingStatus === 'delivered'}
+            activeOpacity={0.7}
           >
             {updatingStatus === 'delivered' ? (
               <ActivityIndicator size="small" color="white" />

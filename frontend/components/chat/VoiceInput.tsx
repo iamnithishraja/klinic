@@ -4,13 +4,13 @@ import {
   TextInput,
   Pressable,
   Text,
-  Alert,
   Platform,
   Animated,
   KeyboardAvoidingView,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import VoiceRecognitionModal from './VoiceRecognitionModal';
+import { voiceService } from '../../services/voiceService';
 
 interface VoiceInputProps {
   onSend: (text: string) => void;
@@ -35,6 +35,9 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   
   const micScale = useRef(new Animated.Value(1)).current;
 
+  // Check if web speech is supported
+  const isWebSpeechSupported = voiceService.isWebSpeechSupported();
+
   // Update text when initialText changes
   useEffect(() => {
     setText(initialText);
@@ -48,7 +51,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   }, [text, onTextChange]);
 
   const handleMicPress = () => {
-    if (disabled) return;
+    if (disabled || !isWebSpeechSupported) return;
     setShowVoiceModal(true);
   };
 
@@ -66,7 +69,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   };
 
   const handleMicPressIn = () => {
-    if (!disabled) {
+    if (!disabled && isWebSpeechSupported) {
       Animated.spring(micScale, {
         toValue: 0.9,
         useNativeDriver: true,
@@ -75,7 +78,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   };
 
   const handleMicPressOut = () => {
-    if (!disabled) {
+    if (!disabled && isWebSpeechSupported) {
       Animated.spring(micScale, {
         toValue: 1,
         useNativeDriver: true,
@@ -120,37 +123,39 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
             </View>
           </View>
           
-          {/* Voice Button */}
-          <Animated.View 
-            style={{ transform: [{ scale: micScale }] }}
-            className="mr-3"
-          >
-            <Pressable
-              onPress={handleMicPress}
-              onPressIn={handleMicPressIn}
-              onPressOut={handleMicPressOut}
-              disabled={disabled}
-              className={`w-12 h-12 rounded-full items-center justify-center shadow-sm ${
-                disabled 
-                  ? 'bg-gray-300' 
-                  : 'bg-green-500'
-              }`}
-              style={({ pressed }) => ({
-                shadowColor: disabled ? '#9CA3AF' : '#10B981',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                elevation: 3,
-                opacity: disabled ? 0.6 : (pressed ? 0.8 : 1),
-              })}
+          {/* Voice Button - Only show on web */}
+          {Platform.OS === 'web' && (
+            <Animated.View 
+              style={{ transform: [{ scale: micScale }] }}
+              className="mr-3"
             >
-              <FontAwesome 
-                name="microphone" 
-                size={18} 
-                color="white" 
-              />
-            </Pressable>
-          </Animated.View>
+              <Pressable
+                onPress={handleMicPress}
+                onPressIn={handleMicPressIn}
+                onPressOut={handleMicPressOut}
+                disabled={disabled || !isWebSpeechSupported}
+                className={`w-12 h-12 rounded-full items-center justify-center shadow-sm ${
+                  disabled || !isWebSpeechSupported
+                    ? 'bg-gray-300' 
+                    : 'bg-green-500'
+                }`}
+                style={({ pressed }) => ({
+                  shadowColor: disabled || !isWebSpeechSupported ? '#9CA3AF' : '#10B981',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 3,
+                  opacity: disabled || !isWebSpeechSupported ? 0.6 : (pressed ? 0.8 : 1),
+                })}
+              >
+                <FontAwesome 
+                  name="microphone" 
+                  size={18} 
+                  color="white" 
+                />
+              </Pressable>
+            </Animated.View>
+          )}
           
           {/* Send Button */}
           <Pressable
@@ -180,6 +185,15 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
           <View className="px-4 pb-2">
             <Text className="text-red-500 text-sm text-center bg-red-50 p-2 rounded-lg">
               {error}
+            </Text>
+          </View>
+        )}
+
+        {/* Web Speech Support Notice */}
+        {Platform.OS === 'web' && !isWebSpeechSupported && (
+          <View className="px-4 pb-2">
+            <Text className="text-orange-600 text-xs text-center bg-orange-50 p-2 rounded-lg">
+              Voice input requires Chrome, Edge, or Safari
             </Text>
           </View>
         )}

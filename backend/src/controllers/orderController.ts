@@ -42,6 +42,53 @@ const createOrder = async (req: CustomRequest, res: Response): Promise<void> => 
     }
 };
 
+// Create COD Order (Cash on Delivery)
+const createCODOrder = async (req: CustomRequest, res: Response): Promise<void> => {
+    try {
+        const { orderData } = req.body;
+        const userId = req.user._id;
+
+        console.log('Creating COD order with data:', {
+            userId: userId.toString(),
+            orderData
+        });
+
+        // Validate order data
+        if (!orderData) {
+            res.status(400).json({ 
+                success: false, 
+                error: 'Order data is required' 
+            });
+            return;
+        }
+
+        // Create COD order with cod flag set to true
+        const orders = await orderService.createMultiLabOrders({
+            orderedBy: userId.toString(),
+            laboratoryUser: orderData.laboratoryUser || undefined,
+            products: orderData.products || undefined,
+            prescription: orderData.prescription ? orderData.prescription.trim() : undefined,
+            totalPrice: orderData.totalPrice ? Number(orderData.totalPrice) : undefined,
+            needAssignment: orderData.needAssignment || false,
+            cod: true, // Set COD flag
+            isPaid: false, // COD orders are not paid initially
+            deliveryAddress: orderData.deliveryAddress || undefined
+        });
+
+        res.status(201).json({
+            success: true,
+            data: orders,
+            message: `COD orders created successfully for ${orders.length} laboratories`
+        });
+    } catch (error: any) {
+        console.error('Create COD order error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+};
+
 // Get User Orders (Patient)
 const getMyOrders = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
@@ -760,5 +807,6 @@ export {
     cancelUnpaidOrder,
     getOrderPaymentStatus,
     updateOrderPaymentStatus,
-    getUnpaidOrders
+    getUnpaidOrders,
+    createCODOrder
 };

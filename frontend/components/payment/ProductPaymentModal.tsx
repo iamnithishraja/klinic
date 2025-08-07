@@ -122,6 +122,87 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
     }
   };
 
+  const handleCODSuccess = async () => {
+    try {
+      setLoading(true);
+      
+      const successMessage = orderData.needAssignment 
+        ? 'COD order created successfully! Your prescription order has been created and will be assigned to a laboratory by our admin team. You will be notified once the order is processed. Payment will be collected upon delivery.'
+        : 'COD order created successfully! Your order has been confirmed and will be processed soon. Payment will be collected upon delivery.';
+
+      showAlert({
+        title: 'COD Order Created!',
+        message: successMessage,
+        type: 'success',
+        buttons: [{ 
+          text: 'OK', 
+          style: 'primary', 
+          onPress: () => {
+            onClose();
+            onPaymentSuccess();
+            router.push('/');
+          }
+        }]
+      });
+    } catch (error) {
+      console.error('Error handling COD success:', error);
+      showAlert({
+        title: 'Error',
+        message: 'Failed to create COD order. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCODOrder = async () => {
+    try {
+      setLoading(true);
+      
+      // Validate order data
+      if (!orderData) {
+        showAlert({
+          title: 'Invalid Order',
+          message: 'Please ensure your order is valid before proceeding with COD.',
+          type: 'error'
+        });
+        return;
+      }
+
+      // Validate user data
+      if (!user || !user.email) {
+        showAlert({
+          title: 'User Not Found',
+          message: 'Please log in to proceed with COD order.',
+          type: 'error'
+        });
+        return;
+      }
+      
+      // Create COD order
+      const codResponse = await apiClient.post('/api/v1/create-cod-order', {
+        orderData: orderData
+      });
+
+      if (!codResponse.data.success) {
+        throw new Error('Failed to create COD order');
+      }
+
+      await handleCODSuccess();
+
+    } catch (error) {
+      console.error('COD order creation failed:', error);
+      showAlert({
+        title: 'COD Order Failed',
+        message: 'Failed to create COD order. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePayNow = async () => {
     try {
       setLoading(true);
@@ -238,9 +319,9 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
 
   const getPaymentMessage = () => {
     if (orderData.needAssignment) {
-      return 'Payment is required for prescription orders. After payment, our admin team will review your prescription and assign it to a laboratory.';
+      return 'Choose your payment method for prescription orders. After order creation, our admin team will review your prescription and assign it to a laboratory.';
     }
-    return 'Payment is required to confirm your order.';
+    return 'Choose your payment method to confirm your order.';
   };
 
   return (
@@ -279,6 +360,7 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
               {getPaymentMessage()}
             </Text>
             
+            {/* Pay Now Button */}
             <Pressable
               onPress={handlePayNow}
               disabled={loading}
@@ -296,6 +378,25 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
               )}
             </Pressable>
 
+            {/* COD Button */}
+            <Pressable
+              onPress={handleCODOrder}
+              disabled={loading}
+              className="bg-green-600 py-4 rounded-lg mb-3 flex-row justify-center items-center"
+            >
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <FontAwesome name="money" size={20} color="white" />
+                  <Text className="text-white font-bold text-lg ml-2">
+                    Cash on Delivery
+                  </Text>
+                </>
+              )}
+            </Pressable>
+
+            {/* Cancel Button */}
             <Pressable
               onPress={handlePaymentCancellation}
               disabled={loading}
@@ -315,8 +416,8 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
 
             <Text className="text-xs text-gray-500 text-center mt-3">
               {orderData.needAssignment 
-                ? 'After payment, your prescription will be reviewed and assigned to a laboratory'
-                : 'Secure payment powered by Razorpay'
+                ? 'After order creation, your prescription will be reviewed and assigned to a laboratory'
+                : 'Secure payment powered by Razorpay or Cash on Delivery'
               }
             </Text>
           </View>

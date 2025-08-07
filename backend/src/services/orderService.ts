@@ -9,6 +9,7 @@ export interface OrderFilters {
     needAssignment?: boolean;
     userId?: string;
     labId?: string;
+    createdAt?: any; // For date filtering (MongoDB date range queries)
 }
 
 export interface PaginationOptions {
@@ -593,16 +594,21 @@ class OrderService {
 
     // Get orders by delivery partner ID (no validation)
     async getOrdersByDeliveryPartner(deliveryPartnerId: string, filters: OrderFilters, pagination: PaginationOptions) {
-        const { status } = filters;
+        const { status, createdAt } = filters;
         const { page, limit } = pagination;
 
         console.log('Getting delivery orders for partner:', deliveryPartnerId);
-        console.log('Filters:', { status });
+        console.log('Filters:', { status, createdAt });
 
         const filter: any = { deliveryPartner: deliveryPartnerId };
 
         if (status) {
             filter.status = status;
+        }
+
+        // Handle date filtering
+        if (createdAt) {
+            filter.createdAt = createdAt;
         }
 
         console.log('Delivery orders filter:', filter);

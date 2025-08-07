@@ -13,7 +13,8 @@ import {
     cancelUnpaidOrder,
     getOrderPaymentStatus,
     updateOrderPaymentStatus,
-    getUnpaidOrders
+    getUnpaidOrders,
+    createCODOrder
 } from '../controllers/orderController';
 import { isAuthenticatedUser, checkRole } from '../middlewares/auth';
 import { UserRole } from '../types/userTypes';
@@ -28,6 +29,12 @@ const orderRouter = Router();
 orderRouter.post('/orders', 
     isAuthenticatedUser, 
     createOrder
+);
+
+// Create COD order
+orderRouter.post('/create-cod-order', 
+    isAuthenticatedUser, 
+    createCODOrder
 );
 
 // Get user's orders

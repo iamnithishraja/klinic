@@ -12,7 +12,7 @@ import { ChatHeader } from './chat/ChatHeader';
 import { MessageBubble } from './chat/MessageBubble';
 import { ChatInput } from './chat/ChatInput';
 import { LoadingIndicator } from './chat/LoadingIndicator';
-import { VoiceRecordingModal } from './chat/VoiceRecordingModal';
+import VoiceRecognitionModal from './chat/VoiceRecognitionModal';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -217,7 +217,7 @@ Error details: ${error instanceof Error ? error.message : 'Unknown error'}
       </View>
 
       {/* Voice Recording Modal */}
-      <VoiceRecordingModal
+      <VoiceRecognitionModal
         visible={showVoiceModal}
         onClose={() => setShowVoiceModal(false)}
         onTextReceived={handleVoiceTextReceived}

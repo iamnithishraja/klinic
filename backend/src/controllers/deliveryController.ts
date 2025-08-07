@@ -8,13 +8,32 @@ import User from '../models/userModel';
 const getDeliveryOrders = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const userId = req.user._id;
-        const { status, page = 1, limit = 10 } = req.query;
+        const { status, page = 1, limit = 10, date, startDate } = req.query;
 
-        console.log('Getting delivery orders for user:', userId.toString());
+        console.log('Getting delivery orders for user:', userId.toString(), 'with filters:', { status, date, startDate });
 
-        const filters = {
+        const filters: any = {
             status: status ? String(status) : undefined
         };
+
+        // Handle date filtering
+        if (date) {
+            // Specific date filter (YYYY-MM-DD format)
+            const targetDate = new Date(String(date));
+            const nextDate = new Date(targetDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            
+            filters.createdAt = {
+                $gte: targetDate.toISOString(),
+                $lt: nextDate.toISOString()
+            };
+        } else if (startDate) {
+            // Date range filter from startDate to now
+            const startDateObj = new Date(String(startDate));
+            filters.createdAt = {
+                $gte: startDateObj.toISOString()
+            };
+        }
 
         const pagination = {
             page: Math.max(1, Number(page)),
@@ -24,7 +43,7 @@ const getDeliveryOrders = async (req: CustomRequest, res: Response): Promise<voi
         // Get orders assigned to this delivery partner
         const result = await orderService.getOrdersByDeliveryPartner(userId.toString(), filters, pagination);
 
-        console.log(`Found ${result.orders.length} delivery orders`);
+        console.log(`Found ${result.orders.length} delivery orders with date filters`);
 
         res.status(200).json({
             success: true,

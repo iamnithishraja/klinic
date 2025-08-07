@@ -60,6 +60,8 @@ export interface DeliveryFilters {
   page?: number;
   limit?: number;
   status?: string;
+  date?: string; // For specific date filtering (YYYY-MM-DD format)
+  startDate?: string; // For date range filtering (YYYY-MM-DD format)
 }
 
 interface DeliveryStore {

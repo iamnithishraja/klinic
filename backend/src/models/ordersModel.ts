@@ -38,6 +38,10 @@ const orderSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    cod: {
+        type: Boolean,
+        default: false,
+    },
     needAssignment: {
         type: Boolean,
         default: false,
@@ -49,6 +53,10 @@ const orderSchema = new mongoose.Schema({
     },
     // Customer address for delivery
     customerAddress: {
+        type: String,
+        default: null,
+    },
+    customerPinCode: {
         type: String,
         default: null,
     },
