@@ -1,7 +1,7 @@
 import { store } from "@/utils";
 import axios from "axios";
 
-export const baseUrl = process.env.EXPO_PUBLIC_TEST_BE_URL || 'http://localhost:3000';
+export const baseUrl = process.env.EXPO_PUBLIC_TEST_BE_URL || 'https://api.klinic.cloud';
 const apiClient = axios.create({
     baseURL: baseUrl,
 });
