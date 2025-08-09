@@ -685,17 +685,26 @@ class OrderService {
 
     // Update delivery status (no validation)
     async updateDeliveryStatus(orderId: string, status: string) {
-        console.log('Updating delivery status:', orderId, 'to:', status);
+        console.log('Updating delivery status for order:', orderId, 'to:', status);
+
+        const order = await Order.findById(orderId);
+        if (!order) {
+            throw new Error('Order not found');
+        }
 
         const updateData: any = {
-            status,
+            status: status,
             updatedAt: new Date()
         };
 
-        if (status === 'out_for_delivery') {
-            updateData.outForDeliveryAt = new Date();
-        } else if (status === 'delivered') {
+        if (status === 'delivered') {
             updateData.deliveredAt = new Date();
+            // If the order is COD, mark it as paid upon delivery
+            if (order.cod) {
+                updateData.isPaid = true;
+            }
+        } else if (status === 'out_for_delivery') {
+            updateData.outForDeliveryAt = new Date();
         }
 
         const updatedOrder = await Order.findByIdAndUpdate(
@@ -707,7 +716,7 @@ class OrderService {
          .populate('deliveryPartner', 'name email phone')
          .populate('products.product', 'name price imageUrl');
 
-        console.log('Delivery status updated successfully:', updatedOrder?._id);
+        console.log('Order delivery status updated successfully:', updatedOrder?._id);
         return updatedOrder;
     }
 

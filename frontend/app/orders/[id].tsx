@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,13 +19,8 @@ export default function OrderDetailsScreen() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (id) {
-      fetchOrderDetails();
-    }
-  }, [id]);
-
-  const fetchOrderDetails = async () => {
+  const fetchOrderDetails = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
       const orderData = await orderService.getOrderById(id);
@@ -36,7 +31,11 @@ export default function OrderDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchOrderDetails();
+  }, [fetchOrderDetails]);
 
   const handleGoBack = () => {
     router.back();
@@ -137,81 +136,134 @@ export default function OrderDetailsScreen() {
   const status = getStatusConfig(order.status);
   const orderId = order._id.slice(-8).toUpperCase();
 
+  const handleCancelOrder = async () => {
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await orderService.updateOrderStatus(order._id, 'cancelled');
+              fetchOrderDetails(); // Refresh details
+              Alert.alert('Success', 'Order has been cancelled.');
+            } catch (error) {
+              console.error('Error cancelling order:', error);
+              Alert.alert('Error', 'Failed to cancel the order.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderActionButtons = () => {
+    if (!order.isPaid && !order.cod && ['pending', 'confirmed'].includes(order.status)) {
+      return (
+        <TouchableOpacity
+          // onPress={() => router.push(`/payment/${order._id}`)} // TODO: Implement payment screen
+          className="bg-green-600 py-4 rounded-xl flex-row justify-center items-center"
+        >
+          <FontAwesome name="credit-card" size={16} color="white" />
+          <Text className="text-white font-bold text-lg ml-3">Pay Now {formatPrice(order.totalPrice)}</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    if (['pending', 'confirmed'].includes(order.status)) {
+      return (
+        <TouchableOpacity
+          onPress={handleCancelOrder}
+          className="bg-red-600 py-4 rounded-xl flex-row justify-center items-center"
+        >
+          <FontAwesome name="times" size={16} color="white" />
+          <Text className="text-white font-bold text-lg ml-3">Cancel Order</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    if (order.status === 'delivered') {
+      return (
+        <TouchableOpacity
+          onPress={handleAddMoreProducts}
+          className="bg-blue-600 py-4 rounded-xl flex-row justify-center items-center"
+        >
+          <FontAwesome name="refresh" size={16} color="white" />
+          <Text className="text-white font-bold text-lg ml-3">Reorder</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        onPress={handleAddMoreProducts}
+        className="bg-blue-600 py-4 rounded-xl flex-row justify-center items-center"
+      >
+        <FontAwesome name="plus" size={16} color="white" />
+        <Text className="text-white font-bold text-lg ml-3">Add More Products</Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-white px-6 py-4 border-b border-gray-100 shadow-sm">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <TouchableOpacity
-              onPress={handleGoBack}
-              className="mr-4 p-2 -ml-2"
-            >
-              <FontAwesome name="arrow-left" size={20} color={Colors.light.text} />
-            </TouchableOpacity>
-            <View>
-              <Text className="text-xl font-bold text-gray-900">Order Details</Text>
-              <Text className="text-gray-600 text-sm">#{orderId}</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            onPress={handleAddMoreProducts}
-            className="bg-blue-600 px-4 py-2 rounded-lg flex-row items-center"
-          >
-            <FontAwesome name="plus" size={16} color="white" />
-            <Text className="text-white font-semibold ml-2">Shop</Text>
-          </TouchableOpacity>
-        </View>
+      <View className="flex-row items-center justify-between p-4 bg-white border-b border-gray-200">
+        <TouchableOpacity onPress={handleGoBack} className="p-2">
+          <FontAwesome name="arrow-left" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text className="text-xl font-bold text-gray-900">Order #{orderId}</Text>
+        <View className="w-10" />
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="p-6 space-y-6">
-          {/* Order Status Card */}
+      <ScrollView className="flex-1">
+        <View className="p-4 space-y-6">
+          {/* Status Card */}
           <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-gray-900">Order Status</Text>
-              <View 
-                className="px-4 py-2 rounded-full flex-row items-center"
-                style={{ backgroundColor: status.bgColor }}
-              >
-                <FontAwesome name={status.icon} size={14} color={status.color} />
-                <Text 
-                  className="text-sm font-bold ml-2"
-                  style={{ color: status.color }}
+              <Text className="text-lg font-bold text-gray-900">Status</Text>
+              <View className="flex-row items-center">
+                <View
+                  style={{ backgroundColor: status.bgColor }}
+                  className="flex-row items-center px-3 py-1 rounded-full"
                 >
-                  {status.text}
-                </Text>
-              </View>
-            </View>
-            
-            <View className="space-y-3">
-              <View className="flex-row justify-between items-center">
-                <Text className="text-gray-600">Order Type</Text>
-                <Text className="font-semibold text-gray-900">
-                  {order.prescription ? 'Prescription Order' : 'Product Order'}
-                </Text>
-              </View>
-              
-              <View className="flex-row justify-between items-center">
-                <Text className="text-gray-600">Payment Status</Text>
-                <View className="flex-row items-center">
-                  <FontAwesome 
-                    name={order.isPaid ? "check-circle" : "clock-o"} 
-                    size={14} 
-                    color={order.isPaid ? "#10B981" : "#F59E0B"} 
-                  />
-                  <Text 
-                    className={`ml-2 font-semibold ${order.isPaid ? 'text-green-600' : 'text-yellow-600'}`}
+                  <FontAwesome name={status.icon} size={14} color={status.color} />
+                  <Text
+                    style={{ color: status.color }}
+                    className="font-bold text-sm ml-2"
                   >
-                    {order.isPaid ? 'Paid' : 'Payment Pending'}
+                    {status.text}
+                  </Text>
+                </View>
+                <View
+                  style={{ backgroundColor: order.isPaid ? Colors.light.successbg : Colors.light.warningbg }}
+                  className="flex-row items-center px-3 py-1 rounded-full ml-2"
+                >
+                  <FontAwesome name={order.isPaid ? 'check-circle' : 'credit-card'} size={14} color={order.isPaid ? Colors.light.success : Colors.light.warning} />
+                  <Text
+                    style={{ color: order.isPaid ? Colors.light.success : Colors.light.warning }}
+                    className="font-bold text-sm ml-2"
+                  >
+                    {order.isPaid ? 'Paid' : (order.cod ? 'COD' : 'Payment Pending')}
                   </Text>
                 </View>
               </View>
-              
-              <View className="flex-row justify-between items-center">
+            </View>
+
+            <View className="space-y-2">
+              <View className="flex-row justify-between">
                 <Text className="text-gray-600">Order Date</Text>
                 <Text className="font-semibold text-gray-900">
                   {formatDate(order.createdAt)}
+                </Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-gray-600">Last Updated</Text>
+                <Text className="font-semibold text-gray-900">
+                  {formatDate(order.updatedAt)}
                 </Text>
               </View>
             </View>
@@ -221,16 +273,18 @@ export default function OrderDetailsScreen() {
           {order.products && order.products.length > 0 && (
             <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <View className="flex-row items-center mb-4">
-                <FontAwesome name="shopping-bag" size={18} color="#3B82F6" />
+                <FontAwesome name="shopping-basket" size={18} color="#3B82F6" />
                 <Text className="text-lg font-bold text-gray-900 ml-3">
-                  Products ({order.products.length})
+                  Products
                 </Text>
               </View>
-              
               <View className="space-y-4">
                 {order.products.map((item, index) => (
-                  <View key={`${item.product._id}-${item.quantity}-${index}`} className="bg-gray-50 rounded-xl p-4">
-                    <View className="flex-row justify-between items-start mb-2">
+                  <View
+                    key={index}
+                    className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0"
+                  >
+                    <View className="flex-row items-start justify-between">
                       <Text className="text-lg font-semibold text-gray-900 flex-1">
                         {item.product.name}
                       </Text>
@@ -304,14 +358,7 @@ export default function OrderDetailsScreen() {
 
           {/* Action Buttons */}
           <View className="space-y-3">
-            <TouchableOpacity
-              onPress={handleAddMoreProducts}
-              className="bg-blue-600 py-4 rounded-xl flex-row justify-center items-center"
-            >
-              <FontAwesome name="plus" size={16} color="white" />
-              <Text className="text-white font-bold text-lg ml-3">Add More Products</Text>
-            </TouchableOpacity>
-            
+            {renderActionButtons()}
             <TouchableOpacity
               onPress={handleGoBack}
               className="bg-gray-100 py-4 rounded-xl flex-row justify-center items-center"
@@ -324,4 +371,4 @@ export default function OrderDetailsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-} 
+}
